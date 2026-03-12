@@ -80,16 +80,16 @@ export default function EfetivoPage() {
 
     setLoading(true);
     const formData = new FormData(e.currentTarget);
-    const name = formData.get('name') as string;
-    const email = formData.get('email') as string;
-    const role = formData.get('role') as string;
+    const name = (formData.get('name') as string).toUpperCase();
+    const email = (formData.get('email') as string).toUpperCase();
+    const role = (formData.get('role') as string).toUpperCase();
 
     const newEmployee = {
       name,
       email,
       role,
-      qra: `QRA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
-      status: "Ativo",
+      qra: `QRA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`.toUpperCase(),
+      status: "ATIVO",
       avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
       admissionDate: new Date().toISOString().split('T')[0]
     };
@@ -98,14 +98,14 @@ export default function EfetivoPage() {
       await addDoc(collection(firestore, 'employees'), newEmployee);
       setIsAddOpen(false);
       toast({
-        title: "Sucesso!",
-        description: "Novo registro criado no sistema.",
+        title: "SUCESSO!",
+        description: "NOVO REGISTRO CRIADO NO SISTEMA.",
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Erro",
-        description: "Não foi possível salvar o registro.",
+        title: "ERRO",
+        description: "NÃO FOI POSSÍVEL SALVAR O REGISTRO.",
       });
     } finally {
       setLoading(false);
@@ -113,17 +113,17 @@ export default function EfetivoPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!firestore || !confirm("Tem certeza que deseja excluir este registro?")) return;
+    if (!firestore || !confirm("TEM CERTEZA QUE DESEJA EXCLUIR ESTE REGISTRO?")) return;
     
     try {
       await deleteDoc(doc(firestore, 'employees', id));
       toast({
-        title: "Registro removido",
+        title: "REGISTRO REMOVIDO",
       });
     } catch (error) {
       toast({
         variant: "destructive",
-        title: "Erro ao excluir",
+        title: "ERRO AO EXCLUIR",
       });
     }
   }
@@ -132,43 +132,43 @@ export default function EfetivoPage() {
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight">Efetivo</h2>
-          <p className="text-muted-foreground">Gerencie o registro e dados de todo o efetivo da unidade.</p>
+          <h2 className="text-3xl font-bold tracking-tight">EFETIVO</h2>
+          <p className="text-muted-foreground">GERENCIE O REGISTRO E DADOS DE TODO O EFETIVO DA UNIDADE.</p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2">
               <UserPlus className="h-4 w-4" />
-              Novo Registro
+              NOVO REGISTRO
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
             <form onSubmit={handleAddEmployee}>
               <DialogHeader>
-                <DialogTitle>Cadastrar Novo Integrante</DialogTitle>
+                <DialogTitle>CADASTRAR NOVO INTEGRANTE</DialogTitle>
                 <DialogDescription>
-                  Preencha os dados básicos. O QRA e código de validação serão gerados automaticamente.
+                  PREENCHA OS DADOS BÁSICOS. O QRA E CÓDIGO DE VALIDAÇÃO SERÃO GERADOS AUTOMATICAMENTE.
                 </DialogDescription>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Nome Completo</Label>
-                  <Input id="name" name="name" placeholder="Ex: João da Silva" required />
+                  <Label htmlFor="name">NOME COMPLETO</Label>
+                  <Input id="name" name="name" placeholder="EX: JOÃO DA SILVA" required className="uppercase" />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="email">E-mail Institucional</Label>
-                  <Input id="email" name="email" type="email" placeholder="joao.silva@gmvv.gov.br" required />
+                  <Label htmlFor="email">E-MAIL INSTITUCIONAL</Label>
+                  <Input id="email" name="email" type="email" placeholder="JOAO.SILVA@GMVV.GOV.BR" required className="uppercase" />
                 </div>
                 <div className="grid gap-2">
-                  <Label htmlFor="role">Cargo / Função</Label>
-                  <Input id="role" name="role" placeholder="Ex: Agente de Segurança" required />
+                  <Label htmlFor="role">CARGO / FUNÇÃO</Label>
+                  <Input id="role" name="role" placeholder="EX: AGENTE DE SEGURANÇA" required className="uppercase" />
                 </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>Cancelar</Button>
+                <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>CANCELAR</Button>
                 <Button type="submit" disabled={loading}>
                   {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Gerar Registro
+                  GERAR REGISTRO
                 </Button>
               </DialogFooter>
             </form>
@@ -182,8 +182,8 @@ export default function EfetivoPage() {
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome, e-mail ou QRA..."
-                className="pl-8"
+                placeholder="BUSCAR POR NOME, E-MAIL OU QRA..."
+                className="pl-8 uppercase"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -203,19 +203,19 @@ export default function EfetivoPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[80px]">Foto</TableHead>
-                    <TableHead>Nome</TableHead>
+                    <TableHead className="w-[80px]">FOTO</TableHead>
+                    <TableHead>NOME</TableHead>
                     <TableHead>QRA</TableHead>
-                    <TableHead>Função</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Ações</TableHead>
+                    <TableHead>FUNÇÃO</TableHead>
+                    <TableHead>STATUS</TableHead>
+                    <TableHead className="text-right">AÇÕES</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredEmployees.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
-                        Nenhum integrante encontrado.
+                        NENHUM INTEGRANTE ENCONTRADO.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -229,16 +229,16 @@ export default function EfetivoPage() {
                         </TableCell>
                         <TableCell className="font-medium">
                           <div>
-                            <div>{employee.name}</div>
-                            <div className="text-xs text-muted-foreground font-normal">{employee.email}</div>
+                            <div className="uppercase">{employee.name}</div>
+                            <div className="text-xs text-muted-foreground font-normal uppercase">{employee.email}</div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="font-mono">{employee.qra}</Badge>
+                          <Badge variant="outline" className="font-mono uppercase">{employee.qra}</Badge>
                         </TableCell>
-                        <TableCell>{employee.role}</TableCell>
+                        <TableCell className="uppercase">{employee.role}</TableCell>
                         <TableCell>
-                          <Badge variant={employee.status === "Ativo" ? "default" : "secondary"}>
+                          <Badge variant={employee.status === "ATIVO" ? "default" : "secondary"} className="uppercase">
                             {employee.status}
                           </Badge>
                         </TableCell>
@@ -250,17 +250,17 @@ export default function EfetivoPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-[160px]">
-                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuLabel>AÇÕES</DropdownMenuLabel>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem>
-                                <Edit className="mr-2 h-4 w-4" /> Editar
+                                <Edit className="mr-2 h-4 w-4" /> EDITAR
                               </DropdownMenuItem>
                               <DropdownMenuItem>
-                                <QrCode className="mr-2 h-4 w-4" /> Ver QRA
+                                <QrCode className="mr-2 h-4 w-4" /> VER QRA
                               </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(employee.id)}>
-                                <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                                <Trash2 className="mr-2 h-4 w-4" /> EXCLUIR
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
