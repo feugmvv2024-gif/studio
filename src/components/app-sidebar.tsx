@@ -32,7 +32,7 @@ import { usePathname } from "next/navigation"
 
 const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Funcionários", href: "/employees", icon: Users, admin: true },
+  { name: "Efetivo", href: "/efetivo", icon: Users, admin: true },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
   { name: "Gestão de Pedidos", href: "/admin/requests", icon: ShieldAlert, admin: true },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
