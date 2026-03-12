@@ -3,22 +3,20 @@
 
 import * as React from "react"
 import { 
-  Plus, 
   Search, 
   MoreHorizontal, 
   UserPlus, 
   QrCode, 
   Edit, 
   Trash2,
-  Filter
+  Filter,
+  Loader2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
-  CardTitle,
 } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -49,39 +47,86 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
-
-const employees = [
-  {
-    id: "1",
-    name: "Ricardo Santos",
-    email: "ricardo.santos@gmvv.gov.br",
-    qra: "QRA-2024-001",
-    role: "Inspetor",
-    status: "Ativo",
-    avatar: "https://picsum.photos/seed/emp1/100/100"
-  },
-  {
-    id: "2",
-    name: "Juliana Lima",
-    email: "juliana.lima@gmvv.gov.br",
-    qra: "QRA-2024-002",
-    role: "Agente",
-    status: "Férias",
-    avatar: "https://picsum.photos/seed/emp2/100/100"
-  },
-  {
-    id: "3",
-    name: "Marcos Oliveira",
-    email: "marcos.oliveira@gmvv.gov.br",
-    qra: "QRA-2024-003",
-    role: "Coordenador",
-    status: "Ativo",
-    avatar: "https://picsum.photos/seed/emp3/100/100"
-  }
-]
+import { useFirestore, useCollection } from '@/firebase';
+import { collection, addDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { useToast } from "@/hooks/use-toast";
 
 export default function EfetivoPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
+  const [searchTerm, setSearchTerm] = React.useState("")
+  const [loading, setLoading] = React.useState(false)
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const employeesRef = React.useMemo(() => {
+    if (!firestore) return null;
+    return query(collection(firestore, 'employees'), orderBy('name', 'asc'));
+  }, [firestore]);
+
+  const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
+
+  const filteredEmployees = React.useMemo(() => {
+    if (!employees) return [];
+    return employees.filter(emp => 
+      emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      emp.qra?.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [employees, searchTerm]);
+
+  async function handleAddEmployee(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!firestore) return;
+
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string;
+    const email = formData.get('email') as string;
+    const role = formData.get('role') as string;
+
+    const newEmployee = {
+      name,
+      email,
+      role,
+      qra: `QRA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`,
+      status: "Ativo",
+      avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
+      admissionDate: new Date().toISOString().split('T')[0]
+    };
+
+    try {
+      await addDoc(collection(firestore, 'employees'), newEmployee);
+      setIsAddOpen(false);
+      toast({
+        title: "Sucesso!",
+        description: "Novo registro criado no sistema.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro",
+        description: "Não foi possível salvar o registro.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!firestore || !confirm("Tem certeza que deseja excluir este registro?")) return;
+    
+    try {
+      await deleteDoc(doc(firestore, 'employees', id));
+      toast({
+        title: "Registro removido",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Erro ao excluir",
+      });
+    }
+  }
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
@@ -98,30 +143,35 @@ export default function EfetivoPage() {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>Cadastrar Novo Integrante</DialogTitle>
-              <DialogDescription>
-                Preencha os dados básicos. O QRA e código de validação serão gerados automaticamente.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="grid gap-2">
-                <Label htmlFor="name">Nome Completo</Label>
-                <Input id="name" placeholder="Ex: João da Silva" />
+            <form onSubmit={handleAddEmployee}>
+              <DialogHeader>
+                <DialogTitle>Cadastrar Novo Integrante</DialogTitle>
+                <DialogDescription>
+                  Preencha os dados básicos. O QRA e código de validação serão gerados automaticamente.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="name">Nome Completo</Label>
+                  <Input id="name" name="name" placeholder="Ex: João da Silva" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="email">E-mail Institucional</Label>
+                  <Input id="email" name="email" type="email" placeholder="joao.silva@gmvv.gov.br" required />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="role">Cargo / Função</Label>
+                  <Input id="role" name="role" placeholder="Ex: Agente de Segurança" required />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="email">E-mail Institucional</Label>
-                <Input id="email" type="email" placeholder="joao.silva@gmvv.gov.br" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="role">Cargo / Função</Label>
-                <Input id="role" placeholder="Ex: Agente de Segurança" />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancelar</Button>
-              <Button type="submit">Gerar Registro</Button>
-            </DialogFooter>
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>Cancelar</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Gerar Registro
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>
@@ -134,6 +184,8 @@ export default function EfetivoPage() {
               <Input
                 placeholder="Buscar por nome, e-mail ou QRA..."
                 className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
             <Button variant="outline" size="icon">
@@ -142,70 +194,84 @@ export default function EfetivoPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[80px]">Foto</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>QRA</TableHead>
-                  <TableHead>Função</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {employees.map((employee) => (
-                  <TableRow key={employee.id}>
-                    <TableCell>
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={employee.avatar} alt={employee.name} />
-                        <AvatarFallback>{employee.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                    </TableCell>
-                    <TableCell className="font-medium">
-                      <div>
-                        <div>{employee.name}</div>
-                        <div className="text-xs text-muted-foreground font-normal">{employee.email}</div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="font-mono">{employee.qra}</Badge>
-                    </TableCell>
-                    <TableCell>{employee.role}</TableCell>
-                    <TableCell>
-                      <Badge variant={employee.status === "Ativo" ? "default" : "secondary"}>
-                        {employee.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-[160px]">
-                          <DropdownMenuLabel>Ações</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem>
-                            <Edit className="mr-2 h-4 w-4" /> Editar
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            <QrCode className="mr-2 h-4 w-4" /> Ver QRA
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive">
-                            <Trash2 className="mr-2 h-4 w-4" /> Excluir
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
+          {loadingCollection ? (
+            <div className="flex h-32 items-center justify-center">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="rounded-md border">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[80px]">Foto</TableHead>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>QRA</TableHead>
+                    <TableHead>Função</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                  {filteredEmployees.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                        Nenhum integrante encontrado.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    filteredEmployees.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell>
+                          <Avatar className="h-10 w-10">
+                            <AvatarImage src={employee.avatar} alt={employee.name} />
+                            <AvatarFallback>{employee.name?.charAt(0)}</AvatarFallback>
+                          </Avatar>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <div>
+                            <div>{employee.name}</div>
+                            <div className="text-xs text-muted-foreground font-normal">{employee.email}</div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className="font-mono">{employee.qra}</Badge>
+                        </TableCell>
+                        <TableCell>{employee.role}</TableCell>
+                        <TableCell>
+                          <Badge variant={employee.status === "Ativo" ? "default" : "secondary"}>
+                            {employee.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-[160px]">
+                              <DropdownMenuLabel>Ações</DropdownMenuLabel>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem>
+                                <Edit className="mr-2 h-4 w-4" /> Editar
+                              </DropdownMenuItem>
+                              <DropdownMenuItem>
+                                <QrCode className="mr-2 h-4 w-4" /> Ver QRA
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(employee.id)}>
+                                <Trash2 className="mr-2 h-4 w-4" /> Excluir
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

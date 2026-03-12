@@ -1,0 +1,70 @@
+
+{
+  "entities": {
+    "Employee": {
+      "title": "Employee",
+      "description": "Dados cadastrais de um integrante do efetivo.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "qra": { "type": "string" },
+        "role": { "type": "string" },
+        "status": { "type": "string", "enum": ["Ativo", "Férias", "Licença", "Inativo"] },
+        "avatar": { "type": "string" },
+        "admissionDate": { "type": "string", "format": "date" },
+        "phone": { "type": "string" },
+        "unit": { "type": "string" }
+      },
+      "required": ["name", "email", "qra", "role", "status"]
+    },
+    "Request": {
+      "title": "Operational Request",
+      "description": "Solicitação operacional enviada por um funcionário (férias, permuta, etc).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "type": { "type": "string", "enum": ["vacation", "leave", "exchange", "other"] },
+        "date": { "type": "string" },
+        "status": { "type": "string", "enum": ["Pendente", "Aprovado", "Negado", "Em Revisão"] },
+        "description": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["employeeId", "type", "status"]
+    },
+    "TimeBankEntry": {
+      "title": "Time Bank Entry",
+      "description": "Registro de horas extras ou compensações.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "date": { "type": "string" },
+        "type": { "type": "string", "enum": ["Extra", "Compensação"] },
+        "hours": { "type": "string" },
+        "description": { "type": "string" }
+      },
+      "required": ["employeeId", "date", "type", "hours"]
+    }
+  },
+  "auth": {
+    "providers": ["google.com"]
+  },
+  "firestore": {
+    "/employees/{employeeId}": {
+      "schema": "#/backend/entities/Employee",
+      "description": "Coleção de funcionários da unidade."
+    },
+    "/requests/{requestId}": {
+      "schema": "#/backend/entities/Request",
+      "description": "Coleção global de solicitações operacionais."
+    },
+    "/employees/{employeeId}/timeBank/{entryId}": {
+      "schema": "#/backend/entities/TimeBankEntry",
+      "description": "Sub-coleção com o histórico de banco de horas por funcionário."
+    }
+  }
+}
