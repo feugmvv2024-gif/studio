@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -7,10 +6,7 @@ import {
   Users,
   ClipboardList,
   UserCircle,
-  FileText,
   LogOut,
-  ShieldAlert,
-  Menu,
 } from "lucide-react"
 
 import {
@@ -24,7 +20,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
@@ -34,7 +29,6 @@ const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
   { name: "Efetivo", href: "/efetivo", icon: Users, admin: true },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
-  { name: "Gestão de Pedidos", href: "/admin/requests", icon: ShieldAlert, admin: true },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
 ]
 
