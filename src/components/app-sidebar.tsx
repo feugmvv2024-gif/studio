@@ -36,17 +36,56 @@ export function AppSidebar() {
   const pathname = usePathname()
   const { isMobile } = useSidebar()
   const isAdmin = true // Mocked for UI development
+  
+  // Status da conexão: 'connected' (green), 'stable' (orange), 'disconnected' (red)
+  const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'stable' | 'disconnected'>('stable')
+
+  React.useEffect(() => {
+    // Simulando uma verificação de conexão com o Firebase
+    // Em um cenário real, isso poderia ser atrelado ao estado do SDK
+    const timer = setTimeout(() => {
+      setConnectionStatus('connected')
+    }, 2000)
+    
+    return () => clearTimeout(timer)
+  }, [])
+
+  const getStatusColor = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'bg-green-500'
+      case 'stable': return 'bg-orange-500'
+      case 'disconnected': return 'bg-red-500'
+      default: return 'bg-gray-500'
+    }
+  }
+
+  const getStatusLabel = () => {
+    switch (connectionStatus) {
+      case 'connected': return 'Conectado'
+      case 'stable': return 'Estável'
+      case 'disconnected': return 'Desconectado'
+      default: return 'Status Desconhecido'
+    }
+  }
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b px-6 py-4">
-        <div className="flex items-center gap-2 font-headline font-bold text-primary">
-          <div className="bg-primary flex h-8 w-8 items-center justify-center rounded-lg text-white">
-            N
+        <div className="flex items-center justify-between w-full">
+          <div className="flex items-center gap-2 font-headline font-bold text-primary">
+            <div className="bg-primary flex h-8 w-8 items-center justify-center rounded-lg text-white">
+              N
+            </div>
+            <span className="truncate text-lg group-data-[collapsible=icon]:hidden">
+              NRH - GMVV
+            </span>
           </div>
-          <span className="truncate text-lg group-data-[collapsible=icon]:hidden">
-            NRH - GMVV
-          </span>
+          <div className="flex items-center group-data-[collapsible=icon]:hidden">
+            <div 
+              className={`h-2.5 w-2.5 rounded-full ${getStatusColor()} animate-pulse shadow-[0_0_8px_rgba(0,0,0,0.2)]`} 
+              title={getStatusLabel()}
+            />
+          </div>
         </div>
       </SidebarHeader>
       <SidebarContent>
