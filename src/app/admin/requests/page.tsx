@@ -14,10 +14,6 @@ import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-  CardFooter
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
@@ -107,74 +103,76 @@ export default function AdminRequestsPage() {
 
       <div className="space-y-6">
         {selectedReq ? (
-          <div className="space-y-6 sticky top-24">
-            <Card className="card-shadow border-t-4 border-t-primary">
-              <CardHeader>
-                <CardTitle>Análise do Pedido: {selectedReq.id}</CardTitle>
-                <CardDescription>
-                  Colaborador: {selectedReq.employee}
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="p-4 bg-muted rounded-lg text-sm italic">
-                  &quot;{selectedReq.details}&quot;
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Notas Internas (Opcional)</Label>
+          <div className="space-y-6 sticky top-24 p-6 border rounded-xl bg-card card-shadow animate-in slide-in-from-right-4 duration-300">
+            <div className="space-y-1">
+              <Badge className="bg-primary/10 text-primary hover:bg-primary/20 border-none mb-2">
+                Solicitação {selectedReq.id}
+              </Badge>
+              <h3 className="text-2xl font-bold tracking-tight">{selectedReq.employee}</h3>
+              <p className="text-muted-foreground font-medium">{selectedReq.type}</p>
+            </div>
+
+            <div className="space-y-6">
+              <div className="p-4 bg-muted/50 rounded-lg text-sm italic border-l-4 border-primary/30">
+                &quot;{selectedReq.details}&quot;
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="notes" className="text-sm font-semibold">Notas Internas (Opcional)</Label>
+                <Textarea 
+                  id="notes"
+                  placeholder="Adicione observações para orientar a IA..."
+                  value={adminNotes}
+                  onChange={(e) => setAdminNotes(e.target.value)}
+                  className="bg-background border-slate-200 focus:bg-white transition-colors min-h-[100px]"
+                />
+              </div>
+
+              <Button 
+                onClick={generateDraft} 
+                disabled={isGenerating}
+                className="w-full gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90 shadow-md border-none h-11"
+              >
+                <Sparkles className="h-4 w-4" />
+                {isGenerating ? "Gerando Resposta..." : "Gerar Resposta com IA"}
+              </Button>
+
+              {aiDraft && (
+                <div className="space-y-3 pt-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <Label className="flex items-center gap-2 text-primary font-bold">
+                    <MessageSquare className="h-4 w-4" />
+                    Sugestão da Assistente
+                  </Label>
                   <Textarea 
-                    id="notes"
-                    placeholder="Adicione observações para orientar a IA..."
-                    value={adminNotes}
-                    onChange={(e) => setAdminNotes(e.target.value)}
+                    value={aiDraft} 
+                    onChange={(e) => setAiDraft(e.target.value)}
+                    className="min-h-[180px] border-accent/30 focus:ring-accent bg-accent/5"
                   />
                 </div>
+              )}
 
-                <Button 
-                  onClick={generateDraft} 
-                  disabled={isGenerating}
-                  className="w-full gap-2 bg-gradient-to-r from-primary to-accent hover:opacity-90 border-none"
-                >
-                  <Sparkles className="h-4 w-4" />
-                  {isGenerating ? "Gerando Resposta..." : "Gerar Resposta com IA"}
-                </Button>
-
-                {aiDraft && (
-                  <div className="space-y-2 animate-in slide-in-from-top-2 duration-300">
-                    <Label className="flex items-center gap-2">
-                      <MessageSquare className="h-4 w-4 text-primary" />
-                      Sugestão da Assistente
-                    </Label>
-                    <Textarea 
-                      value={aiDraft} 
-                      onChange={(e) => setAiDraft(e.target.value)}
-                      className="min-h-[150px] border-accent/50 focus:ring-accent"
-                    />
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="flex justify-between border-t pt-6">
-                <div className="flex gap-2">
-                  <Button variant="outline" size="icon" className="text-destructive border-destructive/20 hover:bg-destructive/10">
-                    <XCircle className="h-4 w-4" />
+              <div className="flex justify-between items-center border-t pt-6">
+                <div className="flex gap-3">
+                  <Button variant="outline" size="icon" className="text-destructive border-destructive/20 hover:bg-destructive hover:text-white transition-colors h-11 w-11">
+                    <XCircle className="h-5 w-5" />
                   </Button>
-                  <Button variant="outline" size="icon" className="text-green-600 border-green-200 hover:bg-green-50">
-                    <CheckCircle className="h-4 w-4" />
+                  <Button variant="outline" size="icon" className="text-green-600 border-green-200 hover:bg-green-600 hover:text-white transition-colors h-11 w-11">
+                    <CheckCircle className="h-5 w-5" />
                   </Button>
                 </div>
-                <Button className="gap-2">
+                <Button className="gap-2 h-11 px-6 shadow-sm">
                   Enviar Resposta
                   <Send className="h-4 w-4" />
                 </Button>
-              </CardFooter>
-            </Card>
+              </div>
+            </div>
           </div>
         ) : (
-          <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-12 border-2 border-dashed rounded-lg bg-muted/30">
-            <div className="p-4 rounded-full bg-muted mb-4">
-              <ArrowRight className="h-8 w-8" />
+          <div className="h-full flex flex-col items-center justify-center text-muted-foreground p-12 border-2 border-dashed rounded-xl bg-muted/20">
+            <div className="p-4 rounded-full bg-white shadow-sm mb-4">
+              <ArrowRight className="h-8 w-8 text-primary/40" />
             </div>
-            <p className="text-center">Selecione uma solicitação à esquerda para analisar e responder usando IA.</p>
+            <p className="text-center font-medium">Selecione uma solicitação à esquerda para analisar e responder usando IA.</p>
           </div>
         )}
       </div>
