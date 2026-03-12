@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -21,6 +20,7 @@ import {
   CardFooter
 } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { operationalRequestResponseAssistant } from "@/ai/flows/operational-request-response-assistant"
 import { useToast } from "@/hooks/use-toast"
