@@ -52,11 +52,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -115,7 +110,10 @@ export default function LancamentosPage() {
   const [formDays, setFormDays] = React.useState<number>(0)
   const [formStartDate, setFormStartDate] = React.useState<string>("")
   const [formEndDate, setFormEndDate] = React.useState<string>("")
-  const [isEmployeePopoverOpen, setIsEmployeePopoverOpen] = React.useState(false)
+  
+  // Novos Estados para o Input Customizado
+  const [showServidorSuggestions, setShowServidorSuggestions] = React.useState(false)
+  const servidorSearchInputRef = React.useRef<HTMLInputElement>(null)
 
   const firestore = useFirestore()
   const { toast } = useToast()
@@ -134,12 +132,15 @@ export default function LancamentosPage() {
     if (selectedLaunch) {
       setHoursInput(selectedLaunch.hours || "");
       setSelectedEmployeeId(selectedLaunch.employeeId || "");
+      // Preenche o campo de busca com o nome do servidor editado
+      setSearchEmployeeTerm(`${selectedLaunch.employeeName} (${selectedLaunch.employeeQra})`);
       setFormDays(selectedLaunch.days || 0);
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
     } else if (isAddOpen) {
       setHoursInput("");
       setSelectedEmployeeId("");
+      setSearchEmployeeTerm("");
       setFormDays(0);
       setFormStartDate(getSaoPauloDate());
       setFormEndDate(getSaoPauloDate());
@@ -242,63 +243,82 @@ export default function LancamentosPage() {
           <Input name="date" type="date" defaultValue={isEdit ? selectedLaunch?.date : getSaoPauloDate()} required className="h-9" />
         </div>
         
-        <div className="grid gap-2 sm:col-span-2">
-          <Label className="uppercase text-[10px] font-bold">SERVIDOR (BUSCA POR QRA OU NOME)</Label>
-          <Popover open={isEmployeePopoverOpen} onOpenChange={setIsEmployeePopoverOpen} modal={true}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="justify-between h-9 uppercase text-[11px] font-normal w-full">
-                {selectedEmployee ? `${selectedEmployee.name} (${selectedEmployee.qra})` : "BUSCAR E SELECIONAR SERVIDOR..."}
-                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[450px] p-0 shadow-xl z-[100]" align="start">
-              <div className="flex flex-col">
-                <div className="flex items-center border-b p-2">
-                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                  <Input 
-                    placeholder="DIGITE QRA OU NOME..." 
-                    className="h-9 border-none focus-visible:ring-0 uppercase text-[11px]" 
-                    value={searchEmployeeTerm} 
-                    onChange={(e) => setSearchEmployeeTerm(e.target.value)} 
-                    autoFocus 
-                  />
-                </div>
-                <div className="max-h-[250px] overflow-y-auto p-1 custom-scrollbar">
-                  {filteredEmployeesForSelection.length === 0 ? (
-                    <div className="p-4 text-center text-xs text-muted-foreground uppercase">
-                      NENHUM SERVIDOR ENCONTRADO.
-                    </div>
-                  ) : (
-                    filteredEmployeesForSelection.map((emp) => (
-                      <div
-                        key={emp.id}
-                        className={cn(
-                          "flex flex-col p-2.5 rounded-sm hover:bg-muted cursor-pointer border-b last:border-0 transition-colors", 
-                          selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary"
-                        )}
-                        onClick={() => {
-                          setSelectedEmployeeId(emp.id);
-                          setIsEmployeePopoverOpen(false);
-                          setSearchEmployeeTerm("");
-                        }}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className={cn("font-bold uppercase text-[11px]", selectedEmployeeId === emp.id && "text-primary")}>
-                            {emp.name}
-                          </span>
-                          {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-primary" />}
-                        </div>
-                        <div className="flex gap-2 mt-1">
-                          <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">QRA: {emp.qra}</span>
-                          <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">MAT: {emp.matricula}</span>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
+        {/* NOVO CAMPO ADAPTADO: BUSCA DE SERVIDOR */}
+        <div className="grid gap-2 sm:col-span-2 relative">
+          <Label className="uppercase text-[10px] font-bold">SERVIDOR (NOME OU QRA)</Label>
+          <div className="relative">
+            <Input 
+              ref={servidorSearchInputRef}
+              type="text"
+              placeholder="DIGITE O NOME, QRA OU MATRÍCULA..."
+              value={searchEmployeeTerm}
+              onChange={(e) => {
+                const val = e.target.value.toUpperCase();
+                setSearchEmployeeTerm(val);
+                setShowServidorSuggestions(true);
+                
+                // Se apagar tudo, limpa o ID selecionado
+                if (!val) {
+                  setSelectedEmployeeId('');
+                }
+
+                // Tenta achar por QRA exato enquanto digita
+                if (employees) {
+                  const exactMatch = employees.find(s => s.qra === val.trim());
+                  if (exactMatch) {
+                    setSelectedEmployeeId(exactMatch.id);
+                  }
+                }
+              }}
+              onFocus={() => setShowServidorSuggestions(true)}
+              className="w-full h-9 uppercase text-[11px] pr-20"
+            />
+            
+            {/* Indicador de Seleção com pulse verde */}
+            {selectedEmployeeId && (
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
+                <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                <span className="text-[9px] font-bold text-green-600 uppercase">OK</span>
               </div>
-            </PopoverContent>
-          </Popover>
+            )}
+          </div>
+
+          {/* Lista de Sugestões Absoluta */}
+          {showServidorSuggestions && searchEmployeeTerm && (
+            <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border border-border rounded-md shadow-xl max-h-48 overflow-y-auto custom-scrollbar">
+              {filteredEmployeesForSelection.length > 0 ? (
+                filteredEmployeesForSelection.map(s => (
+                  <button
+                    key={s.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedEmployeeId(s.id);
+                      setSearchEmployeeTerm(`${s.name} (${s.qra})`);
+                      setShowServidorSuggestions(false);
+                    }}
+                    className="w-full px-3 py-2 text-left hover:bg-muted flex flex-col border-b border-border last:border-0 transition-colors"
+                  >
+                    <span className="text-[11px] font-bold text-foreground uppercase">{s.name}</span>
+                    <span className="text-[9px] text-muted-foreground uppercase">QRA: {s.qra} • MAT: {s.matricula}</span>
+                  </button>
+                ))
+              ) : (
+                <div className="px-3 py-2 text-[10px] text-muted-foreground italic uppercase">
+                  NENHUM SERVIDOR ENCONTRADO
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Overlay invisível para fechar sugestões ao clicar fora */}
+          {showServidorSuggestions && (
+            <div 
+              className="fixed inset-0 z-[55]" 
+              onClick={() => setShowServidorSuggestions(false)}
+            />
+          )}
+
+          {/* Input oculto para não quebrar a validação HTML (required) do formulário */}
           <input type="hidden" name="employeeId" value={selectedEmployeeId} required />
         </div>
       </div>
@@ -357,7 +377,9 @@ export default function LancamentosPage() {
           <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
             <form onSubmit={(e) => handleMutation(e, false)} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EFETUAR LANÇAMENTO</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2">{renderFormFields(false)}<ScrollBar /></ScrollArea>
+              <ScrollArea className="flex-1 p-6 pt-2 overflow-visible">
+                {renderFormFields(false)}
+              </ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
                 <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
                 <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "GRAVAR"}</Button>
@@ -430,7 +452,9 @@ export default function LancamentosPage() {
           {selectedLaunch && (
             <form onSubmit={(e) => handleMutation(e, true)} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EDITAR LANÇAMENTO</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2">{renderFormFields(true)}<ScrollBar /></ScrollArea>
+              <ScrollArea className="flex-1 p-6 pt-2 overflow-visible">
+                {renderFormFields(true)}
+              </ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
                 <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
                 <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR"}</Button>
