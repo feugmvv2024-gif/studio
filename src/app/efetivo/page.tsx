@@ -47,7 +47,6 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
@@ -143,7 +142,6 @@ export default function EfetivoPage() {
         let importedCount = 0;
 
         for (const row of data) {
-          // Mapeamento das colunas baseadas na solicitação: Nº, QRAs, SERVIDOR, MATRICULA, ESCALA, TURNO, CARGO, SETOR
           const name = (row['SERVIDOR'] || "").toString().toUpperCase();
           const qra = (row['QRAs'] || row['QRA'] || `QRA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`).toString().toUpperCase();
           const matricula = (row['MATRICULA'] || row['MATRÍCULA'] || "").toString().toUpperCase();
@@ -341,13 +339,7 @@ export default function EfetivoPage() {
                           <Badge variant="outline" className="font-mono uppercase text-[10px]">{employee.qra}</Badge>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-center gap-3">
-                            <Avatar className="h-8 w-8">
-                              <AvatarImage src={employee.avatar} alt={employee.name} />
-                              <AvatarFallback className="text-[10px]">{employee.name?.charAt(0)}</AvatarFallback>
-                            </Avatar>
-                            <span className="font-semibold uppercase text-xs">{employee.name}</span>
-                          </div>
+                          <span className="font-semibold uppercase text-xs">{employee.name}</span>
                         </TableCell>
                         <TableCell className="font-mono text-xs uppercase">{employee.matricula}</TableCell>
                         <TableCell className="text-xs uppercase">{employee.escala}</TableCell>
