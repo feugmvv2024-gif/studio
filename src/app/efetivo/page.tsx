@@ -13,7 +13,6 @@ import {
   Trash,
   Filter,
   X,
-  Key,
   RefreshCw,
   AlertCircle,
   Users,
@@ -326,7 +325,7 @@ export default function EfetivoPage() {
             <DialogTrigger asChild>
               <Button className="gap-2"><UserPlus className="h-4 w-4" />NOVO REGISTRO</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
+            <DialogContent className="sm:max-w-[600px]">
               <form onSubmit={handleAddEmployee}>
                 <DialogHeader><DialogTitle className="uppercase">CADASTRAR INTEGRANTE</DialogTitle></DialogHeader>
                 <ScrollArea className="max-h-[60vh] pr-4 mt-4">
@@ -426,7 +425,7 @@ export default function EfetivoPage() {
       </AlertDialog>
 
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[600px]">
           {selectedEmployee && (
             <form onSubmit={handleUpdateEmployee}>
               <DialogHeader><DialogTitle className="uppercase">EDITAR SERVIDOR</DialogTitle></DialogHeader>
