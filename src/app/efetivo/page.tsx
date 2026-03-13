@@ -46,6 +46,7 @@ import {
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
