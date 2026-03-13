@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -10,7 +9,9 @@ import {
   Trash2,
   Loader2,
   Upload,
-  Trash
+  Trash,
+  Filter,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -52,6 +53,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -71,6 +77,17 @@ export default function EfetivoPage() {
   const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")
   const [loadingImport, setLoadingImport] = React.useState(false)
+  
+  // Estados para Filtros Avançados
+  const [filters, setFilters] = React.useState({
+    qra: "",
+    name: "",
+    escala: "",
+    turno: "",
+    role: "",
+    unit: ""
+  })
+
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -85,13 +102,27 @@ export default function EfetivoPage() {
   const filteredEmployees = React.useMemo(() => {
     if (!employees) return [];
     const term = searchTerm.toLowerCase();
-    return employees.filter(emp => 
-      emp.name?.toLowerCase().includes(term) ||
-      emp.qra?.toLowerCase().includes(term) ||
-      emp.matricula?.toLowerCase().includes(term) ||
-      emp.unit?.toLowerCase().includes(term)
-    );
-  }, [employees, searchTerm]);
+    
+    return employees.filter(emp => {
+      // Busca Global
+      const matchesSearch = !searchTerm || (
+        emp.name?.toLowerCase().includes(term) ||
+        emp.qra?.toLowerCase().includes(term) ||
+        emp.matricula?.toLowerCase().includes(term) ||
+        emp.unit?.toLowerCase().includes(term)
+      );
+
+      // Filtros Específicos
+      const matchesQra = !filters.qra || emp.qra?.toLowerCase().includes(filters.qra.toLowerCase());
+      const matchesName = !filters.name || emp.name?.toLowerCase().includes(filters.name.toLowerCase());
+      const matchesEscala = !filters.escala || emp.escala?.toLowerCase().includes(filters.escala.toLowerCase());
+      const matchesTurno = !filters.turno || emp.turno?.toLowerCase().includes(filters.turno.toLowerCase());
+      const matchesRole = !filters.role || emp.role?.toLowerCase().includes(filters.role.toLowerCase());
+      const matchesUnit = !filters.unit || emp.unit?.toLowerCase().includes(filters.unit.toLowerCase());
+
+      return matchesSearch && matchesQra && matchesName && matchesEscala && matchesTurno && matchesRole && matchesUnit;
+    });
+  }, [employees, searchTerm, filters]);
 
   function handleAddEmployee(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -241,6 +272,19 @@ export default function EfetivoPage() {
     }
   }
 
+  const clearFilters = () => {
+    setFilters({
+      qra: "",
+      name: "",
+      escala: "",
+      turno: "",
+      role: "",
+      unit: ""
+    });
+  };
+
+  const hasActiveFilters = Object.values(filters).some(v => v !== "");
+
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -330,7 +374,6 @@ export default function EfetivoPage() {
         </div>
       </div>
 
-      {/* Alerta de Exclusão Individual */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -348,7 +391,6 @@ export default function EfetivoPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Alerta de Exclusão em Lote */}
       <AlertDialog open={isBatchDeleteAlertOpen} onOpenChange={setIsBatchDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -366,7 +408,6 @@ export default function EfetivoPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal de Edição */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[500px]">
           {selectedEmployee && (
@@ -422,7 +463,7 @@ export default function EfetivoPage() {
       </Dialog>
 
       <Card className="card-shadow border-primary/20">
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center gap-2 space-y-0">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
@@ -432,6 +473,80 @@ export default function EfetivoPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant={hasActiveFilters ? "default" : "outline"} className="gap-2">
+                <Filter className="h-4 w-4" />
+                FILTROS
+                {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px] bg-white text-primary">!</Badge>}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-4" align="end">
+              <div className="grid gap-4">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h4 className="font-bold uppercase text-xs">FILTROS AVANÇADOS</h4>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label className="text-[10px] uppercase font-bold">QRA</Label>
+                    <Input 
+                      className="h-8 text-xs uppercase" 
+                      value={filters.qra} 
+                      onChange={(e) => setFilters({...filters, qra: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[10px] uppercase font-bold">NOME</Label>
+                    <Input 
+                      className="h-8 text-xs uppercase" 
+                      value={filters.name} 
+                      onChange={(e) => setFilters({...filters, name: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[10px] uppercase font-bold">ESCALA</Label>
+                    <Input 
+                      className="h-8 text-xs uppercase" 
+                      value={filters.escala} 
+                      onChange={(e) => setFilters({...filters, escala: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[10px] uppercase font-bold">TURNO</Label>
+                    <Input 
+                      className="h-8 text-xs uppercase" 
+                      value={filters.turno} 
+                      onChange={(e) => setFilters({...filters, turno: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[10px] uppercase font-bold">CARGO</Label>
+                    <Input 
+                      className="h-8 text-xs uppercase" 
+                      value={filters.role} 
+                      onChange={(e) => setFilters({...filters, role: e.target.value})}
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[10px] uppercase font-bold">SETOR</Label>
+                    <Input 
+                      className="h-8 text-xs uppercase" 
+                      value={filters.unit} 
+                      onChange={(e) => setFilters({...filters, unit: e.target.value})}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-between gap-2 border-t pt-3">
+                  <Button variant="ghost" size="sm" className="text-[10px] uppercase h-7" onClick={clearFilters}>LIMPAR</Button>
+                  <Button size="sm" className="text-[10px] uppercase h-7">APLICAR</Button>
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
         </CardHeader>
         <CardContent>
           {loadingCollection ? (
