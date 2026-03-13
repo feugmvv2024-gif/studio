@@ -188,6 +188,8 @@ export default function LancamentosPage() {
     setSelectedEmployeeId("");
     setHoursInput("");
     setSearchEmployeeTerm("");
+    setFormDays(0);
+    setFormStartDate(getSaoPauloDate());
   };
 
   async function handleMutation(e: React.FormEvent<HTMLFormElement>, isUpdate: boolean) {
@@ -232,7 +234,7 @@ export default function LancamentosPage() {
     }).finally(() => setIsSubmitting(false));
   }
 
-  const renderForm = (isEdit: boolean) => (
+  const renderFormFields = (isEdit: boolean) => (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="grid gap-2">
@@ -266,10 +268,13 @@ export default function LancamentosPage() {
                       <div
                         key={emp.id}
                         className={cn("flex flex-col p-2.5 rounded-sm hover:bg-muted cursor-pointer border-b last:border-0", selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary")}
-                        onClick={() => {
+                        onMouseDown={(e) => {
+                          e.preventDefault();
                           setSelectedEmployeeId(emp.id);
-                          setIsEmployeePopoverOpen(false);
-                          setSearchEmployeeTerm("");
+                          setTimeout(() => {
+                            setIsEmployeePopoverOpen(false);
+                            setSearchEmployeeTerm("");
+                          }, 50);
                         }}
                       >
                         <div className="flex items-center justify-between w-full">
@@ -344,7 +349,7 @@ export default function LancamentosPage() {
           <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
             <form onSubmit={(e) => handleMutation(e, false)} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EFETUAR LANÇAMENTO</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2">{renderForm(false)}<ScrollBar /></ScrollArea>
+              <ScrollArea className="flex-1 p-6 pt-2">{renderFormFields(false)}<ScrollBar /></ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
                 <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
                 <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "GRAVAR"}</Button>
@@ -417,7 +422,7 @@ export default function LancamentosPage() {
           {selectedLaunch && (
             <form onSubmit={(e) => handleMutation(e, true)} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EDITAR LANÇAMENTO</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2">{renderForm(true)}<ScrollBar /></ScrollArea>
+              <ScrollArea className="flex-1 p-6 pt-2">{renderFormFields(true)}<ScrollBar /></ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
                 <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
                 <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR"}</Button>
