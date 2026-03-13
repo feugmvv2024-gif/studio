@@ -39,6 +39,26 @@
       },
       "required": ["employeeId", "type", "status"]
     },
+    "Schedule": {
+      "title": "Schedule",
+      "description": "Definição de escalas de serviço.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "Shift": {
+      "title": "Shift",
+      "description": "Definição de turnos de trabalho.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
     "TimeBankEntry": {
       "title": "Time Bank Entry",
       "description": "Registro de horas extras ou compensações.",
@@ -65,6 +85,14 @@
     "/requests/{requestId}": {
       "schema": "#/backend/entities/Request",
       "description": "Coleção global de solicitações operacionais."
+    },
+    "/schedules/{scheduleId}": {
+      "schema": "#/backend/entities/Schedule",
+      "description": "Coleção de escalas configuradas."
+    },
+    "/shifts/{shiftId}": {
+      "schema": "#/backend/entities/Shift",
+      "description": "Coleção de turnos configurados."
     },
     "/employees/{employeeId}/timeBank/{entryId}": {
       "schema": "#/backend/entities/TimeBankEntry",
