@@ -415,10 +415,9 @@ export default function EfetivoPage() {
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem 
-                              onSelect={(e) => {
-                                e.preventDefault();
+                              onSelect={() => {
                                 setSelectedEmployee(employee);
-                                setTimeout(() => setIsEditOpen(true), 10); 
+                                setTimeout(() => setIsEditOpen(true), 150); 
                               }} 
                               className="uppercase text-xs cursor-pointer"
                             >
@@ -426,10 +425,9 @@ export default function EfetivoPage() {
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                              onSelect={(e) => {
-                                e.preventDefault();
+                              onSelect={() => {
                                 setEmployeeToDelete(employee.id);
-                                setTimeout(() => setIsDeleteAlertOpen(true), 10); 
+                                setTimeout(() => setIsDeleteAlertOpen(true), 150); 
                               }} 
                               className="text-destructive uppercase text-xs cursor-pointer"
                             >
