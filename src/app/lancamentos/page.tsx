@@ -8,8 +8,7 @@ import {
   Trash2, 
   Loader2, 
   MoreHorizontal,
-  Check,
-  ChevronsUpDown
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -53,14 +52,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command"
 import {
   Popover,
   PopoverContent,
@@ -120,10 +111,11 @@ export default function LancamentosPage() {
   // Estados do Formulário
   const [hoursInput, setHoursInput] = React.useState("")
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
+  const [searchEmployeeTerm, setSearchEmployeeTerm] = React.useState("")
   const [formDays, setFormDays] = React.useState<number>(0)
   const [formStartDate, setFormStartDate] = React.useState<string>("")
   const [formEndDate, setFormEndDate] = React.useState<string>("")
-  const [openCombobox, setOpenCombobox] = React.useState(false)
+  const [isEmployeePopoverOpen, setIsEmployeePopoverOpen] = React.useState(false)
 
   const firestore = useFirestore()
   const { toast } = useToast()
@@ -176,6 +168,16 @@ export default function LancamentosPage() {
     );
   }, [launches, searchTerm]);
 
+  const filteredEmployeesForSelection = React.useMemo(() => {
+    if (!employees) return [];
+    const term = searchEmployeeTerm.toLowerCase();
+    return employees.filter(emp => 
+      emp.name?.toLowerCase().includes(term) || 
+      emp.qra?.toLowerCase().includes(term) ||
+      emp.matricula?.toLowerCase().includes(term)
+    ).slice(0, 50);
+  }, [employees, searchEmployeeTerm]);
+
   const selectedEmployee = React.useMemo(() => 
     employees?.find(emp => emp.id === selectedEmployeeId), 
     [employees, selectedEmployeeId]
@@ -184,6 +186,7 @@ export default function LancamentosPage() {
   const resetForm = () => {
     setSelectedLaunch(null);
     setSelectedEmployeeId("");
+    setSearchEmployeeTerm("");
     setHoursInput("");
     setFormDays(0);
     setFormStartDate(getSaoPauloDate());
@@ -240,54 +243,60 @@ export default function LancamentosPage() {
         </div>
         
         <div className="grid gap-2 sm:col-span-2">
-          <Label className="uppercase text-[10px] font-bold">SERVIDOR</Label>
-          <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+          <Label className="uppercase text-[10px] font-bold">SERVIDOR (BUSCA POR QRA OU NOME)</Label>
+          <Popover open={isEmployeePopoverOpen} onOpenChange={setIsEmployeePopoverOpen} modal={true}>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={openCombobox}
-                className="w-full justify-between h-9 uppercase text-[11px] font-normal"
-              >
-                {selectedEmployee ? `${selectedEmployee.name} (QRA: ${selectedEmployee.qra})` : "BUSCAR E SELECIONAR SERVIDOR..."}
-                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <Button variant="outline" className="justify-between h-9 uppercase text-[11px] font-normal w-full">
+                {selectedEmployee ? `${selectedEmployee.name} (${selectedEmployee.qra})` : "BUSCAR E SELECIONAR SERVIDOR..."}
+                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[380px] p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Digite o nome, QRA ou matrícula..." className="h-9 uppercase text-[11px]" />
-                <CommandList>
-                  <CommandEmpty className="py-4 text-center text-xs uppercase text-muted-foreground">
-                    Nenhum servidor encontrado.
-                  </CommandEmpty>
-                  <CommandGroup>
-                    <ScrollArea className="h-[200px]">
-                      {employees?.map((emp) => (
-                        <CommandItem
-                          key={emp.id}
-                          value={`${emp.name} ${emp.qra} ${emp.matricula}`}
-                          onSelect={() => {
-                            setSelectedEmployeeId(emp.id);
-                            setOpenCombobox(false);
-                          }}
-                          className="uppercase text-[11px] cursor-pointer"
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4 text-primary",
-                              selectedEmployeeId === emp.id ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span className="font-bold">{emp.name}</span>
-                            <span className="text-[9px] text-muted-foreground">QRA: {emp.qra} | MAT: {emp.matricula}</span>
-                          </div>
-                        </CommandItem>
-                      ))}
-                    </ScrollArea>
-                  </CommandGroup>
-                </CommandList>
-              </Command>
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[450px] p-0 shadow-xl z-[100]" align="start">
+              <div className="flex flex-col">
+                <div className="flex items-center border-b p-2">
+                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                  <Input 
+                    placeholder="DIGITE QRA OU NOME..." 
+                    className="h-9 border-none focus-visible:ring-0 uppercase text-[11px]" 
+                    value={searchEmployeeTerm} 
+                    onChange={(e) => setSearchEmployeeTerm(e.target.value)} 
+                    autoFocus 
+                  />
+                </div>
+                <div className="max-h-[250px] overflow-y-auto p-1 custom-scrollbar">
+                  {filteredEmployeesForSelection.length === 0 ? (
+                    <div className="p-4 text-center text-xs text-muted-foreground uppercase">
+                      NENHUM SERVIDOR ENCONTRADO.
+                    </div>
+                  ) : (
+                    filteredEmployeesForSelection.map((emp) => (
+                      <div
+                        key={emp.id}
+                        className={cn(
+                          "flex flex-col p-2.5 rounded-sm hover:bg-muted cursor-pointer border-b last:border-0 transition-colors", 
+                          selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary"
+                        )}
+                        onClick={() => {
+                          setSelectedEmployeeId(emp.id);
+                          setIsEmployeePopoverOpen(false);
+                          setSearchEmployeeTerm("");
+                        }}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className={cn("font-bold uppercase text-[11px]", selectedEmployeeId === emp.id && "text-primary")}>
+                            {emp.name}
+                          </span>
+                          {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-primary" />}
+                        </div>
+                        <div className="flex gap-2 mt-1">
+                          <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">QRA: {emp.qra}</span>
+                          <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">MAT: {emp.matricula}</span>
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
             </PopoverContent>
           </Popover>
           <input type="hidden" name="employeeId" value={selectedEmployeeId} required />
