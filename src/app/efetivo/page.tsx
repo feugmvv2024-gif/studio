@@ -5,12 +5,10 @@ import {
   Search, 
   MoreHorizontal, 
   UserPlus, 
-  QrCode, 
   Edit, 
   Trash2,
   Filter,
   Loader2,
-  FileSpreadsheet,
   Upload
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -48,13 +46,15 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
+import { collection, addDoc, doc, deleteDoc, query, orderBy, updateDoc } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area"
 import * as XLSX from 'xlsx';
 
 export default function EfetivoPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
+  const [isEditOpen, setIsEditOpen] = React.useState(false)
+  const [selectedEmployee, setSelectedEmployee] = React.useState<any>(null)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [loading, setLoading] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -63,7 +63,6 @@ export default function EfetivoPage() {
 
   const employeesRef = React.useMemo(() => {
     if (!firestore) return null;
-    // Alterado para ordenar por 'qra' em ordem ascendente (A-Z)
     return query(collection(firestore, 'employees'), orderBy('qra', 'asc'));
   }, [firestore]);
 
@@ -113,13 +112,56 @@ export default function EfetivoPage() {
       setIsAddOpen(false);
       toast({
         title: "SUCESSO!",
-        description: "NOVO REGISTRO CRIADO NO SISTEMA EM MAIÚSCULAS.",
+        description: "NOVO REGISTRO CRIADO COM SUCESSO.",
       });
     } catch (error) {
       toast({
         variant: "destructive",
         title: "ERRO",
         description: "NÃO FOI POSSÍVEL SALVAR O REGISTRO.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleUpdateEmployee(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!firestore || !selectedEmployee) return;
+
+    setLoading(true);
+    const formData = new FormData(e.currentTarget);
+    
+    const name = (formData.get('name') as string).toUpperCase();
+    const matricula = (formData.get('matricula') as string).toUpperCase();
+    const escala = (formData.get('escala') as string).toUpperCase();
+    const turno = (formData.get('turno') as string).toUpperCase();
+    const role = (formData.get('role') as string).toUpperCase();
+    const unit = (formData.get('unit') as string).toUpperCase();
+    const email = (formData.get('email') as string || "").toUpperCase();
+
+    try {
+      const employeeDoc = doc(firestore, 'employees', selectedEmployee.id);
+      await updateDoc(employeeDoc, {
+        name,
+        email,
+        matricula,
+        escala,
+        turno,
+        role,
+        unit
+      });
+      setIsEditOpen(false);
+      setSelectedEmployee(null);
+      toast({
+        title: "SUCESSO!",
+        description: "REGISTRO ATUALIZADO COM SUCESSO.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "ERRO",
+        description: "NÃO FOI POSSÍVEL ATUALIZAR O REGISTRO.",
       });
     } finally {
       setLoading(false);
@@ -287,6 +329,64 @@ export default function EfetivoPage() {
         </div>
       </div>
 
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          {selectedEmployee && (
+            <form onSubmit={handleUpdateEmployee}>
+              <DialogHeader>
+                <DialogTitle className="uppercase">EDITAR REGISTRO</DialogTitle>
+                <DialogDescription className="uppercase text-xs">
+                  ATUALIZE OS DADOS DO SERVIDOR. TODA INFORMAÇÃO SERÁ SALVA EM MAIÚSCULAS.
+                </DialogDescription>
+              </DialogHeader>
+              <ScrollArea className="max-h-[60vh] pr-4">
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-name" className="uppercase">SERVIDOR (NOME COMPLETO)</Label>
+                    <Input id="edit-name" name="name" defaultValue={selectedEmployee.name} required className="uppercase" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-matricula" className="uppercase">MATRÍCULA</Label>
+                      <Input id="edit-matricula" name="matricula" defaultValue={selectedEmployee.matricula} required className="uppercase" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-unit" className="uppercase">SETOR / UNIDADE</Label>
+                      <Input id="edit-unit" name="unit" defaultValue={selectedEmployee.unit} required className="uppercase" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-escala" className="uppercase">ESCALA</Label>
+                      <Input id="edit-escala" name="escala" defaultValue={selectedEmployee.escala} required className="uppercase" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-turno" className="uppercase">TURNO</Label>
+                      <Input id="edit-turno" name="turno" defaultValue={selectedEmployee.turno} required className="uppercase" />
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-role" className="uppercase">CARGO / FUNÇÃO</Label>
+                    <Input id="edit-role" name="role" defaultValue={selectedEmployee.role} required className="uppercase" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-email" className="uppercase">E-MAIL (OPCIONAL)</Label>
+                    <Input id="edit-email" name="email" type="email" defaultValue={selectedEmployee.email} className="uppercase" />
+                  </div>
+                </div>
+              </ScrollArea>
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)}>CANCELAR</Button>
+                <Button type="submit" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  SALVAR ALTERAÇÕES
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
       <Card className="card-shadow">
         <CardHeader>
           <div className="flex items-center gap-4">
@@ -314,15 +414,15 @@ export default function EfetivoPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="bg-muted/50">
-                    <TableHead className="w-[50px] font-bold">Nº</TableHead>
-                    <TableHead className="font-bold">QRAs</TableHead>
-                    <TableHead className="font-bold">SERVIDOR</TableHead>
-                    <TableHead className="font-bold">MATRÍCULA</TableHead>
-                    <TableHead className="font-bold">ESCALA</TableHead>
-                    <TableHead className="font-bold">TURNO</TableHead>
-                    <TableHead className="font-bold">CARGO</TableHead>
-                    <TableHead className="font-bold">SETOR</TableHead>
-                    <TableHead className="text-right font-bold">AÇÕES</TableHead>
+                    <TableHead className="w-[50px] font-bold uppercase text-[11px]">Nº</TableHead>
+                    <TableHead className="font-bold uppercase text-[11px]">QRAs</TableHead>
+                    <TableHead className="font-bold uppercase text-[11px]">SERVIDOR</TableHead>
+                    <TableHead className="font-bold uppercase text-[11px]">MATRÍCULA</TableHead>
+                    <TableHead className="font-bold uppercase text-[11px]">ESCALA</TableHead>
+                    <TableHead className="font-bold uppercase text-[11px]">TURNO</TableHead>
+                    <TableHead className="font-bold uppercase text-[11px]">CARGO</TableHead>
+                    <TableHead className="font-bold uppercase text-[11px]">SETOR</TableHead>
+                    <TableHead className="text-right font-bold uppercase text-[11px]">AÇÕES</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -359,14 +459,20 @@ export default function EfetivoPage() {
                             <DropdownMenuContent align="end" className="w-[160px]">
                               <DropdownMenuLabel className="uppercase text-[10px]">GERENCIAR</DropdownMenuLabel>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="uppercase text-[11px]">
+                              <DropdownMenuItem 
+                                className="uppercase text-[11px] cursor-pointer" 
+                                onClick={() => {
+                                  setSelectedEmployee(employee);
+                                  setIsEditOpen(true);
+                                }}
+                              >
                                 <Edit className="mr-2 h-3.5 w-3.5" /> EDITAR
                               </DropdownMenuItem>
-                              <DropdownMenuItem className="uppercase text-[11px]">
-                                <QrCode className="mr-2 h-3.5 w-3.5" /> VER QRA
-                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
-                              <DropdownMenuItem className="text-destructive uppercase text-[11px]" onClick={() => handleDelete(employee.id)}>
+                              <DropdownMenuItem 
+                                className="text-destructive uppercase text-[11px] cursor-pointer" 
+                                onClick={() => handleDelete(employee.id)}
+                              >
                                 <Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR
                               </DropdownMenuItem>
                             </DropdownMenuContent>
