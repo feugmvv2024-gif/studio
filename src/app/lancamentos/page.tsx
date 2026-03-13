@@ -52,11 +52,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -77,7 +72,6 @@ import { useToast } from "@/hooks/use-toast"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
-import { cn } from "@/lib/utils"
 
 // Utilitários
 const getSaoPauloDate = () => {
@@ -111,11 +105,9 @@ export default function LancamentosPage() {
   // Estados do Formulário
   const [hoursInput, setHoursInput] = React.useState("")
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
-  const [searchEmployeeTerm, setSearchEmployeeTerm] = React.useState("")
   const [formDays, setFormDays] = React.useState<number>(0)
   const [formStartDate, setFormStartDate] = React.useState<string>("")
   const [formEndDate, setFormEndDate] = React.useState<string>("")
-  const [isEmployeePopoverOpen, setIsEmployeePopoverOpen] = React.useState(false)
 
   const firestore = useFirestore()
   const { toast } = useToast()
@@ -168,16 +160,6 @@ export default function LancamentosPage() {
     );
   }, [launches, searchTerm]);
 
-  const filteredEmployeesForSelection = React.useMemo(() => {
-    if (!employees) return [];
-    const term = searchEmployeeTerm.toLowerCase();
-    return employees.filter(emp => 
-      emp.name?.toLowerCase().includes(term) || 
-      emp.qra?.toLowerCase().includes(term) ||
-      emp.matricula?.toLowerCase().includes(term)
-    ).slice(0, 50);
-  }, [employees, searchEmployeeTerm]);
-
   const selectedEmployee = React.useMemo(() => 
     employees?.find(emp => emp.id === selectedEmployeeId), 
     [employees, selectedEmployeeId]
@@ -187,7 +169,6 @@ export default function LancamentosPage() {
     setSelectedLaunch(null);
     setSelectedEmployeeId("");
     setHoursInput("");
-    setSearchEmployeeTerm("");
     setFormDays(0);
     setFormStartDate(getSaoPauloDate());
   };
@@ -241,57 +222,27 @@ export default function LancamentosPage() {
           <Label className="uppercase text-[10px] font-bold">DATA LANÇAMENTO</Label>
           <Input name="date" type="date" defaultValue={isEdit ? selectedLaunch?.date : getSaoPauloDate()} required className="h-9" />
         </div>
+        
         <div className="grid gap-2 sm:col-span-2">
-          <Label className="uppercase text-[10px] font-bold">SERVIDOR (BUSCA POR QRA OU NOME)</Label>
-          <Popover open={isEmployeePopoverOpen} onOpenChange={setIsEmployeePopoverOpen} modal={false}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="justify-between h-9 uppercase text-[11px] font-normal w-full">
-                {selectedEmployee ? `${selectedEmployee.name} (${selectedEmployee.qra})` : "BUSCAR SERVIDOR..."}
-                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[450px] p-0 shadow-xl" align="start">
-              <div className="flex flex-col">
-                <div className="flex items-center border-b p-2">
-                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                  <Input 
-                    placeholder="DIGITE QRA OU NOME..." 
-                    className="h-9 border-none focus-visible:ring-0 uppercase text-[11px]" 
-                    value={searchEmployeeTerm} 
-                    onChange={(e) => setSearchEmployeeTerm(e.target.value)} 
-                    autoFocus 
-                  />
-                </div>
-                <ScrollArea className="h-[250px]">
-                  <div className="p-1">
-                    {filteredEmployeesForSelection.map((emp) => (
-                      <div
-                        key={emp.id}
-                        className={cn("flex flex-col p-2.5 rounded-sm hover:bg-muted cursor-pointer border-b last:border-0", selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary")}
-                        onMouseDown={(e) => {
-                          e.preventDefault();
-                          setSelectedEmployeeId(emp.id);
-                          setTimeout(() => {
-                            setIsEmployeePopoverOpen(false);
-                            setSearchEmployeeTerm("");
-                          }, 50);
-                        }}
-                      >
-                        <div className="flex items-center justify-between w-full">
-                          <span className={cn("font-bold uppercase text-[11px]", selectedEmployeeId === emp.id && "text-primary")}>{emp.name}</span>
-                          {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-primary" />}
-                        </div>
-                        <div className="flex gap-2 mt-1">
-                          <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">QRA: {emp.qra}</span>
-                          <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">MAT: {emp.matricula}</span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </div>
-            </PopoverContent>
-          </Popover>
+          <Label className="uppercase text-[10px] font-bold">SERVIDOR</Label>
+          <Select 
+            value={selectedEmployeeId} 
+            onValueChange={setSelectedEmployeeId} 
+            required
+          >
+            <SelectTrigger className="h-9 uppercase text-[11px]">
+              <SelectValue placeholder="SELECIONE O SERVIDOR..." />
+            </SelectTrigger>
+            <SelectContent>
+              <ScrollArea className="h-[200px]">
+                {employees?.map((emp: any) => (
+                  <SelectItem key={emp.id} value={emp.id} className="uppercase text-[11px]">
+                    {emp.name} (QRA: {emp.qra})
+                  </SelectItem>
+                ))}
+              </ScrollArea>
+            </SelectContent>
+          </Select>
         </div>
       </div>
 
@@ -434,8 +385,26 @@ export default function LancamentosPage() {
 
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent className="max-w-[90vw]">
-          <AlertDialogHeader><AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO</AlertDialogTitle><AlertDialogDescription className="uppercase text-[10px]">AÇÃO IRREVERSÍVEL. O LANÇAMENTO SERÁ REMOVIDO.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel className="uppercase text-xs">CANCELAR</AlertDialogCancel><AlertDialogAction onClick={() => { if (launchToDelete) deleteDoc(doc(firestore, 'launches', launchToDelete)).then(() => toast({ title: "REMOVIDO" })).catch(err => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `launches/${launchToDelete}`, operation: 'delete' }))).finally(() => setIsDeleteAlertOpen(false)); }} className="bg-destructive uppercase text-xs">EXCLUIR</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-[10px]">AÇÃO IRREVERSÍVEL. O LANÇAMENTO SERÁ REMOVIDO.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="uppercase text-xs">CANCELAR</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => { 
+                if (launchToDelete) {
+                  deleteDoc(doc(firestore, 'launches', launchToDelete))
+                    .then(() => toast({ title: "REMOVIDO" }))
+                    .catch(err => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `launches/${launchToDelete}`, operation: 'delete' })))
+                    .finally(() => setIsDeleteAlertOpen(false));
+                }
+              }} 
+              className="bg-destructive uppercase text-xs"
+            >
+              EXCLUIR
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
