@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -9,6 +8,7 @@ import {
   UserCircle,
   LogOut,
   Settings,
+  FilePlus,
 } from "lucide-react"
 
 import {
@@ -29,6 +29,7 @@ import { usePathname } from "next/navigation"
 
 const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Lançamentos", href: "/lancamentos", icon: FilePlus, admin: true },
   { name: "Efetivo", href: "/efetivo", icon: Users, admin: true },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
