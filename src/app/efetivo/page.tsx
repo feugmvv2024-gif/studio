@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -11,7 +12,8 @@ import {
   Upload,
   Trash,
   Filter,
-  X
+  X,
+  Key
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -78,7 +80,6 @@ export default function EfetivoPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [loadingImport, setLoadingImport] = React.useState(false)
   
-  // Estados para Filtros Avançados
   const [filters, setFilters] = React.useState({
     qra: "",
     name: "",
@@ -104,7 +105,6 @@ export default function EfetivoPage() {
     const term = searchTerm.toLowerCase();
     
     return employees.filter(emp => {
-      // Busca Global
       const matchesSearch = !searchTerm || (
         emp.name?.toLowerCase().includes(term) ||
         emp.qra?.toLowerCase().includes(term) ||
@@ -112,7 +112,6 @@ export default function EfetivoPage() {
         emp.unit?.toLowerCase().includes(term)
       );
 
-      // Filtros Específicos
       const matchesQra = !filters.qra || emp.qra?.toLowerCase().includes(filters.qra.toLowerCase());
       const matchesName = !filters.name || emp.name?.toLowerCase().includes(filters.name.toLowerCase());
       const matchesEscala = !filters.escala || emp.escala?.toLowerCase().includes(filters.escala.toLowerCase());
@@ -133,6 +132,7 @@ export default function EfetivoPage() {
       name: (formData.get('name') as string).toUpperCase(),
       email: (formData.get('email') as string || "").toUpperCase(),
       matricula: (formData.get('matricula') as string).toUpperCase(),
+      validationCode: (formData.get('validationCode') as string || "").toUpperCase(),
       escala: (formData.get('escala') as string).toUpperCase(),
       turno: (formData.get('turno') as string).toUpperCase(),
       role: (formData.get('role') as string).toUpperCase(),
@@ -163,6 +163,7 @@ export default function EfetivoPage() {
       name: (formData.get('name') as string).toUpperCase(),
       email: (formData.get('email') as string || "").toUpperCase(),
       matricula: (formData.get('matricula') as string).toUpperCase(),
+      validationCode: (formData.get('validationCode') as string || "").toUpperCase(),
       escala: (formData.get('escala') as string).toUpperCase(),
       turno: (formData.get('turno') as string).toUpperCase(),
       role: (formData.get('role') as string).toUpperCase(),
@@ -202,6 +203,7 @@ export default function EfetivoPage() {
             const name = (row['SERVIDOR'] || "").toString().toUpperCase();
             const qra = (row['QRAs'] || row['QRA'] || "").toString().toUpperCase();
             const matricula = (row['MATRICULA'] || row['MATRÍCULA'] || "").toString().toUpperCase();
+            const validationCode = (row['CÓD. VALIDAÇÃO'] || row['VALIDACAO'] || "").toString().toUpperCase();
             const escala = (row['ESCALA'] || "").toString().toUpperCase();
             const turno = (row['TURNO'] || "").toString().toUpperCase();
             const role = (row['CARGO'] || "").toString().toUpperCase();
@@ -209,7 +211,7 @@ export default function EfetivoPage() {
 
             if (name && matricula) {
               addDoc(collection(firestore, 'employees'), {
-                name, qra, matricula, escala, turno, role, unit,
+                name, qra, matricula, validationCode, escala, turno, role, unit,
                 status: "ATIVO",
                 avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
                 admissionDate: new Date().toISOString().split('T')[0],
@@ -342,6 +344,10 @@ export default function EfetivoPage() {
                         <Input id="matricula" name="matricula" required className="uppercase" />
                       </div>
                     </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label>
+                      <Input id="validationCode" name="validationCode" placeholder="CÓDIGO PARA ATIVAÇÃO" className="uppercase" />
+                    </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label htmlFor="unit" className="uppercase">SETOR</Label>
@@ -430,6 +436,10 @@ export default function EfetivoPage() {
                       <Label htmlFor="edit-matricula" className="uppercase">MATRÍCULA</Label>
                       <Input id="edit-matricula" name="matricula" defaultValue={selectedEmployee.matricula} required className="uppercase" />
                     </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="edit-validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label>
+                    <Input id="edit-validationCode" name="validationCode" defaultValue={selectedEmployee.validationCode} className="uppercase" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
@@ -568,6 +578,7 @@ export default function EfetivoPage() {
                     <TableHead className="font-bold uppercase text-[10px]">QRAs</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">SERVIDOR</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">MATRÍCULA</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">CÓD. VALIDAÇÃO</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">ESCALA</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">TURNO</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">CARGO</TableHead>
@@ -588,6 +599,16 @@ export default function EfetivoPage() {
                       <TableCell className="font-semibold text-xs uppercase">{employee.qra}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.name}</TableCell>
                       <TableCell className="font-mono text-xs uppercase">{employee.matricula}</TableCell>
+                      <TableCell className="text-xs uppercase">
+                        {employee.validationCode ? (
+                          <div className="flex items-center gap-1.5 text-primary">
+                            <Key className="h-3 w-3" />
+                            {employee.validationCode}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">---</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-xs uppercase">{employee.escala}</TableCell>
                       <TableCell className="text-xs uppercase">{employee.turno}</TableCell>
                       <TableCell className="text-xs uppercase">{employee.role}</TableCell>

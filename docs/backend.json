@@ -11,6 +11,7 @@
         "email": { "type": "string", "format": "email" },
         "qra": { "type": "string" },
         "matricula": { "type": "string" },
+        "validationCode": { "type": "string", "description": "Código de ativação do agente." },
         "escala": { "type": "string" },
         "turno": { "type": "string" },
         "role": { "type": "string" },
