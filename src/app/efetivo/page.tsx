@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -10,7 +9,9 @@ import {
   Edit, 
   Trash2,
   Filter,
-  Loader2
+  Loader2,
+  FileSpreadsheet,
+  Upload
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -51,11 +52,13 @@ import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, doc, deleteDoc, query, orderBy } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area"
+import * as XLSX from 'xlsx';
 
 export default function EfetivoPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [loading, setLoading] = React.useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const firestore = useFirestore();
   const { toast } = useToast();
 
@@ -83,7 +86,6 @@ export default function EfetivoPage() {
     setLoading(true);
     const formData = new FormData(e.currentTarget);
     
-    // Convertendo tudo para MAIÚSCULAS conforme solicitação
     const name = (formData.get('name') as string).toUpperCase();
     const matricula = (formData.get('matricula') as string).toUpperCase();
     const escala = (formData.get('escala') as string).toUpperCase();
@@ -107,7 +109,7 @@ export default function EfetivoPage() {
     };
 
     try {
-      await addDoc(collection(firestore, 'employees'), newEmployee);
+      addDoc(collection(firestore, 'employees'), newEmployee);
       setIsAddOpen(false);
       toast({
         title: "SUCESSO!",
@@ -122,6 +124,69 @@ export default function EfetivoPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !firestore) return;
+
+    setLoading(true);
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        let importedCount = 0;
+
+        for (const row of data) {
+          // Mapeamento das colunas baseadas na solicitação: Nº, QRAs, SERVIDOR, MATRICULA, ESCALA, TURNO, CARGO, SETOR
+          const name = (row['SERVIDOR'] || "").toString().toUpperCase();
+          const qra = (row['QRAs'] || row['QRA'] || `QRA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`).toString().toUpperCase();
+          const matricula = (row['MATRICULA'] || row['MATRÍCULA'] || "").toString().toUpperCase();
+          const escala = (row['ESCALA'] || "").toString().toUpperCase();
+          const turno = (row['TURNO'] || "").toString().toUpperCase();
+          const role = (row['CARGO'] || "").toString().toUpperCase();
+          const unit = (row['SETOR'] || "").toString().toUpperCase();
+
+          if (name && matricula) {
+            const newEmployee = {
+              name,
+              qra,
+              matricula,
+              escala,
+              turno,
+              role,
+              unit,
+              status: "ATIVO",
+              avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
+              admissionDate: new Date().toISOString().split('T')[0],
+              email: ""
+            };
+            addDoc(collection(firestore, 'employees'), newEmployee);
+            importedCount++;
+          }
+        }
+
+        toast({
+          title: "IMPORTAÇÃO CONCLUÍDA!",
+          description: `${importedCount} REGISTROS FORAM PROCESSADOS E SALVOS.`,
+        });
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "ERRO NA IMPORTAÇÃO",
+          description: "VERIFIQUE SE O ARQUIVO ESTÁ NO FORMATO CORRETO.",
+        });
+      } finally {
+        setLoading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    };
+    reader.readAsBinaryString(file);
   }
 
   async function handleDelete(id: string) {
@@ -147,67 +212,80 @@ export default function EfetivoPage() {
           <h2 className="text-3xl font-bold tracking-tight uppercase">EFETIVO</h2>
           <p className="text-muted-foreground uppercase text-sm">GERENCIE O REGISTRO E DADOS DE TODO O EFETIVO DA UNIDADE.</p>
         </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <UserPlus className="h-4 w-4" />
-              NOVO REGISTRO
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <form onSubmit={handleAddEmployee}>
-              <DialogHeader>
-                <DialogTitle className="uppercase">CADASTRAR NOVO INTEGRANTE</DialogTitle>
-                <DialogDescription className="uppercase text-xs">
-                  PREENCHA OS DADOS BÁSICOS. TODA INFORMAÇÃO SERÁ GRAVADA EM MAIÚSCULAS.
-                </DialogDescription>
-              </DialogHeader>
-              <ScrollArea className="max-h-[60vh] pr-4">
-                <div className="grid gap-4 py-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="name" className="uppercase">SERVIDOR (NOME COMPLETO)</Label>
-                    <Input id="name" name="name" placeholder="EX: JOÃO DA SILVA" required className="uppercase" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
+        <div className="flex gap-2">
+          <input
+            type="file"
+            accept=".xlsx, .xls"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={handleImportExcel}
+          />
+          <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            IMPORTAR EXCEL
+          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                NOVO REGISTRO
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <form onSubmit={handleAddEmployee}>
+                <DialogHeader>
+                  <DialogTitle className="uppercase">CADASTRAR NOVO INTEGRANTE</DialogTitle>
+                  <DialogDescription className="uppercase text-xs">
+                    PREENCHA OS DADOS BÁSICOS. TODA INFORMAÇÃO SERÁ GRAVADA EM MAIÚSCULAS.
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[60vh] pr-4">
+                  <div className="grid gap-4 py-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="matricula" className="uppercase">MATRÍCULA</Label>
-                      <Input id="matricula" name="matricula" placeholder="EX: 123456" required className="uppercase" />
+                      <Label htmlFor="name" className="uppercase">SERVIDOR (NOME COMPLETO)</Label>
+                      <Input id="name" name="name" placeholder="EX: JOÃO DA SILVA" required className="uppercase" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="matricula" className="uppercase">MATRÍCULA</Label>
+                        <Input id="matricula" name="matricula" placeholder="EX: 123456" required className="uppercase" />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="unit" className="uppercase">SETOR / UNIDADE</Label>
+                        <Input id="unit" name="unit" placeholder="EX: ROMU / PATAMO" required className="uppercase" />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label htmlFor="escala" className="uppercase">ESCALA</Label>
+                        <Input id="escala" name="escala" placeholder="EX: 12X36 / 24X72" required className="uppercase" />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="turno" className="uppercase">TURNO</Label>
+                        <Input id="turno" name="turno" placeholder="EX: DIURNO / NOTURNO" required className="uppercase" />
+                      </div>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="unit" className="uppercase">SETOR / UNIDADE</Label>
-                      <Input id="unit" name="unit" placeholder="EX: ROMU / PATAMO" required className="uppercase" />
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="escala" className="uppercase">ESCALA</Label>
-                      <Input id="escala" name="escala" placeholder="EX: 12X36 / 24X72" required className="uppercase" />
+                      <Label htmlFor="role" className="uppercase">CARGO / FUNÇÃO</Label>
+                      <Input id="role" name="role" placeholder="EX: AGENTE DE SEGURANÇA" required className="uppercase" />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="turno" className="uppercase">TURNO</Label>
-                      <Input id="turno" name="turno" placeholder="EX: DIURNO / NOTURNO" required className="uppercase" />
+                      <Label htmlFor="email" className="uppercase">E-MAIL (OPCIONAL)</Label>
+                      <Input id="email" name="email" type="email" placeholder="EX: JOAO.SILVA@GMVV.GOV.BR" className="uppercase" />
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="role" className="uppercase">CARGO / FUNÇÃO</Label>
-                    <Input id="role" name="role" placeholder="EX: AGENTE DE SEGURANÇA" required className="uppercase" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="email" className="uppercase">E-MAIL (OPCIONAL)</Label>
-                    <Input id="email" name="email" type="email" placeholder="EX: JOAO.SILVA@GMVV.GOV.BR" className="uppercase" />
-                  </div>
-                </div>
-              </ScrollArea>
-              <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>CANCELAR</Button>
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  GERAR REGISTRO
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+                </ScrollArea>
+                <DialogFooter>
+                  <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>CANCELAR</Button>
+                  <Button type="submit" disabled={loading}>
+                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    GERAR REGISTRO
+                  </Button>
+                </DialogFooter>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card className="card-shadow">
