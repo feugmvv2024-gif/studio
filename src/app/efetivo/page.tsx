@@ -16,7 +16,9 @@ import {
   RefreshCw,
   Users,
   CheckCircle2,
-  Clock
+  Clock,
+  UserCheck,
+  ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,6 +50,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -81,6 +84,7 @@ import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import * as XLSX from 'xlsx';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
+import { cn } from "@/lib/utils"
 
 function generateValidationCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -102,6 +106,7 @@ export default function EfetivoPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [loadingImport, setLoadingImport] = React.useState(false)
   const [generatedCode, setGeneratedCode] = React.useState("")
+  const [isSubmitting, setIsSubmitting] = React.useState(false)
   
   const [filters, setFilters] = React.useState({
     qra: "",
@@ -116,13 +121,11 @@ export default function EfetivoPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  // Queries para o efetivo
   const employeesRef = React.useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'employees'), orderBy('qra', 'asc'), limit(100));
   }, [firestore]);
 
-  // Queries para carregar as opções das configurações
   const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shifts'), orderBy('name', 'asc')) : null, [firestore]);
   const rolesRef = React.useMemo(() => firestore ? query(collection(firestore, 'roles'), orderBy('name', 'asc')) : null, [firestore]);
@@ -176,6 +179,7 @@ export default function EfetivoPage() {
     e.preventDefault();
     if (!firestore) return;
 
+    setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
     const newEmployee = {
       name: (formData.get('name') as string).toUpperCase(),
@@ -192,23 +196,26 @@ export default function EfetivoPage() {
       admissionDate: new Date().toISOString().split('T')[0]
     };
 
-    setIsAddOpen(false);
     addDoc(collection(firestore, 'employees'), newEmployee)
-      .then(() => toast({ title: "SUCESSO!", description: "REGISTRO CRIADO." }))
+      .then(() => {
+        toast({ title: "SUCESSO!", description: "REGISTRO CRIADO." });
+        setIsAddOpen(false);
+      })
       .catch((err) => {
-        const error = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: 'employees',
           operation: 'create',
           requestResourceData: newEmployee
-        });
-        errorEmitter.emit('permission-error', error);
-      });
+        }));
+      })
+      .finally(() => setIsSubmitting(false));
   }
 
   function handleUpdateEmployee(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!firestore || !selectedEmployee) return;
 
+    setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
     const updates: any = {
       name: (formData.get('name') as string).toUpperCase(),
@@ -226,19 +233,20 @@ export default function EfetivoPage() {
     }
 
     const docRef = doc(firestore, 'employees', selectedEmployee.id);
-    setIsEditOpen(false);
-    setSelectedEmployee(null);
-
     updateDoc(docRef, updates)
-      .then(() => toast({ title: "SUCESSO!", description: "REGISTRO ATUALIZADO." }))
+      .then(() => {
+        toast({ title: "SUCESSO!", description: "REGISTRO ATUALIZADO." });
+        setIsEditOpen(false);
+        setSelectedEmployee(null);
+      })
       .catch((err) => {
-        const error = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'update',
           requestResourceData: updates
-        });
-        errorEmitter.emit('permission-error', error);
-      });
+        }));
+      })
+      .finally(() => setIsSubmitting(false));
   }
 
   function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
@@ -298,11 +306,10 @@ export default function EfetivoPage() {
     deleteDoc(docRef)
       .then(() => toast({ title: "REGISTRO REMOVIDO" }))
       .catch((err) => {
-        const error = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'delete'
-        });
-        errorEmitter.emit('permission-error', error);
+        }));
       });
   }
 
@@ -314,11 +321,10 @@ export default function EfetivoPage() {
     idsToRemove.forEach(id => {
       const docRef = doc(firestore, 'employees', id);
       deleteDoc(docRef).catch((err) => {
-        const error = new FirestorePermissionError({
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
           path: docRef.path,
           operation: 'delete'
-        });
-        errorEmitter.emit('permission-error', error);
+        }));
       });
     });
     toast({ title: "EXCLUSÃO EM LOTE", description: `${idsToRemove.length} REGISTROS REMOVIDOS.` });
@@ -339,108 +345,174 @@ export default function EfetivoPage() {
   const clearFilters = () => setFilters({ qra: "", name: "", escala: "", turno: "", role: "", unit: "" });
   const hasActiveFilters = Object.values(filters).some(v => v !== "");
 
+  const renderFormFields = (isEdit: boolean) => (
+    <div className="space-y-4 py-4 px-2">
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center gap-3">
+        <div className="bg-white rounded-full p-1 border border-blue-200 shadow-sm">
+          <ShieldCheck className="h-4 w-4 text-blue-500" />
+        </div>
+        <span className="text-blue-600 text-[10px] font-medium uppercase tracking-tight">
+          Todos os dados devem ser preenchidos conforme os registros oficiais.
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        <div className="grid gap-1.5">
+          <Label htmlFor="name" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">NOME COMPLETO</Label>
+          <Input id="name" name="name" defaultValue={isEdit ? selectedEmployee?.name : ""} required className="h-11 uppercase text-[11px] bg-background/50" />
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="qra" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">QRA</Label>
+            <Input id="qra" name="qra" defaultValue={isEdit ? selectedEmployee?.qra : ""} required className="h-11 uppercase text-[11px] bg-background/50" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="matricula" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">MATRÍCULA</Label>
+            <Input id="matricula" name="matricula" defaultValue={isEdit ? selectedEmployee?.matricula : ""} required className="h-11 uppercase text-[11px] bg-background/50" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid gap-1.5">
+            <Label htmlFor="validationCode" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">CÓDIGO DE VALIDAÇÃO</Label>
+            <div className="flex gap-2">
+              <Input 
+                id="validationCode" 
+                name="validationCode" 
+                value={isEdit ? selectedEmployee?.validationCode : generatedCode} 
+                readOnly={!isEdit}
+                onChange={(e) => !isEdit && setGeneratedCode(e.target.value.toUpperCase())}
+                className="h-11 uppercase font-mono font-bold text-primary bg-muted/30" 
+              />
+              {!isEdit && (
+                <Button type="button" variant="outline" size="icon" className="h-11 w-11" onClick={() => setGeneratedCode(generateValidationCode())}>
+                  <RefreshCw className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </div>
+          <div className="grid gap-1.5">
+            <Label htmlFor="status" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">STATUS</Label>
+            <Select name="status" defaultValue={isEdit ? selectedEmployee?.status : "PENDENTE"} disabled={!isEdit || selectedEmployee?.status === "PENDENTE"}>
+              <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="PENDENTE" className="uppercase text-[11px]">PENDENTE</SelectItem>
+                <SelectItem value="ATIVO" className="uppercase text-[11px]">ATIVO</SelectItem>
+                <SelectItem value="FÉRIAS" className="uppercase text-[11px]">FÉRIAS</SelectItem>
+                <SelectItem value="LICENÇA" className="uppercase text-[11px]">LICENÇA</SelectItem>
+                <SelectItem value="INATIVO" className="uppercase text-[11px]">INATIVO</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">SETOR</Label>
+            <Select name="unit" defaultValue={isEdit ? selectedEmployee?.unit : undefined} required>
+              <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50">
+                <SelectValue placeholder="SELECIONE..." />
+              </SelectTrigger>
+              <SelectContent>
+                {units.map((u: any) => <SelectItem key={u.id} value={u.name} className="uppercase text-[11px]">{u.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">ESCALA</Label>
+            <Select name="escala" defaultValue={isEdit ? selectedEmployee?.escala : undefined} required>
+              <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50">
+                <SelectValue placeholder="SELECIONE..." />
+              </SelectTrigger>
+              <SelectContent>
+                {schedules.map((s: any) => <SelectItem key={s.id} value={s.name} className="uppercase text-[11px]">{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">TURNO</Label>
+            <Select name="turno" defaultValue={isEdit ? selectedEmployee?.turno : undefined} required>
+              <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50">
+                <SelectValue placeholder="SELECIONE..." />
+              </SelectTrigger>
+              <SelectContent>
+                {shifts.map((s: any) => <SelectItem key={s.id} value={s.name} className="uppercase text-[11px]">{s.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">CARGO</Label>
+            <Select name="role" defaultValue={isEdit ? selectedEmployee?.role : undefined} required>
+              <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50">
+                <SelectValue placeholder="SELECIONE..." />
+              </SelectTrigger>
+              <SelectContent>
+                {roles.map((r: any) => <SelectItem key={r.id} value={r.name} className="uppercase text-[11px]">{r.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
-    <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">EFETIVO</h2>
-          <p className="text-muted-foreground uppercase text-xs sm:text-sm">GESTÃO INTEGRADA DA UNIDADE.</p>
+          <p className="text-muted-foreground uppercase text-[10px]">GESTÃO INTEGRADA DA UNIDADE.</p>
         </div>
         <div className="flex flex-wrap gap-2 w-full sm:w-auto">
           {selectedIds.length > 0 && (
             <Button 
               variant="destructive" 
               size="sm"
-              className="gap-2 uppercase animate-in fade-in zoom-in duration-200"
+              className="gap-2 uppercase font-bold text-xs h-9 shadow-lg shadow-red-100 animate-in fade-in zoom-in duration-200"
               onClick={() => setIsBatchDeleteAlertOpen(true)}
             >
               <Trash className="h-4 w-4" />
-              <span className="hidden xs:inline">EXCLUIR</span> ({selectedIds.length})
+              EXCLUIR ({selectedIds.length})
             </Button>
           )}
           <input type="file" accept=".xlsx, .xls" className="hidden" ref={fileInputRef} onChange={handleImportExcel} />
-          <Button variant="outline" size="sm" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={loadingImport}>
+          <Button variant="outline" size="sm" className="gap-2 h-9 uppercase font-bold text-xs border-muted/50" onClick={() => fileInputRef.current?.click()} disabled={loadingImport}>
             {loadingImport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
-            <span className="hidden xs:inline">IMPORTAR</span>
+            IMPORTAR
           </Button>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="gap-2"><UserPlus className="h-4 w-4" /><span className="hidden xs:inline">NOVO REGISTRO</span></Button>
+              <Button size="sm" className="gap-2 uppercase font-bold text-xs h-9 shadow-md"><UserPlus className="h-4 w-4" /> NOVO REGISTRO</Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
+            <DialogContent className="sm:max-w-[700px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
               <form onSubmit={handleAddEmployee} className="flex flex-col h-full">
-                <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">CADASTRAR INTEGRANTE</DialogTitle></DialogHeader>
-                <ScrollArea className="flex-1 p-6 pt-2">
-                  <div className="grid gap-4 py-2">
-                    <div className="grid gap-2">
-                      <Label htmlFor="name" className="uppercase text-xs font-bold">NOME COMPLETO</Label>
-                      <Input id="name" name="name" required className="uppercase h-9" />
+                <DialogHeader className="p-6 pb-2 border-b flex flex-row items-center justify-between space-y-0">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-blue-50 p-1.5 rounded-lg">
+                      <UserPlus className="h-5 w-5 text-blue-600" />
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="grid gap-2"><Label htmlFor="qra" className="uppercase text-xs font-bold">QRA</Label><Input id="qra" name="qra" required className="uppercase h-9" /></div>
-                      <div className="grid gap-2"><Label htmlFor="matricula" className="uppercase text-xs font-bold">MATRÍCULA</Label><Input id="matricula" name="matricula" required className="uppercase h-9" /></div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="validationCode" className="uppercase text-xs font-bold">CÓDIGO DE VALIDAÇÃO</Label>
-                      <div className="flex gap-2">
-                        <Input id="validationCode" name="validationCode" value={generatedCode} onChange={(e) => setGeneratedCode(e.target.value.toUpperCase())} className="uppercase font-mono font-bold text-primary h-9" />
-                        <Button type="button" variant="outline" size="icon" className="h-9 w-9" onClick={() => setGeneratedCode(generateValidationCode())}><RefreshCw className="h-4 w-4" /></Button>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="unit" className="uppercase text-xs font-bold">SETOR</Label>
-                        <Select name="unit" required>
-                          <SelectTrigger className="h-9 uppercase text-xs"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                          <SelectContent>
-                            {units.length > 0 ? units.map((u: any) => (
-                              <SelectItem key={u.id} value={u.name} className="uppercase text-xs">{u.name}</SelectItem>
-                            )) : <SelectItem value="DEFAULT" disabled>CADASTRE SETORES NAS CONFIGS</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="escala" className="uppercase text-xs font-bold">ESCALA</Label>
-                        <Select name="escala" required>
-                          <SelectTrigger className="h-9 uppercase text-xs"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                          <SelectContent>
-                            {schedules.length > 0 ? schedules.map((s: any) => (
-                              <SelectItem key={s.id} value={s.name} className="uppercase text-xs">{s.name}</SelectItem>
-                            )) : <SelectItem value="DEFAULT" disabled>CADASTRE ESCALAS NAS CONFIGS</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="turno" className="uppercase text-xs font-bold">TURNO</Label>
-                        <Select name="turno" required>
-                          <SelectTrigger className="h-9 uppercase text-xs"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                          <SelectContent>
-                            {shifts.length > 0 ? shifts.map((s: any) => (
-                              <SelectItem key={s.id} value={s.name} className="uppercase text-xs">{s.name}</SelectItem>
-                            )) : <SelectItem value="DEFAULT" disabled>CADASTRE TURNOS NAS CONFIGS</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="role" className="uppercase text-xs font-bold">CARGO</Label>
-                        <Select name="role" required>
-                          <SelectTrigger className="h-9 uppercase text-xs"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                          <SelectContent>
-                            {roles.length > 0 ? roles.map((r: any) => (
-                              <SelectItem key={r.id} value={r.name} className="uppercase text-xs">{r.name}</SelectItem>
-                            )) : <SelectItem value="DEFAULT" disabled>CADASTRE CARGOS NAS CONFIGS</SelectItem>}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                    <DialogTitle className="uppercase text-lg font-bold tracking-tight">Cadastrar Integrante</DialogTitle>
                   </div>
-                  <ScrollBar orientation="vertical" />
+                  <DialogClose className="rounded-full h-8 w-8 flex items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <X className="h-4 w-4" />
+                  </DialogClose>
+                </DialogHeader>
+                <ScrollArea className="flex-1 p-4 sm:p-6">
+                  {renderFormFields(false)}
                 </ScrollArea>
-                <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
-                  <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
-                  <Button type="submit" className="uppercase text-xs font-bold">GRAVAR</Button>
+                <DialogFooter className="p-6 pt-4 border-t grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <Button variant="secondary" type="button" onClick={() => setIsAddOpen(false)} className="uppercase text-xs font-bold h-11 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 border-none">
+                    CANCELAR
+                  </Button>
+                  <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold h-11 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95">
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Gravar Registro"}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -449,189 +521,135 @@ export default function EfetivoPage() {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
-        <Card className="card-shadow border-primary/20 bg-primary/5">
+        <Card className="card-shadow border-primary/10 bg-primary/5 rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] sm:text-xs font-bold uppercase">TOTAL EXIBIDO</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase text-primary">EFETIVO TOTAL</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
-            <p className="text-[9px] text-muted-foreground uppercase">SERVIDORES CARREGADOS</p>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-[9px] text-muted-foreground uppercase">SERVIDORES CADASTRADOS</p>
           </CardContent>
         </Card>
-        <Card className="card-shadow border-green-500/20 bg-green-50/50">
+        <Card className="card-shadow border-green-500/10 bg-green-50/50 rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] sm:text-xs font-bold uppercase text-green-600">ATIVOS</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-[10px] font-bold uppercase text-green-600">ATIVOS</CardTitle>
+            <UserCheck className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-[9px] text-muted-foreground uppercase">AGENTES</p>
+            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+            <p className="text-[9px] text-muted-foreground uppercase">EM SERVIÇO</p>
           </CardContent>
         </Card>
-        <Card className="card-shadow border-orange-500/20 bg-orange-50/50">
+        <Card className="card-shadow border-orange-500/10 bg-orange-50/50 rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] sm:text-xs font-bold uppercase text-orange-600">PENDENTES</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase text-orange-600">PENDENTES</CardTitle>
             <Clock className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-xl sm:text-2xl font-bold text-orange-600">{stats.pending}</div>
-            <p className="text-[9px] text-muted-foreground uppercase">AGUARDANDO</p>
+            <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
+            <p className="text-[9px] text-muted-foreground uppercase">AGUARDANDO ATIVAÇÃO</p>
           </CardContent>
         </Card>
       </div>
 
-      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-        <AlertDialogContent className="max-w-[90vw] sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO</AlertDialogTitle>
-            <AlertDialogDescription className="uppercase text-xs">AÇÃO IRREVERSÍVEL. O REGISTRO SERÁ REMOVIDO.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase">CANCELAR</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive uppercase">EXCLUIR</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={isBatchDeleteAlertOpen} onOpenChange={setIsBatchDeleteAlertOpen}>
-        <AlertDialogContent className="max-w-[90vw] sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="uppercase">EXCLUIR {selectedIds.length} REGISTROS?</AlertDialogTitle>
-            <AlertDialogDescription className="uppercase text-xs">ESTA AÇÃO É IRREVERSÍVEL.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase">CANCELAR</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive uppercase">EXCLUIR SELECIONADOS</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[700px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
           {selectedEmployee && (
             <form onSubmit={handleUpdateEmployee} className="flex flex-col h-full">
-              <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EDITAR SERVIDOR</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2">
-                <div className="grid gap-4 py-2">
-                  <div className="grid gap-2"><Label htmlFor="edit-name" className="uppercase text-xs font-bold">NOME COMPLETO</Label><Input id="edit-name" name="name" defaultValue={selectedEmployee.name} required className="uppercase h-9" /></div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2"><Label htmlFor="edit-qra" className="uppercase text-xs font-bold">QRA</Label><Input id="edit-qra" name="qra" defaultValue={selectedEmployee.qra} required className="uppercase h-9" /></div>
-                    <div className="grid gap-2"><Label htmlFor="edit-matricula" className="uppercase text-xs font-bold">MATRÍCULA</Label><Input id="edit-matricula" name="matricula" defaultValue={selectedEmployee.matricula} required className="uppercase h-9" /></div>
+              <DialogHeader className="p-6 pb-2 border-b flex flex-row items-center justify-between space-y-0">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-50 p-1.5 rounded-lg">
+                    <Edit className="h-5 w-5 text-blue-600" />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2"><Label htmlFor="edit-validationCode" className="uppercase text-xs font-bold">CÓDIGO DE VALIDAÇÃO</Label><Input id="edit-validationCode" name="validationCode" defaultValue={selectedEmployee.validationCode} className="uppercase font-mono font-bold text-primary h-9" /></div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-status" className="uppercase text-xs font-bold">STATUS</Label>
-                      <Select name="status" defaultValue={selectedEmployee.status} disabled={selectedEmployee.status === "PENDENTE"}>
-                        <SelectTrigger id="edit-status" className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PENDENTE" className="uppercase text-xs">PENDENTE</SelectItem>
-                          <SelectItem value="ATIVO" className="uppercase text-xs">ATIVO</SelectItem>
-                          <SelectItem value="FÉRIAS" className="uppercase text-xs">FÉRIAS</SelectItem>
-                          <SelectItem value="LICENÇA" className="uppercase text-xs">LICENÇA</SelectItem>
-                          <SelectItem value="INATIVO" className="uppercase text-xs">INATIVO</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-unit" className="uppercase text-xs font-bold">SETOR</Label>
-                      <Select name="unit" defaultValue={selectedEmployee.unit} required>
-                        <SelectTrigger className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {units.map((u: any) => (
-                            <SelectItem key={u.id} value={u.name} className="uppercase text-xs">{u.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-escala" className="uppercase text-xs font-bold">ESCALA</Label>
-                      <Select name="escala" defaultValue={selectedEmployee.escala} required>
-                        <SelectTrigger className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {schedules.map((s: any) => (
-                            <SelectItem key={s.id} value={s.name} className="uppercase text-xs">{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-turno" className="uppercase text-xs font-bold">TURNO</Label>
-                      <Select name="turno" defaultValue={selectedEmployee.turno} required>
-                        <SelectTrigger className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {shifts.map((s: any) => (
-                            <SelectItem key={s.id} value={s.name} className="uppercase text-xs">{s.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-role" className="uppercase text-xs font-bold">CARGO</Label>
-                      <Select name="role" defaultValue={selectedEmployee.role} required>
-                        <SelectTrigger className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {roles.map((r: any) => (
-                            <SelectItem key={r.id} value={r.name} className="uppercase text-xs">{r.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  </div>
+                  <DialogTitle className="uppercase text-lg font-bold tracking-tight">Editar Servidor</DialogTitle>
                 </div>
-                <ScrollBar orientation="vertical" />
+                <DialogClose className="rounded-full h-8 w-8 flex items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <X className="h-4 w-4" />
+                </DialogClose>
+              </DialogHeader>
+              <ScrollArea className="flex-1 p-4 sm:p-6">
+                {renderFormFields(true)}
               </ScrollArea>
-              <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
-                <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
-                <Button type="submit" className="uppercase text-xs font-bold">SALVAR</Button>
+              <DialogFooter className="p-6 pt-4 border-t grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button variant="secondary" type="button" onClick={() => setIsEditOpen(false)} className="uppercase text-xs font-bold h-11 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 border-none">
+                  CANCELAR
+                </Button>
+                <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold h-11 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200">
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar Alterações"}
+                </Button>
               </DialogFooter>
             </form>
           )}
         </DialogContent>
       </Dialog>
 
-      <Card className="card-shadow border-primary/20 overflow-hidden">
-        <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 space-y-0 p-4">
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent className="max-w-[90vw] sm:max-w-lg rounded-2xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="uppercase text-lg font-bold">Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-[10px] font-medium text-muted-foreground">AÇÃO IRREVERSÍVEL. O REGISTRO SERÁ REMOVIDO PERMANENTEMENTE.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel className="uppercase text-xs font-bold rounded-xl h-11 border-none bg-slate-100 text-slate-600 hover:bg-slate-200">CANCELAR</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 uppercase text-xs font-bold rounded-xl h-11 shadow-lg shadow-red-100">EXCLUIR AGORA</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isBatchDeleteAlertOpen} onOpenChange={setIsBatchDeleteAlertOpen}>
+        <AlertDialogContent className="max-w-[90vw] sm:max-w-lg rounded-2xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="uppercase text-lg font-bold">Excluir {selectedIds.length} Registros?</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-[10px] font-medium text-muted-foreground">ESTA AÇÃO É IRREVERSÍVEL E REMOVERÁ TODOS OS ITENS SELECIONADOS.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel className="uppercase text-xs font-bold rounded-xl h-11 border-none bg-slate-100 text-slate-600 hover:bg-slate-200">CANCELAR</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive hover:bg-destructive/90 uppercase text-xs font-bold rounded-xl h-11 shadow-lg shadow-red-100">EXCLUIR SELECIONADOS</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
+        <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 space-y-0 p-4 bg-muted/5 border-b">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="BUSCAR POR SERVIDOR, MATRÍCULA OU QRA..." className="pl-8 uppercase h-9 text-xs" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Input placeholder="BUSCAR POR SERVIDOR, MATRÍCULA OU QRA..." className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant={hasActiveFilters ? "default" : "outline"} size="sm" className="gap-2 h-9">
+              <Button variant={hasActiveFilters ? "default" : "outline"} size="sm" className="gap-2 h-9 font-bold text-xs uppercase border-muted/50">
                 <Filter className="h-4 w-4" /> 
-                <span className="hidden xs:inline">FILTROS</span>
+                FILTROS
                 {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-4 w-4 p-0 flex items-center justify-center rounded-full text-[8px] bg-white text-primary">!</Badge>}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-4" align="end">
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-4 rounded-xl shadow-2xl border-muted/20" align="end">
               <div className="grid gap-4">
-                <div className="flex items-center justify-between border-b pb-2"><h4 className="font-bold uppercase text-xs">FILTROS AVANÇADOS</h4><Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}><X className="h-4 w-4" /></Button></div>
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h4 className="font-bold uppercase text-[10px] tracking-widest text-primary">FILTROS AVANÇADOS</h4>
+                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}><X className="h-4 w-4" /></Button>
+                </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">QRA</Label><Input className="h-8 text-xs uppercase" value={filters.qra} onChange={(e) => setFilters({...filters, qra: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">NOME</Label><Input className="h-8 text-xs uppercase" value={filters.name} onChange={(e) => setFilters({...filters, name: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">ESCALA</Label><Input className="h-8 text-xs uppercase" value={filters.escala} onChange={(e) => setFilters({...filters, escala: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">TURNO</Label><Input className="h-8 text-xs uppercase" value={filters.turno} onChange={(e) => setFilters({...filters, turno: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">CARGO</Label><Input className="h-8 text-xs uppercase" value={filters.role} onChange={(e) => setFilters({...filters, role: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">SETOR</Label><Input className="h-8 text-xs uppercase" value={filters.unit} onChange={(e) => setFilters({...filters, unit: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">QRA</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.qra} onChange={(e) => setFilters({...filters, qra: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">NOME</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.name} onChange={(e) => setFilters({...filters, name: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">ESCALA</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.escala} onChange={(e) => setFilters({...filters, escala: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">TURNO</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.turno} onChange={(e) => setFilters({...filters, turno: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">CARGO</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.role} onChange={(e) => setFilters({...filters, role: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">SETOR</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.unit} onChange={(e) => setFilters({...filters, unit: e.target.value})} /></div>
                 </div>
               </div>
             </PopoverContent>
           </Popover>
         </CardHeader>
-        <CardContent className="p-0 sm:p-6 sm:pt-0">
+        <CardContent className="p-0">
           {loadingCollection ? (
             <div className="flex h-32 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : (
-            <div className="rounded-none sm:rounded-md border-x-0 sm:border overflow-x-auto">
+            <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
+                <TableHeader className="bg-muted/20">
+                  <TableRow className="hover:bg-transparent">
                     <TableHead className="w-[40px] px-4"><Checkbox checked={filteredEmployees.length > 0 && selectedIds.length === filteredEmployees.length} onCheckedChange={toggleSelectAll} /></TableHead>
                     <TableHead className="w-[50px] font-bold uppercase text-[9px] px-2">Nº</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">QRAs</TableHead>
@@ -648,27 +666,32 @@ export default function EfetivoPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredEmployees.map((employee, index) => (
-                    <TableRow key={employee.id} className="hover:bg-muted/30 transition-colors">
+                    <TableRow key={employee.id} className="hover:bg-blue-50/30 transition-colors">
                       <TableCell className="px-4"><Checkbox checked={selectedIds.includes(employee.id)} onCheckedChange={() => toggleSelect(employee.id)} /></TableCell>
                       <TableCell className="font-mono text-[9px] text-muted-foreground px-2">{index + 1}</TableCell>
-                      <TableCell className="font-semibold text-[11px] uppercase">{employee.qra}</TableCell>
-                      <TableCell className="font-semibold text-[11px] uppercase whitespace-nowrap">{employee.name}</TableCell>
-                      <TableCell className="font-mono text-[11px] uppercase whitespace-nowrap">{employee.matricula}</TableCell>
-                      <TableCell className="text-[11px] uppercase whitespace-nowrap">{employee.escala}</TableCell>
-                      <TableCell className="text-[11px] uppercase whitespace-nowrap">{employee.turno}</TableCell>
-                      <TableCell className="text-[11px] uppercase whitespace-nowrap">{employee.role}</TableCell>
-                      <TableCell><Badge variant="secondary" className="uppercase text-[8px] whitespace-nowrap">{employee.unit}</Badge></TableCell>
-                      <TableCell className="text-[11px] uppercase font-mono">{employee.validationCode || "---"}</TableCell>
+                      <TableCell className="font-bold text-[11px] uppercase text-slate-800">{employee.qra}</TableCell>
+                      <TableCell className="font-bold text-[11px] uppercase whitespace-nowrap">{employee.name}</TableCell>
+                      <TableCell className="font-mono text-[10px] uppercase whitespace-nowrap text-muted-foreground">{employee.matricula}</TableCell>
+                      <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.escala}</TableCell>
+                      <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.turno}</TableCell>
+                      <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.role}</TableCell>
+                      <TableCell><Badge variant="secondary" className="uppercase text-[8px] whitespace-nowrap font-bold bg-muted/50">{employee.unit}</Badge></TableCell>
+                      <TableCell className="text-[10px] uppercase font-mono font-bold text-primary">{employee.validationCode || "---"}</TableCell>
                       <TableCell>
-                        <Badge variant={employee.status === "PENDENTE" ? "outline" : "default"} className={`uppercase text-[8px] font-bold whitespace-nowrap ${employee.status === "PENDENTE" ? "border-orange-500 text-orange-600 bg-orange-50" : "bg-green-600"}`}>{employee.status || "PENDENTE"}</Badge>
+                        <Badge variant="outline" className={cn(
+                          "uppercase text-[8px] font-bold whitespace-nowrap",
+                          employee.status === "PENDENTE" ? "border-orange-200 text-orange-600 bg-orange-50/50" : "bg-green-600 text-white border-none"
+                        )}>
+                          {employee.status || "PENDENTE"}
+                        </Badge>
                       </TableCell>
                       <TableCell className="text-right pr-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => { setSelectedEmployee(employee); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5" /> EDITAR</DropdownMenuItem>
+                          <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
+                            <DropdownMenuItem onSelect={() => { setSelectedEmployee(employee); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50 cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => { setEmployeeToDelete(employee.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setEmployeeToDelete(employee.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50 cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
