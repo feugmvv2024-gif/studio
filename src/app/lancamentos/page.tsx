@@ -8,7 +8,10 @@ import {
   Trash2, 
   Loader2, 
   MoreHorizontal,
-  Check
+  Check,
+  X,
+  Info,
+  RefreshCw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -27,6 +30,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogClose,
 } from "@/components/ui/dialog"
 import {
   AlertDialog,
@@ -132,18 +136,12 @@ export default function LancamentosPage() {
     if (selectedLaunch) {
       setHoursInput(selectedLaunch.hours || "");
       setSelectedEmployeeId(selectedLaunch.employeeId || "");
-      // Preenche o campo de busca com o nome do servidor editado
       setSearchEmployeeTerm(`${selectedLaunch.employeeName} (${selectedLaunch.employeeQra})`);
       setFormDays(selectedLaunch.days || 0);
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
     } else if (isAddOpen) {
-      setHoursInput("");
-      setSelectedEmployeeId("");
-      setSearchEmployeeTerm("");
-      setFormDays(0);
-      setFormStartDate("");
-      setFormEndDate("");
+      resetForm();
     }
   }, [selectedLaunch, isAddOpen, isEditOpen]);
 
@@ -237,45 +235,36 @@ export default function LancamentosPage() {
   }
 
   const renderFormFields = (isEdit: boolean) => (
-    <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">DATA LANÇAMENTO</Label>
-          <Input name="date" type="date" defaultValue={isEdit ? selectedLaunch?.date : getSaoPauloDate()} required className="h-9" />
+    <div className="space-y-4 py-4 px-2">
+      {/* Banner de informação azul conforme a imagem */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center gap-3">
+        <div className="bg-white rounded-full p-1 border border-blue-200 shadow-sm">
+          <Info className="h-4 w-4 text-blue-500" />
         </div>
-        
-        {/* NOVO CAMPO ADAPTADO: BUSCA DE SERVIDOR */}
-        <div className="grid gap-2 sm:col-span-2 relative">
-          <Label className="uppercase text-[10px] font-bold">SERVIDOR (NOME OU QRA)</Label>
+        <span className="text-blue-600 text-[10px] font-medium uppercase tracking-tight">
+          Um novo número de registro será gerado automaticamente ao salvar.
+        </span>
+      </div>
+
+      <div className="space-y-4">
+        {/* SERVIDOR (NOME OU QRA) */}
+        <div className="grid gap-1.5 relative">
+          <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">SERVIDOR (NOME OU QRA)</Label>
           <div className="relative">
             <Input 
               ref={servidorSearchInputRef}
               type="text"
-              placeholder="DIGITE O NOME, QRA OU MATRÍCULA..."
+              placeholder="DIGITE O NOME OU QRA..."
               value={searchEmployeeTerm}
               onChange={(e) => {
                 const val = e.target.value.toUpperCase();
                 setSearchEmployeeTerm(val);
                 setShowServidorSuggestions(true);
-                
-                // Se apagar tudo, limpa o ID selecionado
-                if (!val) {
-                  setSelectedEmployeeId('');
-                }
-
-                // Tenta achar por QRA exato enquanto digita
-                if (employees) {
-                  const exactMatch = employees.find(s => s.qra === val.trim());
-                  if (exactMatch) {
-                    setSelectedEmployeeId(exactMatch.id);
-                  }
-                }
+                if (!val) setSelectedEmployeeId('');
               }}
               onFocus={() => setShowServidorSuggestions(true)}
-              className="w-full h-9 uppercase text-[11px] pr-20"
+              className="w-full h-11 uppercase text-[11px] pr-10 border-muted bg-background/50 focus:bg-background transition-colors"
             />
-            
-            {/* Indicador de Seleção com pulse verde */}
             {selectedEmployeeId && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
@@ -284,9 +273,8 @@ export default function LancamentosPage() {
             )}
           </div>
 
-          {/* Lista de Sugestões Absoluta */}
           {showServidorSuggestions && searchEmployeeTerm && (
-            <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border border-border rounded-md shadow-xl max-h-48 overflow-y-auto custom-scrollbar">
+            <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border border-border rounded-lg shadow-2xl max-h-48 overflow-y-auto custom-scrollbar animate-in slide-in-from-top-2 duration-200">
               {filteredEmployeesForSelection.length > 0 ? (
                 filteredEmployeesForSelection.map(s => (
                   <button
@@ -297,69 +285,119 @@ export default function LancamentosPage() {
                       setSearchEmployeeTerm(`${s.name} (${s.qra})`);
                       setShowServidorSuggestions(false);
                     }}
-                    className="w-full px-3 py-2 text-left hover:bg-muted flex flex-col border-b border-border last:border-0 transition-colors"
+                    className="w-full px-4 py-3 text-left hover:bg-blue-50/50 flex flex-col border-b border-border/50 last:border-0 transition-colors"
                   >
                     <span className="text-[11px] font-bold text-foreground uppercase">{s.name}</span>
-                    <span className="text-[9px] text-muted-foreground uppercase">QRA: {s.qra} • MAT: {s.matricula}</span>
+                    <span className="text-[9px] text-muted-foreground uppercase mt-0.5 tracking-wider">QRA: {s.qra} • MAT: {s.matricula}</span>
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-[10px] text-muted-foreground italic uppercase">
+                <div className="px-4 py-3 text-[10px] text-muted-foreground italic uppercase">
                   NENHUM SERVIDOR ENCONTRADO
                 </div>
               )}
             </div>
           )}
-          
-          {/* Overlay invisível para fechar sugestões ao clicar fora */}
           {showServidorSuggestions && (
-            <div 
-              className="fixed inset-0 z-[55]" 
-              onClick={() => setShowServidorSuggestions(false)}
-            />
+            <div className="fixed inset-0 z-[55]" onClick={() => setShowServidorSuggestions(false)} />
           )}
-
-          {/* Input oculto para não quebrar a validação HTML (required) do formulário */}
           <input type="hidden" name="employeeId" value={selectedEmployeeId} required />
         </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">TIPO</Label>
+        {/* DATA LANÇAMENTO, TURNO, ESCALA */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DATA LANÇAMENTO</Label>
+            <Input name="date" type="date" defaultValue={isEdit ? selectedLaunch?.date : getSaoPauloDate()} required className="h-11 bg-background/50 border-muted" />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">TURNO</Label>
+            <Input 
+              value={selectedEmployee?.turno || ""} 
+              readOnly 
+              placeholder="--"
+              className="h-11 bg-muted/30 border-muted uppercase text-[11px] cursor-not-allowed font-medium" 
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">ESCALA</Label>
+            <Input 
+              value={selectedEmployee?.escala || ""} 
+              readOnly 
+              placeholder="--"
+              className="h-11 bg-muted/30 border-muted uppercase text-[11px] cursor-not-allowed font-medium" 
+            />
+          </div>
+        </div>
+
+        {/* TIPO DE LANÇAMENTO */}
+        <div className="grid gap-1.5">
+          <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">TIPO DE LANÇAMENTO</Label>
           <Select name="type" defaultValue={isEdit ? selectedLaunch?.type : undefined} required>
-            <SelectTrigger className="h-9 uppercase text-[11px]"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+            <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50 border-muted">
+              <SelectValue placeholder="--" />
+            </SelectTrigger>
             <SelectContent>
               {launchTypes?.map((type: any) => <SelectItem key={type.id} value={type.name} className="uppercase text-[11px]">{type.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
-        <div className="grid grid-cols-2 gap-2">
-          <div className="grid gap-2">
-            <Label className="uppercase text-[10px] font-bold">DIAS</Label>
-            <Input name="days" type="number" value={formDays} onChange={(e) => setFormDays(Number(e.target.value))} className="h-9" />
-          </div>
-          <div className="grid gap-2">
-            <Label className="uppercase text-[10px] font-bold">HORAS (HH:MM)</Label>
-            <Input name="hours" placeholder="00:00" value={hoursInput} onChange={(e) => setHoursInput(applyHoursMask(e.target.value))} required className="h-9" />
-          </div>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">DATA INÍCIO</Label>
-          <Input name="startDate" type="date" value={formStartDate} onChange={(e) => setFormStartDate(e.target.value)} className="h-9" />
+        {/* HORAS, DIAS, DATA DE, DATA FIM */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">HORAS (HH:MM)</Label>
+            <Input 
+              name="hours" 
+              placeholder="00:00" 
+              value={hoursInput} 
+              onChange={(e) => setHoursInput(applyHoursMask(e.target.value))} 
+              required 
+              className="h-11 bg-background/50 border-muted text-center font-mono font-medium" 
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DIAS</Label>
+            <Input 
+              name="days" 
+              type="number" 
+              value={formDays || ""} 
+              onChange={(e) => setFormDays(Number(e.target.value))} 
+              className="h-11 bg-background/50 border-muted text-center font-medium" 
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DATA DE</Label>
+            <Input 
+              name="startDate" 
+              type="date" 
+              value={formStartDate} 
+              onChange={(e) => setFormStartDate(e.target.value)} 
+              className="h-11 bg-background/50 border-muted font-medium" 
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DATA FIM</Label>
+            <Input 
+              name="endDate" 
+              type="date" 
+              value={formEndDate} 
+              readOnly 
+              className="h-11 bg-muted/30 border-muted cursor-not-allowed font-medium" 
+            />
+          </div>
         </div>
-        <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">DATA FIM</Label>
-          <Input name="endDate" type="date" value={formEndDate} readOnly className="h-9 bg-muted/50 cursor-not-allowed" />
-        </div>
-      </div>
 
-      <div className="grid gap-2">
-        <Label className="uppercase text-[10px] font-bold">OBSERVAÇÕES</Label>
-        <Textarea name="observations" defaultValue={isEdit ? selectedLaunch?.observations : ""} className="uppercase text-xs min-h-[80px]" />
+        {/* OBSERVAÇÃO */}
+        <div className="grid gap-1.5">
+          <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">OBSERVAÇÃO</Label>
+          <Textarea 
+            name="observations" 
+            placeholder="OBSERVAÇÕES ADICIONAIS..."
+            defaultValue={isEdit ? selectedLaunch?.observations : ""} 
+            className="uppercase text-xs min-h-[100px] bg-background/50 border-muted rounded-xl p-3 resize-none" 
+          />
+        </div>
       </div>
     </div>
   );
@@ -373,36 +411,68 @@ export default function LancamentosPage() {
         </div>
         <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-2 uppercase font-bold text-xs h-9"><Plus className="h-4 w-4" /> NOVO LANÇAMENTO</Button>
+            <Button size="sm" className="gap-2 uppercase font-bold text-xs h-9 shadow-md"><Plus className="h-4 w-4" /> NOVO LANÇAMENTO</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
+          <DialogContent className="sm:max-w-[700px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
             <form onSubmit={(e) => handleMutation(e, false)} className="flex flex-col h-full">
-              <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EFETUAR LANÇAMENTO</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2 overflow-visible">
+              <DialogHeader className="p-6 pb-2 border-b flex flex-row items-center justify-between space-y-0">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-50 p-1.5 rounded-lg">
+                    <Plus className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <DialogTitle className="uppercase text-lg font-bold tracking-tight">Novo Lançamento</DialogTitle>
+                </div>
+                <DialogClose className="rounded-full h-8 w-8 flex items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <X className="h-4 w-4" />
+                </DialogClose>
+              </DialogHeader>
+              <ScrollArea className="flex-1 p-4 sm:p-6 overflow-visible">
                 {renderFormFields(false)}
               </ScrollArea>
-              <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
-                <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
-                <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "GRAVAR"}</Button>
+              <DialogFooter className="p-6 pt-4 border-t grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <Button 
+                  variant="outline" 
+                  type="button" 
+                  onClick={resetForm}
+                  className="uppercase text-xs font-bold gap-2 h-11 rounded-xl border-muted/50 text-muted-foreground hover:bg-muted/20"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  LIMPAR
+                </Button>
+                <Button 
+                  variant="secondary" 
+                  type="button" 
+                  onClick={() => setIsAddOpen(false)} 
+                  className="uppercase text-xs font-bold h-11 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 border-none"
+                >
+                  CANCELAR
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className="uppercase text-xs font-bold h-11 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all active:scale-95"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Confirmar Lançamento"}
+                </Button>
               </DialogFooter>
             </form>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Card className="card-shadow border-primary/10 overflow-hidden">
-        <CardHeader className="p-4 border-b">
+      <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
+        <CardHeader className="p-4 border-b bg-muted/5">
           <div className="relative max-w-md">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="BUSCAR POR SERVIDOR OU TIPO..." className="pl-8 uppercase h-9 text-[10px]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Input placeholder="BUSCAR POR SERVIDOR OU TIPO..." className="pl-8 uppercase h-9 text-[10px] border-muted/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {loadingLaunches ? <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/50">
-                  <TableRow>
+                <TableHeader className="bg-muted/20">
+                  <TableRow className="hover:bg-transparent border-b">
                     <TableHead className="w-[60px] font-bold uppercase text-[9px] px-4">Nº</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">DATA</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">SERVIDOR</TableHead>
@@ -418,24 +488,24 @@ export default function LancamentosPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredLaunches.map((launch, index) => (
-                    <TableRow key={launch.id} className="hover:bg-muted/30">
-                      <TableCell className="font-mono text-[9px] px-4">{filteredLaunches.length - index}</TableCell>
-                      <TableCell className="text-[11px] whitespace-nowrap">{launch.date?.split('-').reverse().join('/')}</TableCell>
-                      <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase">{launch.employeeName}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra}</span></div></TableCell>
-                      <TableCell className="text-[10px] uppercase">{launch.escala} / {launch.turno}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[9px] uppercase">{launch.type}</Badge></TableCell>
+                    <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
+                      <TableCell className="font-mono text-[9px] px-4 text-muted-foreground">{filteredLaunches.length - index}</TableCell>
+                      <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/')}</TableCell>
+                      <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra}</span></div></TableCell>
+                      <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-[9px] uppercase font-bold border-blue-200 text-blue-700 bg-blue-50/50">{launch.type}</Badge></TableCell>
                       <TableCell className="text-[11px] font-bold">{launch.days || 0}D</TableCell>
-                      <TableCell className="text-[11px] font-bold text-primary">{launch.hours}H</TableCell>
+                      <TableCell className="text-[11px] font-black text-blue-600">{launch.hours}H</TableCell>
                       <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/')}</TableCell>
                       <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/')}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground">{launch.observations}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">{launch.observations}</TableCell>
                       <TableCell className="text-right pr-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setIsEditOpen(true); }} className="uppercase text-[10px]"><Edit className="mr-2 h-3.5 w-3.5" /> EDITAR</DropdownMenuItem>
+                          <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
+                            <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setIsEditOpen(true); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setIsDeleteAlertOpen(true); }} className="text-destructive uppercase text-[10px]"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setIsDeleteAlertOpen(true); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -448,17 +518,41 @@ export default function LancamentosPage() {
         </CardContent>
       </Card>
 
+      {/* DIALOG DE EDIÇÃO COM O MESMO LAYOUT */}
       <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[700px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
           {selectedLaunch && (
             <form onSubmit={(e) => handleMutation(e, true)} className="flex flex-col h-full">
-              <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EDITAR LANÇAMENTO</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2 overflow-visible">
+              <DialogHeader className="p-6 pb-2 border-b flex flex-row items-center justify-between space-y-0">
+                <div className="flex items-center gap-3">
+                  <div className="bg-blue-50 p-1.5 rounded-lg">
+                    <Edit className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <DialogTitle className="uppercase text-lg font-bold tracking-tight">Editar Lançamento</DialogTitle>
+                </div>
+                <DialogClose className="rounded-full h-8 w-8 flex items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
+                  <X className="h-4 w-4" />
+                </DialogClose>
+              </DialogHeader>
+              <ScrollArea className="flex-1 p-4 sm:p-6 overflow-visible">
                 {renderFormFields(true)}
               </ScrollArea>
-              <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
-                <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
-                <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR"}</Button>
+              <DialogFooter className="p-6 pt-4 border-t grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Button 
+                  variant="secondary" 
+                  type="button" 
+                  onClick={() => setIsEditOpen(false)} 
+                  className="uppercase text-xs font-bold h-11 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200"
+                >
+                  CANCELAR
+                </Button>
+                <Button 
+                  type="submit" 
+                  disabled={isSubmitting} 
+                  className="uppercase text-xs font-bold h-11 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR ALTERAÇÕES"}
+                </Button>
               </DialogFooter>
             </form>
           )}
@@ -466,13 +560,15 @@ export default function LancamentosPage() {
       </Dialog>
 
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-        <AlertDialogContent className="max-w-[90vw]">
+        <AlertDialogContent className="max-w-[90vw] rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO</AlertDialogTitle>
-            <AlertDialogDescription className="uppercase text-[10px]">AÇÃO IRREVERSÍVEL. O LANÇAMENTO SERÁ REMOVIDO.</AlertDialogDescription>
+            <AlertDialogTitle className="uppercase text-lg font-bold">Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-[10px] font-medium text-muted-foreground">
+              AÇÃO IRREVERSÍVEL. O LANÇAMENTO SERÁ REMOVIDO PERMANENTEMENTE DO SISTEMA.
+            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase text-xs">CANCELAR</AlertDialogCancel>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel className="uppercase text-xs font-bold rounded-xl h-11 border-none bg-slate-100 text-slate-600 hover:bg-slate-200">CANCELAR</AlertDialogCancel>
             <AlertDialogAction 
               onClick={() => { 
                 if (launchToDelete) {
@@ -482,9 +578,9 @@ export default function LancamentosPage() {
                     .finally(() => setIsDeleteAlertOpen(false));
                 }
               }} 
-              className="bg-destructive uppercase text-xs"
+              className="bg-destructive hover:bg-destructive/90 uppercase text-xs font-bold rounded-xl h-11 shadow-lg shadow-red-100"
             >
-              EXCLUIR
+              EXCLUIR AGORA
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
