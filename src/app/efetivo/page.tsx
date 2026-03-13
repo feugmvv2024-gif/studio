@@ -14,13 +14,17 @@ import {
   X,
   Key,
   RefreshCw,
-  AlertCircle
+  AlertCircle,
+  Users,
+  CheckCircle2,
+  Clock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
   CardContent,
   CardHeader,
+  CardTitle,
 } from "@/components/ui/card"
 import {
   DropdownMenu,
@@ -108,6 +112,16 @@ export default function EfetivoPage() {
   }, [firestore]);
 
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
+
+  // Estatísticas dos Cards
+  const stats = React.useMemo(() => {
+    if (!employees) return { total: 0, active: 0, pending: 0 };
+    return {
+      total: employees.length,
+      active: employees.filter(e => e.status === "ATIVO").length,
+      pending: employees.filter(e => e.status === "PENDENTE").length
+    };
+  }, [employees]);
 
   function generateValidationCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -423,6 +437,40 @@ export default function EfetivoPage() {
             </DialogContent>
           </Dialog>
         </div>
+      </div>
+
+      {/* Cards de Estatísticas */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="card-shadow border-primary/20 bg-primary/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-bold uppercase">TOTAL EFETIVO</CardTitle>
+            <Users className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-[10px] text-muted-foreground uppercase">SERVIDORES CADASTRADOS NO SISTEMA</p>
+          </CardContent>
+        </Card>
+        <Card className="card-shadow border-green-500/20 bg-green-50/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-bold uppercase text-green-600">ATIVOS</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-green-600">{stats.active}</div>
+            <p className="text-[10px] text-muted-foreground uppercase">AGENTES COM CADASTRO ATIVO</p>
+          </CardContent>
+        </Card>
+        <Card className="card-shadow border-orange-500/20 bg-orange-50/50">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-bold uppercase text-orange-600">AGUARDANDO CADASTRO</CardTitle>
+            <Clock className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
+            <p className="text-[10px] text-muted-foreground uppercase">AGUARDANDO VALIDAÇÃO PELO AGENTE</p>
+          </CardContent>
+        </Card>
       </div>
 
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
