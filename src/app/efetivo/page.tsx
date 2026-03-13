@@ -13,7 +13,8 @@ import {
   Trash,
   Filter,
   X,
-  Key
+  Key,
+  RefreshCw
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -79,6 +80,7 @@ export default function EfetivoPage() {
   const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")
   const [loadingImport, setLoadingImport] = React.useState(false)
+  const [generatedCode, setGeneratedCode] = React.useState("")
   
   const [filters, setFilters] = React.useState({
     qra: "",
@@ -99,6 +101,21 @@ export default function EfetivoPage() {
   }, [firestore]);
 
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
+
+  function generateValidationCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return code;
+  }
+
+  React.useEffect(() => {
+    if (isAddOpen) {
+      setGeneratedCode(generateValidationCode());
+    }
+  }, [isAddOpen]);
 
   const filteredEmployees = React.useMemo(() => {
     if (!employees) return [];
@@ -132,7 +149,7 @@ export default function EfetivoPage() {
       name: (formData.get('name') as string).toUpperCase(),
       email: (formData.get('email') as string || "").toUpperCase(),
       matricula: (formData.get('matricula') as string).toUpperCase(),
-      validationCode: (formData.get('validationCode') as string || "").toUpperCase(),
+      validationCode: (formData.get('validationCode') as string || generatedCode).toUpperCase(),
       escala: (formData.get('escala') as string).toUpperCase(),
       turno: (formData.get('turno') as string).toUpperCase(),
       role: (formData.get('role') as string).toUpperCase(),
@@ -203,7 +220,7 @@ export default function EfetivoPage() {
             const name = (row['SERVIDOR'] || "").toString().toUpperCase();
             const qra = (row['QRAs'] || row['QRA'] || "").toString().toUpperCase();
             const matricula = (row['MATRICULA'] || row['MATRÍCULA'] || "").toString().toUpperCase();
-            const validationCode = (row['CÓD. VALIDAÇÃO'] || row['VALIDACAO'] || "").toString().toUpperCase();
+            const validationCode = (row['CÓD. VALIDAÇÃO'] || row['VALIDACAO'] || generateValidationCode()).toString().toUpperCase();
             const escala = (row['ESCALA'] || "").toString().toUpperCase();
             const turno = (row['TURNO'] || "").toString().toUpperCase();
             const role = (row['CARGO'] || "").toString().toUpperCase();
@@ -345,8 +362,25 @@ export default function EfetivoPage() {
                       </div>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label>
-                      <Input id="validationCode" name="validationCode" placeholder="CÓDIGO PARA ATIVAÇÃO" className="uppercase" />
+                      <Label htmlFor="validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO (AUTOMÁTICO)</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          id="validationCode" 
+                          name="validationCode" 
+                          value={generatedCode} 
+                          onChange={(e) => setGeneratedCode(e.target.value.toUpperCase())}
+                          className="uppercase font-mono font-bold text-primary" 
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="icon" 
+                          onClick={() => setGeneratedCode(generateValidationCode())}
+                          title="GERAR NOVO CÓDIGO"
+                        >
+                          <RefreshCw className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
@@ -439,7 +473,14 @@ export default function EfetivoPage() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="edit-validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label>
-                    <Input id="edit-validationCode" name="validationCode" defaultValue={selectedEmployee.validationCode} className="uppercase" />
+                    <div className="flex gap-2">
+                      <Input 
+                        id="edit-validationCode" 
+                        name="validationCode" 
+                        defaultValue={selectedEmployee.validationCode} 
+                        className="uppercase font-mono font-bold text-primary" 
+                      />
+                    </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
