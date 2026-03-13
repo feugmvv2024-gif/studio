@@ -159,7 +159,7 @@ export default function LancamentosPage() {
         end.setDate(start.getDate() + (formDays - 1)); // -1 porque o dia de início conta como primeiro dia
         setFormEndDate(end.toISOString().split('T')[0]);
       } catch (e) {
-        console.error("Erro ao calcular data fim", e);
+        // Silently fail for invalid dates during typing
       }
     } else {
       setFormEndDate(formStartDate);
@@ -330,7 +330,7 @@ export default function LancamentosPage() {
         </div>
         <div className="grid gap-2 sm:col-span-2">
           <Label className="uppercase text-[10px] font-bold">SERVIDOR (BUSCA POR QRA OU NOME)</Label>
-          <Popover open={isEmployeePopoverOpen} onOpenChange={setIsEmployeePopoverOpen}>
+          <Popover open={isEmployeePopoverOpen} onOpenChange={setIsEmployeePopoverOpen} modal={false}>
             <PopoverTrigger asChild>
               <Button
                 variant="outline"
@@ -366,30 +366,31 @@ export default function LancamentosPage() {
                       </div>
                     ) : (
                       filteredEmployeesForSelection.map((emp) => (
-                        <button
+                        <div
                           key={emp.id}
-                          type="button"
+                          role="button"
                           className={cn(
-                            "flex flex-col w-full text-left p-2.5 rounded-sm hover:bg-muted transition-colors border-b last:border-0",
+                            "flex flex-col w-full text-left p-2.5 rounded-sm hover:bg-muted cursor-pointer transition-colors border-b last:border-0",
                             selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary"
                           )}
-                          onClick={() => {
+                          onPointerDown={(e) => {
+                            e.preventDefault();
                             setSelectedEmployeeId(emp.id);
                             setIsEmployeePopoverOpen(false);
                             setSearchEmployeeTerm("");
                           }}
                         >
-                          <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center justify-between w-full pointer-events-none">
                             <span className={cn("font-bold uppercase text-[11px]", selectedEmployeeId === emp.id && "text-primary")}>
                               {emp.name}
                             </span>
                             {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-primary" />}
                           </div>
-                          <div className="flex gap-2 mt-1">
+                          <div className="flex gap-2 mt-1 pointer-events-none">
                             <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">QRA: {emp.qra}</span>
                             <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">MAT: {emp.matricula}</span>
                           </div>
-                        </button>
+                        </div>
                       ))
                     )}
                   </div>
