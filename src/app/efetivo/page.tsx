@@ -8,9 +8,9 @@ import {
   UserPlus, 
   Edit, 
   Trash2,
-  Filter,
   Loader2,
-  Upload
+  Upload,
+  Trash
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,7 +22,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -38,7 +37,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -56,6 +54,7 @@ import {
 } from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
+import { Checkbox } from "@/components/ui/checkbox"
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, doc, deleteDoc, query, orderBy, updateDoc } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
@@ -66,8 +65,10 @@ export default function EfetivoPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
   const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false)
+  const [isBatchDeleteAlertOpen, setIsBatchDeleteAlertOpen] = React.useState(false)
   const [selectedEmployee, setSelectedEmployee] = React.useState<any>(null)
   const [employeeToDelete, setEmployeeToDelete] = React.useState<string | null>(null)
+  const [selectedIds, setSelectedIds] = React.useState<string[]>([])
   const [searchTerm, setSearchTerm] = React.useState("")
   const [loadingImport, setLoadingImport] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -210,6 +211,36 @@ export default function EfetivoPage() {
       .catch(() => toast({ variant: "destructive", title: "ERRO AO EXCLUIR" }));
   }
 
+  function handleBatchDelete() {
+    if (!firestore || selectedIds.length === 0) return;
+    
+    const idsToRemove = [...selectedIds];
+    setSelectedIds([]);
+    setIsBatchDeleteAlertOpen(false);
+
+    idsToRemove.forEach(id => {
+      deleteDoc(doc(firestore, 'employees', id));
+    });
+
+    toast({ title: "EXCLUSÃO EM LOTE", description: `${idsToRemove.length} REGISTROS REMOVIDOS.` });
+  }
+
+  const toggleSelectAll = () => {
+    if (selectedIds.length === filteredEmployees.length) {
+      setSelectedIds([]);
+    } else {
+      setSelectedIds(filteredEmployees.map(emp => emp.id));
+    }
+  }
+
+  const toggleSelect = (id: string) => {
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(i => i !== id));
+    } else {
+      setSelectedIds([...selectedIds, id]);
+    }
+  }
+
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between gap-4 flex-wrap">
@@ -218,6 +249,16 @@ export default function EfetivoPage() {
           <p className="text-muted-foreground uppercase text-sm">GESTÃO INTEGRADA DO EFETIVO DA UNIDADE.</p>
         </div>
         <div className="flex gap-2">
+          {selectedIds.length > 0 && (
+            <Button 
+              variant="destructive" 
+              className="gap-2 uppercase animate-in fade-in zoom-in duration-200"
+              onClick={() => setIsBatchDeleteAlertOpen(true)}
+            >
+              <Trash className="h-4 w-4" />
+              EXCLUIR ({selectedIds.length})
+            </Button>
+          )}
           <input
             type="file"
             accept=".xlsx, .xls"
@@ -289,6 +330,7 @@ export default function EfetivoPage() {
         </div>
       </div>
 
+      {/* Alerta de Exclusão Individual */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -306,6 +348,25 @@ export default function EfetivoPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* Alerta de Exclusão em Lote */}
+      <AlertDialog open={isBatchDeleteAlertOpen} onOpenChange={setIsBatchDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO EM LOTE</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-xs">
+              VOCÊ ESTÁ PRESTES A EXCLUIR {selectedIds.length} REGISTROS. ESTA AÇÃO É IRREVERSÍVEL.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="uppercase">CANCELAR</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive hover:bg-destructive/90 uppercase">
+              EXCLUIR SELECIONADOS
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Edição */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[500px]">
           {selectedEmployee && (
@@ -382,6 +443,12 @@ export default function EfetivoPage() {
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow>
+                    <TableHead className="w-[40px]">
+                      <Checkbox 
+                        checked={filteredEmployees.length > 0 && selectedIds.length === filteredEmployees.length}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead className="w-[50px] font-bold uppercase text-[10px]">Nº</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">QRAs</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">SERVIDOR</TableHead>
@@ -396,6 +463,12 @@ export default function EfetivoPage() {
                 <TableBody>
                   {filteredEmployees.map((employee, index) => (
                     <TableRow key={employee.id} className="hover:bg-muted/30 transition-colors border-b">
+                      <TableCell>
+                        <Checkbox 
+                          checked={selectedIds.includes(employee.id)}
+                          onCheckedChange={() => toggleSelect(employee.id)}
+                        />
+                      </TableCell>
                       <TableCell className="font-mono text-[10px] text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.qra}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.name}</TableCell>
