@@ -60,6 +60,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useFirestore, useCollection } from '@/firebase'
 import { 
   collection, 
@@ -144,9 +145,11 @@ export default function LancamentosPage() {
       date: formData.get('date') as string,
       employeeId: empId,
       employeeName: employee?.name || "N/A",
+      employeeNameQra: `${employee?.name || "N/A"} (${employee?.qra || "N/A"})`,
       employeeQra: employee?.qra || "N/A",
       escala: employee?.escala || "N/A",
       turno: employee?.turno || "N/A",
+      escalaTurno: `${employee?.escala || "N/A"} / ${employee?.turno || "N/A"}`,
       type: (formData.get('type') as string).toUpperCase(),
       days: Number(formData.get('days') || 0),
       hours: formData.get('hours') as string,
@@ -185,9 +188,11 @@ export default function LancamentosPage() {
       date: formData.get('date') as string,
       employeeId: empId,
       employeeName: employee?.name || "N/A",
+      employeeNameQra: `${employee?.name || "N/A"} (${employee?.qra || "N/A"})`,
       employeeQra: employee?.qra || "N/A",
       escala: employee?.escala || "N/A",
       turno: employee?.turno || "N/A",
+      escalaTurno: `${employee?.escala || "N/A"} / ${employee?.turno || "N/A"}`,
       type: (formData.get('type') as string).toUpperCase(),
       days: Number(formData.get('days') || 0),
       hours: formData.get('hours') as string,
