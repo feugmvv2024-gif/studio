@@ -111,7 +111,6 @@ export default function EfetivoPage() {
       admissionDate: new Date().toISOString().split('T')[0]
     };
 
-    // Fechamento instantâneo para UI fluida
     setIsAddOpen(false);
     
     addDoc(collection(firestore, 'employees'), newEmployee)
@@ -160,7 +159,6 @@ export default function EfetivoPage() {
     const reader = new FileReader();
 
     reader.onload = (evt) => {
-      // Pequeno timeout para permitir que a UI mostre o loader antes de travar o thread com o processamento
       setTimeout(() => {
         try {
           const bstr = evt.target?.result;
@@ -291,7 +289,6 @@ export default function EfetivoPage() {
         </div>
       </div>
 
-      {/* Alerta de Exclusão Assíncrono (Não Bloqueante) */}
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -309,7 +306,6 @@ export default function EfetivoPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal de Edição */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[500px]">
           {selectedEmployee && (
@@ -341,6 +337,16 @@ export default function EfetivoPage() {
                     <div className="grid gap-2">
                       <Label htmlFor="edit-escala" className="uppercase">ESCALA</Label>
                       <Input id="edit-escala" name="escala" defaultValue={selectedEmployee.escala} required className="uppercase" />
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-turno" className="uppercase">TURNO</Label>
+                      <Input id="edit-turno" name="turno" defaultValue={selectedEmployee.turno} required className="uppercase" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-role" className="uppercase">CARGO</Label>
+                      <Input id="edit-role" name="role" defaultValue={selectedEmployee.role} required className="uppercase" />
                     </div>
                   </div>
                 </div>
@@ -408,13 +414,24 @@ export default function EfetivoPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => { setSelectedEmployee(employee); setIsEditOpen(true); }} className="uppercase text-xs">
+                            <DropdownMenuItem 
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setSelectedEmployee(employee);
+                                setTimeout(() => setIsEditOpen(true), 10); 
+                              }} 
+                              className="uppercase text-xs cursor-pointer"
+                            >
                               <Edit className="mr-2 h-3.5 w-3.5" /> EDITAR
                             </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
-                              onClick={() => { setEmployeeToDelete(employee.id); setIsDeleteAlertOpen(true); }} 
-                              className="text-destructive uppercase text-xs"
+                              onSelect={(e) => {
+                                e.preventDefault();
+                                setEmployeeToDelete(employee.id);
+                                setTimeout(() => setIsDeleteAlertOpen(true), 10); 
+                              }} 
+                              className="text-destructive uppercase text-xs cursor-pointer"
                             >
                               <Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR
                             </DropdownMenuItem>
