@@ -69,6 +69,16 @@
       },
       "required": ["name"]
     },
+    "Unit": {
+      "title": "Unit",
+      "description": "Definição de setores ou unidades de trabalho.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
     "LaunchType": {
       "title": "Launch Type",
       "description": "Tipos de lançamento para banco de horas.",
@@ -117,6 +127,10 @@
     "/roles/{roleId}": {
       "schema": "#/backend/entities/Role",
       "description": "Coleção de cargos configurados."
+    },
+    "/units/{unitId}": {
+      "schema": "#/backend/entities/Unit",
+      "description": "Coleção de setores configurados."
     },
     "/launchTypes/{launchTypeId}": {
       "schema": "#/backend/entities/LaunchType",

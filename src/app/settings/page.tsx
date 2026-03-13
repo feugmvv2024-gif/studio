@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Trash2, Loader2, Settings2, Calendar, Clock, Briefcase, FilePlus, X } from "lucide-react"
+import { Plus, Trash2, Loader2, Settings2, Calendar, Clock, Briefcase, FilePlus, LayoutGrid } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -14,7 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 
-type Category = 'schedules' | 'shifts' | 'roles' | 'launchTypes';
+type Category = 'schedules' | 'shifts' | 'roles' | 'launchTypes' | 'units';
 
 export default function SettingsPage() {
   const [newValue, setNewValue] = React.useState("")
@@ -26,11 +26,13 @@ export default function SettingsPage() {
   const shiftsQuery = React.useMemo(() => firestore ? query(collection(firestore, 'shifts'), orderBy('name', 'asc')) : null, [firestore])
   const rolesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'roles'), orderBy('name', 'asc')) : null, [firestore])
   const launchTypesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'launchTypes'), orderBy('name', 'asc')) : null, [firestore])
+  const unitsQuery = React.useMemo(() => firestore ? query(collection(firestore, 'units'), orderBy('name', 'asc')) : null, [firestore])
 
   const { data: schedules, loading: loadingSchedules } = useCollection(schedulesQuery)
   const { data: shifts, loading: loadingShifts } = useCollection(shiftsQuery)
   const { data: roles, loading: loadingRoles } = useCollection(rolesQuery)
   const { data: launchTypes, loading: loadingLaunchTypes } = useCollection(launchTypesQuery)
+  const { data: units, loading: loadingUnits } = useCollection(unitsQuery)
 
   async function handleAddItem(category: Category) {
     if (!newValue.trim() || !firestore) return
@@ -43,6 +45,7 @@ export default function SettingsPage() {
     else if (category === 'shifts') currentList = shifts;
     else if (category === 'roles') currentList = roles;
     else if (category === 'launchTypes') currentList = launchTypes;
+    else if (category === 'units') currentList = units;
 
     if (currentList.some((item: any) => item.name === val)) {
       toast({ variant: "destructive", title: "ERRO", description: "ESTE ITEM JÁ EXISTE." })
@@ -154,8 +157,11 @@ export default function SettingsPage() {
         <p className="text-muted-foreground uppercase text-[10px] sm:text-sm">GERENCIE AS DEFINIÇÕES GERAIS DO SISTEMA.</p>
       </div>
 
-      <Tabs defaultValue="schedules" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 lg:w-full h-auto p-1 gap-1">
+      <Tabs defaultValue="launchTypes" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-full h-auto p-1 gap-1">
+          <TabsTrigger value="launchTypes" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
+            <FilePlus className="h-4 w-4" /> LANÇAMENTOS
+          </TabsTrigger>
           <TabsTrigger value="schedules" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
             <Calendar className="h-4 w-4" /> ESCALAS
           </TabsTrigger>
@@ -165,10 +171,14 @@ export default function SettingsPage() {
           <TabsTrigger value="roles" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
             <Briefcase className="h-4 w-4" /> CARGOS
           </TabsTrigger>
-          <TabsTrigger value="launchTypes" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
-            <FilePlus className="h-4 w-4" /> LANÇAMENTOS
+          <TabsTrigger value="units" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
+            <LayoutGrid className="h-4 w-4" /> SETORES
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="launchTypes" className="mt-4 sm:mt-6">
+          {renderCategoryContent('launchTypes', 'TIPOS DE LANÇAMENTO', 'DEFINIÇÕES PARA O BANCO DE HORAS.', launchTypes, loadingLaunchTypes, 'EX: OPERAÇÃO, EXTRA, COMPENSAÇÃO...')}
+        </TabsContent>
 
         <TabsContent value="schedules" className="mt-4 sm:mt-6">
           {renderCategoryContent('schedules', 'GERENCIAR ESCALAS', 'DEFINIÇÕES DE ESCALAS DE SERVIÇO.', schedules, loadingSchedules, 'EX: 12X36, ADMINISTRATIVA...')}
@@ -182,8 +192,8 @@ export default function SettingsPage() {
           {renderCategoryContent('roles', 'GERENCIAR CARGOS', 'DEFINIÇÕES DE CARGOS E FUNÇÕES.', roles, loadingRoles, 'EX: INSPETOR, AGENTE, COORDENADOR...')}
         </TabsContent>
 
-        <TabsContent value="launchTypes" className="mt-4 sm:mt-6">
-          {renderCategoryContent('launchTypes', 'TIPOS DE LANÇAMENTO', 'DEFINIÇÕES PARA O BANCO DE HORAS.', launchTypes, loadingLaunchTypes, 'EX: OPERAÇÃO, EXTRA, COMPENSAÇÃO...')}
+        <TabsContent value="units" className="mt-4 sm:mt-6">
+          {renderCategoryContent('units', 'GERENCIAR SETORES', 'DEFINIÇÕES DE SETORES E UNIDADES.', units, loadingUnits, 'EX: UNIDADE CENTRO, ADM, OPERACIONAL...')}
         </TabsContent>
       </Tabs>
     </div>
