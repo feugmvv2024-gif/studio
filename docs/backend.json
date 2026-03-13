@@ -59,6 +59,26 @@
       },
       "required": ["name"]
     },
+    "Role": {
+      "title": "Role",
+      "description": "Cargos e funções na unidade.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
+    "LaunchType": {
+      "title": "Launch Type",
+      "description": "Tipos de lançamento para banco de horas.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" }
+      },
+      "required": ["name"]
+    },
     "TimeBankEntry": {
       "title": "Time Bank Entry",
       "description": "Registro de horas extras ou compensações.",
@@ -93,6 +113,14 @@
     "/shifts/{shiftId}": {
       "schema": "#/backend/entities/Shift",
       "description": "Coleção de turnos configurados."
+    },
+    "/roles/{roleId}": {
+      "schema": "#/backend/entities/Role",
+      "description": "Coleção de cargos configurados."
+    },
+    "/launchTypes/{launchTypeId}": {
+      "schema": "#/backend/entities/LaunchType",
+      "description": "Coleção de tipos de lançamento configurados."
     },
     "/employees/{employeeId}/timeBank/{entryId}": {
       "schema": "#/backend/entities/TimeBankEntry",
