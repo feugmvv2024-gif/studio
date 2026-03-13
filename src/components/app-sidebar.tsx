@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -7,6 +8,7 @@ import {
   ClipboardList,
   UserCircle,
   LogOut,
+  Settings,
 } from "lucide-react"
 
 import {
@@ -30,6 +32,7 @@ const navigation = [
   { name: "Efetivo", href: "/efetivo", icon: Users, admin: true },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
+  { name: "Configuração", href: "/settings", icon: Settings, admin: true },
 ]
 
 export function AppSidebar() {
@@ -42,7 +45,6 @@ export function AppSidebar() {
 
   React.useEffect(() => {
     // Simulando uma verificação de conexão com o Firebase
-    // Em um cenário real, isso poderia ser atrelado ao estado do SDK
     const timer = setTimeout(() => {
       setConnectionStatus('connected')
     }, 2000)
