@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -78,58 +79,10 @@ export default function EfetivoPage() {
     );
   }, [employees, searchTerm]);
 
-  async function handleAddEmployee(e: React.FormEvent<HTMLFormElement>) {
+  function handleAddEmployee(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!firestore) return;
 
-    setLoading(true);
-    const formData = new FormData(e.currentTarget);
-    
-    const name = (formData.get('name') as string).toUpperCase();
-    const matricula = (formData.get('matricula') as string).toUpperCase();
-    const escala = (formData.get('escala') as string).toUpperCase();
-    const turno = (formData.get('turno') as string).toUpperCase();
-    const role = (formData.get('role') as string).toUpperCase();
-    const unit = (formData.get('unit') as string).toUpperCase();
-    const email = (formData.get('email') as string || "").toUpperCase();
-
-    const newEmployee = {
-      name,
-      email,
-      matricula,
-      escala,
-      turno,
-      role,
-      unit,
-      qra: (formData.get('qra') as string || "").toUpperCase(),
-      status: "ATIVO",
-      avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
-      admissionDate: new Date().toISOString().split('T')[0]
-    };
-
-    try {
-      addDoc(collection(firestore, 'employees'), newEmployee);
-      setIsAddOpen(false);
-      toast({
-        title: "SUCESSO!",
-        description: "NOVO REGISTRO CRIADO COM SUCESSO.",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "ERRO",
-        description: "NÃO FOI POSSÍVEL SALVAR O REGISTRO.",
-      });
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  async function handleUpdateEmployee(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!firestore || !selectedEmployee) return;
-
-    setLoading(true);
     const formData = new FormData(e.currentTarget);
     
     const name = (formData.get('name') as string).toUpperCase();
@@ -141,42 +94,85 @@ export default function EfetivoPage() {
     const email = (formData.get('email') as string || "").toUpperCase();
     const qra = (formData.get('qra') as string || "").toUpperCase();
 
-    try {
-      const employeeDoc = doc(firestore, 'employees', selectedEmployee.id);
-      await updateDoc(employeeDoc, {
-        name,
-        email,
-        matricula,
-        escala,
-        turno,
-        role,
-        unit,
-        qra
+    const newEmployee = {
+      name,
+      email,
+      matricula,
+      escala,
+      turno,
+      role,
+      unit,
+      qra,
+      status: "ATIVO",
+      avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
+      admissionDate: new Date().toISOString().split('T')[0]
+    };
+
+    // Atualização Otimista: Fecha o modal imediatamente
+    setIsAddOpen(false);
+    
+    addDoc(collection(firestore, 'employees'), newEmployee)
+      .then(() => {
+        toast({
+          title: "SUCESSO!",
+          description: "NOVO REGISTRO CRIADO COM SUCESSO.",
+        });
+      })
+      .catch((error) => {
+        toast({
+          variant: "destructive",
+          title: "ERRO",
+          description: "NÃO FOI POSSÍVEL SALVAR O REGISTRO.",
+        });
       });
-      setIsEditOpen(false);
-      setSelectedEmployee(null);
-      toast({
-        title: "SUCESSO!",
-        description: "REGISTRO ATUALIZADO COM SUCESSO.",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "ERRO",
-        description: "NÃO FOI POSSÍVEL ATUALIZAR O REGISTRO.",
-      });
-    } finally {
-      setLoading(false);
-    }
   }
 
-  async function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
+  function handleUpdateEmployee(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!firestore || !selectedEmployee) return;
+
+    const formData = new FormData(e.currentTarget);
+    
+    const updates = {
+      name: (formData.get('name') as string).toUpperCase(),
+      email: (formData.get('email') as string || "").toUpperCase(),
+      matricula: (formData.get('matricula') as string).toUpperCase(),
+      escala: (formData.get('escala') as string).toUpperCase(),
+      turno: (formData.get('turno') as string).toUpperCase(),
+      role: (formData.get('role') as string).toUpperCase(),
+      unit: (formData.get('unit') as string).toUpperCase(),
+      qra: (formData.get('qra') as string || "").toUpperCase(),
+    };
+
+    // Atualização Otimista: Fecha o modal imediatamente
+    setIsEditOpen(false);
+    const employeeId = selectedEmployee.id;
+    setSelectedEmployee(null);
+
+    const employeeDoc = doc(firestore, 'employees', employeeId);
+    updateDoc(employeeDoc, updates)
+      .then(() => {
+        toast({
+          title: "SUCESSO!",
+          description: "REGISTRO ATUALIZADO COM SUCESSO.",
+        });
+      })
+      .catch((error) => {
+        toast({
+          variant: "destructive",
+          title: "ERRO",
+          description: "NÃO FOI POSSÍVEL ATUALIZAR O REGISTRO.",
+        });
+      });
+  }
+
+  function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file || !firestore) return;
 
     setLoading(true);
     const reader = new FileReader();
-    reader.onload = async (evt) => {
+    reader.onload = (evt) => {
       try {
         const bstr = evt.target?.result;
         const wb = XLSX.read(bstr, { type: 'binary' });
@@ -186,7 +182,7 @@ export default function EfetivoPage() {
 
         let importedCount = 0;
 
-        for (const row of data) {
+        data.forEach((row) => {
           const name = (row['SERVIDOR'] || "").toString().toUpperCase();
           const qra = (row['QRAs'] || row['QRA'] || "").toString().toUpperCase();
           const matricula = (row['MATRICULA'] || row['MATRÍCULA'] || "").toString().toUpperCase();
@@ -212,11 +208,11 @@ export default function EfetivoPage() {
             addDoc(collection(firestore, 'employees'), newEmployee);
             importedCount++;
           }
-        }
+        });
 
         toast({
-          title: "IMPORTAÇÃO CONCLUÍDA!",
-          description: `${importedCount} REGISTROS FORAM PROCESSADOS E SALVOS.`,
+          title: "IMPORTAÇÃO INICIADA!",
+          description: `${importedCount} REGISTROS ESTÃO SENDO PROCESSADOS.`,
         });
       } catch (error) {
         toast({
@@ -232,20 +228,24 @@ export default function EfetivoPage() {
     reader.readAsBinaryString(file);
   }
 
-  async function handleDelete(id: string) {
-    if (!firestore || !confirm("TEM CERTEZA QUE DESEJA EXCLUIR ESTE REGISTRO?")) return;
+  function handleDelete(id: string) {
+    if (!firestore) return;
     
-    try {
-      await deleteDoc(doc(firestore, 'employees', id));
-      toast({
-        title: "REGISTRO REMOVIDO",
+    // confirm() é síncrono e trava a UI, mas aqui o deleteDoc não será esperado com await
+    if (!confirm("TEM CERTEZA QUE DESEJA EXCLUIR ESTE REGISTRO?")) return;
+    
+    deleteDoc(doc(firestore, 'employees', id))
+      .then(() => {
+        toast({
+          title: "REGISTRO REMOVIDO",
+        });
+      })
+      .catch(() => {
+        toast({
+          variant: "destructive",
+          title: "ERRO AO EXCLUIR",
+        });
       });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "ERRO AO EXCLUIR",
-      });
-    }
   }
 
   return (
@@ -326,8 +326,7 @@ export default function EfetivoPage() {
                 </ScrollArea>
                 <DialogFooter>
                   <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>CANCELAR</Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  <Button type="submit">
                     GERAR REGISTRO
                   </Button>
                 </DialogFooter>
@@ -391,8 +390,7 @@ export default function EfetivoPage() {
               </ScrollArea>
               <DialogFooter>
                 <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)}>CANCELAR</Button>
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                <Button type="submit">
                   SALVAR ALTERAÇÕES
                 </Button>
               </DialogFooter>
@@ -451,7 +449,7 @@ export default function EfetivoPage() {
                       <TableRow key={employee.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell className="font-mono text-xs">{index + 1}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="font-semibold uppercase text-[10px]">{employee.qra}</Badge>
+                          <span className="font-semibold uppercase text-xs">{employee.qra}</span>
                         </TableCell>
                         <TableCell>
                           <span className="font-semibold uppercase text-xs">{employee.name}</span>
