@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -14,11 +13,9 @@ import {
   Filter,
   X,
   RefreshCw,
-  AlertCircle,
   Users,
   CheckCircle2,
-  Clock,
-  Key
+  Clock
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -77,10 +74,12 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useFirestore, useCollection } from '@/firebase';
-import { collection, addDoc, doc, deleteDoc, query, orderBy, updateDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, deleteDoc, query, orderBy, updateDoc, limit } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import * as XLSX from 'xlsx';
+import { errorEmitter } from '@/firebase/error-emitter';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 function generateValidationCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -118,7 +117,8 @@ export default function EfetivoPage() {
 
   const employeesRef = React.useMemo(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'employees'), orderBy('qra', 'asc'));
+    // Otimização: Limite de 100 registros para economizar custos de leitura inicial
+    return query(collection(firestore, 'employees'), orderBy('qra', 'asc'), limit(100));
   }, [firestore]);
 
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
@@ -184,7 +184,14 @@ export default function EfetivoPage() {
     setIsAddOpen(false);
     addDoc(collection(firestore, 'employees'), newEmployee)
       .then(() => toast({ title: "SUCESSO!", description: "REGISTRO CRIADO." }))
-      .catch(() => toast({ variant: "destructive", title: "ERRO", description: "FALHA AO SALVAR." }));
+      .catch((err) => {
+        const error = new FirestorePermissionError({
+          path: 'employees',
+          operation: 'create',
+          requestResourceData: newEmployee
+        });
+        errorEmitter.emit('permission-error', error);
+      });
   }
 
   function handleUpdateEmployee(e: React.FormEvent<HTMLFormElement>) {
@@ -207,13 +214,20 @@ export default function EfetivoPage() {
       updates.status = (formData.get('status') as string).toUpperCase();
     }
 
-    const id = selectedEmployee.id;
+    const docRef = doc(firestore, 'employees', selectedEmployee.id);
     setIsEditOpen(false);
     setSelectedEmployee(null);
 
-    updateDoc(doc(firestore, 'employees', id), updates)
+    updateDoc(docRef, updates)
       .then(() => toast({ title: "SUCESSO!", description: "REGISTRO ATUALIZADO." }))
-      .catch(() => toast({ variant: "destructive", title: "ERRO", description: "FALHA AO ATUALIZAR." }));
+      .catch((err) => {
+        const error = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
+          requestResourceData: updates
+        });
+        errorEmitter.emit('permission-error', error);
+      });
   }
 
   function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
@@ -242,13 +256,14 @@ export default function EfetivoPage() {
             const unit = (row['SETOR'] || "").toString().toUpperCase();
 
             if (name && matricula) {
-              addDoc(collection(firestore, 'employees'), {
+              const payload = {
                 name, qra, matricula, validationCode, escala, turno, role, unit,
                 status: "PENDENTE",
                 avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
                 admissionDate: new Date().toISOString().split('T')[0],
                 email: ""
-              });
+              };
+              addDoc(collection(firestore, 'employees'), payload);
             }
           });
 
@@ -266,12 +281,18 @@ export default function EfetivoPage() {
 
   function confirmDelete() {
     if (!firestore || !employeeToDelete) return;
-    const id = employeeToDelete;
+    const docRef = doc(firestore, 'employees', employeeToDelete);
     setEmployeeToDelete(null);
     setIsDeleteAlertOpen(false);
-    deleteDoc(doc(firestore, 'employees', id))
+    deleteDoc(docRef)
       .then(() => toast({ title: "REGISTRO REMOVIDO" }))
-      .catch(() => toast({ variant: "destructive", title: "ERRO AO EXCLUIR" }));
+      .catch((err) => {
+        const error = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete'
+        });
+        errorEmitter.emit('permission-error', error);
+      });
   }
 
   function handleBatchDelete() {
@@ -279,7 +300,16 @@ export default function EfetivoPage() {
     const idsToRemove = [...selectedIds];
     setSelectedIds([]);
     setIsBatchDeleteAlertOpen(false);
-    idsToRemove.forEach(id => deleteDoc(doc(firestore, 'employees', id)));
+    idsToRemove.forEach(id => {
+      const docRef = doc(firestore, 'employees', id);
+      deleteDoc(docRef).catch((err) => {
+        const error = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete'
+        });
+        errorEmitter.emit('permission-error', error);
+      });
+    });
     toast({ title: "EXCLUSÃO EM LOTE", description: `${idsToRemove.length} REGISTROS REMOVIDOS.` });
   }
 
@@ -370,12 +400,12 @@ export default function EfetivoPage() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
         <Card className="card-shadow border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] sm:text-xs font-bold uppercase">TOTAL EFETIVO</CardTitle>
+            <CardTitle className="text-[10px] sm:text-xs font-bold uppercase">TOTAL EXIBIDO</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
             <div className="text-xl sm:text-2xl font-bold">{stats.total}</div>
-            <p className="text-[9px] text-muted-foreground uppercase">SERVIDORES</p>
+            <p className="text-[9px] text-muted-foreground uppercase">SERVIDORES CARREGADOS</p>
           </CardContent>
         </Card>
         <Card className="card-shadow border-green-500/20 bg-green-50/50">

@@ -1,4 +1,3 @@
-
 'use client';
 
 import './globals.css';
@@ -6,6 +5,7 @@ import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/s
 import { AppSidebar } from "@/components/app-sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider, initializeFirebase } from '@/firebase';
+import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
 
 const { firebaseApp, firestore, auth } = initializeFirebase();
 
@@ -39,6 +39,7 @@ export default function RootLayout({
               </SidebarInset>
             </div>
             <Toaster />
+            <FirebaseErrorListener />
           </SidebarProvider>
         </FirebaseClientProvider>
       </body>
