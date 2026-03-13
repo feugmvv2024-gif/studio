@@ -63,7 +63,8 @@ export default function EfetivoPage() {
 
   const employeesRef = React.useMemo(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'employees'), orderBy('name', 'asc'));
+    // Alterado para ordenar por 'qra' em ordem ascendente (A-Z)
+    return query(collection(firestore, 'employees'), orderBy('qra', 'asc'));
   }, [firestore]);
 
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
