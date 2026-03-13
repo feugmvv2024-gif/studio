@@ -142,8 +142,8 @@ export default function LancamentosPage() {
       setSelectedEmployeeId("");
       setSearchEmployeeTerm("");
       setFormDays(0);
-      setFormStartDate(getSaoPauloDate());
-      setFormEndDate(getSaoPauloDate());
+      setFormStartDate("");
+      setFormEndDate("");
     }
   }, [selectedLaunch, isAddOpen, isEditOpen]);
 
@@ -190,7 +190,8 @@ export default function LancamentosPage() {
     setSearchEmployeeTerm("");
     setHoursInput("");
     setFormDays(0);
-    setFormStartDate(getSaoPauloDate());
+    setFormStartDate("");
+    setFormEndDate("");
   };
 
   async function handleMutation(e: React.FormEvent<HTMLFormElement>, isUpdate: boolean) {
