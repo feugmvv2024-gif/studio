@@ -13,7 +13,9 @@ import {
   Clock,
   MoreHorizontal,
   X,
-  Filter
+  Filter,
+  User,
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -57,6 +59,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -78,6 +85,7 @@ import { useToast } from "@/hooks/use-toast"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import { cn } from "@/lib/utils"
 
 // Função para formatar data BRT (São Paulo)
 function getSaoPauloDate() {
@@ -114,17 +122,49 @@ export default function LancamentosPage() {
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [hoursInput, setHoursInput] = React.useState("")
 
+  // Estados para o formulário dinâmico
+  const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
+  const [searchEmployeeTerm, setSearchEmployeeTerm] = React.useState("")
+  const [formDays, setFormDays] = React.useState<number>(0)
+  const [formStartDate, setFormStartDate] = React.useState<string>("")
+  const [formEndDate, setFormEndDate] = React.useState<string>("")
+  const [isEmployeePopoverOpen, setIsEmployeePopoverOpen] = React.useState(false)
+
   const firestore = useFirestore()
   const { toast } = useToast()
 
-  // Sincroniza o valor do input de horas com o lançamento selecionado para edição
+  // Sincroniza o valor do input de horas e servidor com o lançamento selecionado para edição
   React.useEffect(() => {
     if (selectedLaunch) {
       setHoursInput(selectedLaunch.hours || "");
+      setSelectedEmployeeId(selectedLaunch.employeeId || "");
+      setFormDays(selectedLaunch.days || 0);
+      setFormStartDate(selectedLaunch.startDate || "");
+      setFormEndDate(selectedLaunch.endDate || "");
     } else {
       setHoursInput("");
+      setSelectedEmployeeId("");
+      setFormDays(0);
+      setFormStartDate("");
+      setFormEndDate("");
     }
   }, [selectedLaunch, isAddOpen, isEditOpen]);
+
+  // Cálculo automático da Data Fim
+  React.useEffect(() => {
+    if (formStartDate && formDays > 0) {
+      try {
+        const start = new Date(formStartDate + "T00:00:00");
+        const end = new Date(start);
+        end.setDate(start.getDate() + formDays);
+        setFormEndDate(end.toISOString().split('T')[0]);
+      } catch (e) {
+        console.error("Erro ao calcular data fim", e);
+      }
+    } else {
+      setFormEndDate(formStartDate);
+    }
+  }, [formStartDate, formDays]);
 
   // Queries otimizadas
   const launchesQuery = React.useMemo(() => {
@@ -156,29 +196,45 @@ export default function LancamentosPage() {
     );
   }, [launches, searchTerm]);
 
+  // Filtragem de servidores para o autocomplete
+  const filteredEmployeesForSelection = React.useMemo(() => {
+    if (!employees) return [];
+    const term = searchEmployeeTerm.toLowerCase();
+    return employees.filter(emp => 
+      emp.name?.toLowerCase().includes(term) || 
+      emp.qra?.toLowerCase().includes(term)
+    ).slice(0, 10); // Limite de visualização para performance
+  }, [employees, searchEmployeeTerm]);
+
+  const selectedEmployee = React.useMemo(() => 
+    employees?.find(emp => emp.id === selectedEmployeeId), 
+    [employees, selectedEmployeeId]
+  );
+
   async function handleAddLaunch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!firestore) return;
+    if (!firestore || !selectedEmployee) {
+      toast({ variant: "destructive", title: "ERRO", description: "SELECIONE UM SERVIDOR." });
+      return;
+    }
 
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    const empId = formData.get('employeeId') as string;
-    const employee = employees.find(emp => emp.id === empId);
 
     const newLaunch = {
       date: formData.get('date') as string,
-      employeeId: empId,
-      employeeName: employee?.name || "N/A",
-      employeeNameQra: `${employee?.name || "N/A"} (${employee?.qra || "N/A"})`,
-      employeeQra: employee?.qra || "N/A",
-      escala: employee?.escala || "N/A",
-      turno: employee?.turno || "N/A",
-      escalaTurno: `${employee?.escala || "N/A"} / ${employee?.turno || "N/A"}`,
+      employeeId: selectedEmployeeId,
+      employeeName: selectedEmployee.name || "N/A",
+      employeeNameQra: `${selectedEmployee.name || "N/A"} (${selectedEmployee.qra || "N/A"})`,
+      employeeQra: selectedEmployee.qra || "N/A",
+      escala: selectedEmployee.escala || "N/A",
+      turno: selectedEmployee.turno || "N/A",
+      escalaTurno: `${selectedEmployee.escala || "N/A"} / ${selectedEmployee.turno || "N/A"}`,
       type: (formData.get('type') as string).toUpperCase(),
-      days: Number(formData.get('days') || 0),
+      days: Number(formDays),
       hours: hoursInput,
-      startDate: formData.get('startDate') as string,
-      endDate: formData.get('endDate') as string,
+      startDate: formStartDate,
+      endDate: formEndDate,
       observations: (formData.get('observations') as string || "").toUpperCase(),
       createdAt: serverTimestamp()
     };
@@ -187,6 +243,7 @@ export default function LancamentosPage() {
       await addDoc(collection(firestore, 'launches'), newLaunch);
       setIsAddOpen(false);
       setHoursInput("");
+      setSelectedEmployeeId("");
       toast({ title: "SUCESSO!", description: "LANÇAMENTO REALIZADO." });
     } catch (err) {
       const error = new FirestorePermissionError({
@@ -202,27 +259,25 @@ export default function LancamentosPage() {
 
   async function handleUpdateLaunch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!firestore || !selectedLaunch) return;
+    if (!firestore || !selectedLaunch || !selectedEmployee) return;
 
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    const empId = formData.get('employeeId') as string;
-    const employee = employees.find(emp => emp.id === empId);
 
     const updates = {
       date: formData.get('date') as string,
-      employeeId: empId,
-      employeeName: employee?.name || "N/A",
-      employeeNameQra: `${employee?.name || "N/A"} (${employee?.qra || "N/A"})`,
-      employeeQra: employee?.qra || "N/A",
-      escala: employee?.escala || "N/A",
-      turno: employee?.turno || "N/A",
-      escalaTurno: `${employee?.escala || "N/A"} / ${employee?.turno || "N/A"}`,
+      employeeId: selectedEmployeeId,
+      employeeName: selectedEmployee.name || "N/A",
+      employeeNameQra: `${selectedEmployee.name || "N/A"} (${selectedEmployee.qra || "N/A"})`,
+      employeeQra: selectedEmployee.qra || "N/A",
+      escala: selectedEmployee.escala || "N/A",
+      turno: selectedEmployee.turno || "N/A",
+      escalaTurno: `${selectedEmployee.escala || "N/A"} / ${selectedEmployee.turno || "N/A"}`,
       type: (formData.get('type') as string).toUpperCase(),
-      days: Number(formData.get('days') || 0),
+      days: Number(formDays),
       hours: hoursInput,
-      startDate: formData.get('startDate') as string,
-      endDate: formData.get('endDate') as string,
+      startDate: formStartDate,
+      endDate: formEndDate,
       observations: (formData.get('observations') as string || "").toUpperCase(),
     };
 
@@ -232,6 +287,7 @@ export default function LancamentosPage() {
       setIsEditOpen(false);
       setSelectedLaunch(null);
       setHoursInput("");
+      setSelectedEmployeeId("");
       toast({ title: "SUCESSO!", description: "LANÇAMENTO ATUALIZADO." });
     } catch (err) {
       const error = new FirestorePermissionError({
@@ -262,34 +318,90 @@ export default function LancamentosPage() {
     }
   }
 
-  const renderForm = (launch?: any) => (
+  const renderForm = (isEdit: boolean = false) => (
     <div className="grid gap-4 py-4">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      {/* Primeira Linha: Data de Lançamento (Menor) e Servidor (Maior) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="grid gap-2">
           <Label className="uppercase text-[10px] font-bold">DATA DO LANÇAMENTO</Label>
-          <Input name="date" type="date" defaultValue={launch?.date || getSaoPauloDate()} required className="h-9" />
+          <Input 
+            name="date" 
+            type="date" 
+            defaultValue={isEdit ? selectedLaunch?.date : getSaoPauloDate()} 
+            required 
+            className="h-9" 
+          />
         </div>
-        <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">SERVIDOR</Label>
-          <Select name="employeeId" defaultValue={launch?.employeeId} required>
-            <SelectTrigger className="h-9 uppercase text-[11px]">
-              <SelectValue placeholder="SELECIONE O TIPO..." />
-            </SelectTrigger>
-            <SelectContent>
-              {employees?.map((emp: any) => (
-                <SelectItem key={emp.id} value={emp.id} className="uppercase text-[11px]">
-                  {emp.name} ({emp.qra})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid gap-2 sm:col-span-2">
+          <Label className="uppercase text-[10px] font-bold">SERVIDOR (BUSCA POR QRA OU NOME)</Label>
+          <Popover open={isEmployeePopoverOpen} onOpenChange={setIsEmployeePopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={isEmployeePopoverOpen}
+                className="justify-between h-9 uppercase text-[11px] font-normal"
+              >
+                {selectedEmployee ? (
+                  <span className="truncate">{selectedEmployee.name} ({selectedEmployee.qra})</span>
+                ) : (
+                  "BUSCAR SERVIDOR..."
+                )}
+                <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-0" align="start">
+              <div className="flex flex-col">
+                <div className="flex items-center border-b p-2">
+                  <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                  <Input
+                    placeholder="DIGITE QRA OU NOME..."
+                    className="h-8 border-none focus-visible:ring-0 uppercase text-[11px]"
+                    value={searchEmployeeTerm}
+                    onChange={(e) => setSearchEmployeeTerm(e.target.value)}
+                  />
+                </div>
+                <ScrollArea className="h-[200px]">
+                  <div className="p-1">
+                    {filteredEmployeesForSelection.length === 0 ? (
+                      <div className="p-4 text-center text-[10px] uppercase text-muted-foreground italic">
+                        NENHUM SERVIDOR ENCONTRADO.
+                      </div>
+                    ) : (
+                      filteredEmployeesForSelection.map((emp) => (
+                        <div
+                          key={emp.id}
+                          className={cn(
+                            "flex items-center justify-between p-2 rounded-sm cursor-pointer hover:bg-muted/50 transition-colors uppercase text-[11px]",
+                            selectedEmployeeId === emp.id && "bg-primary/10 text-primary font-bold"
+                          )}
+                          onClick={() => {
+                            setSelectedEmployeeId(emp.id);
+                            setIsEmployeePopoverOpen(false);
+                            setSearchEmployeeTerm("");
+                          }}
+                        >
+                          <div className="flex flex-col">
+                            <span>{emp.name}</span>
+                            <span className="text-[9px] text-muted-foreground font-mono">{emp.qra}</span>
+                          </div>
+                          {selectedEmployeeId === emp.id && <Check className="h-4 w-4" />}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+              </div>
+            </PopoverContent>
+          </Popover>
+          <input type="hidden" name="employeeId" value={selectedEmployeeId} required />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label className="uppercase text-[10px] font-bold">TIPO DE LANÇAMENTO</Label>
-          <Select name="type" defaultValue={launch?.type} required>
+          <Select name="type" defaultValue={isEdit ? selectedLaunch?.type : undefined} required>
             <SelectTrigger className="h-9 uppercase text-[11px]">
               <SelectValue placeholder="SELECIONE O TIPO..." />
             </SelectTrigger>
@@ -305,7 +417,13 @@ export default function LancamentosPage() {
         <div className="grid grid-cols-2 gap-2">
           <div className="grid gap-2">
             <Label className="uppercase text-[10px] font-bold">DIAS</Label>
-            <Input name="days" type="number" defaultValue={launch?.days || 0} className="h-9" />
+            <Input 
+              name="days" 
+              type="number" 
+              value={formDays} 
+              onChange={(e) => setFormDays(Number(e.target.value))} 
+              className="h-9" 
+            />
           </div>
           <div className="grid gap-2">
             <Label className="uppercase text-[10px] font-bold">HORAS (HH:MM)</Label>
@@ -324,17 +442,29 @@ export default function LancamentosPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label className="uppercase text-[10px] font-bold">DATA INÍCIO</Label>
-          <Input name="startDate" type="date" defaultValue={launch?.startDate} className="h-9" />
+          <Input 
+            name="startDate" 
+            type="date" 
+            value={formStartDate} 
+            onChange={(e) => setFormStartDate(e.target.value)} 
+            className="h-9" 
+          />
         </div>
         <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">DATA FIM</Label>
-          <Input name="endDate" type="date" defaultValue={launch?.endDate} className="h-9" />
+          <Label className="uppercase text-[10px] font-bold">DATA FIM (CALCULADO)</Label>
+          <Input 
+            name="endDate" 
+            type="date" 
+            value={formEndDate} 
+            onChange={(e) => setFormEndDate(e.target.value)} 
+            className="h-9 bg-muted/30" 
+          />
         </div>
       </div>
 
       <div className="grid gap-2">
         <Label className="uppercase text-[10px] font-bold">OBSERVAÇÕES</Label>
-        <Textarea name="observations" defaultValue={launch?.observations} className="uppercase text-xs min-h-[80px]" />
+        <Textarea name="observations" defaultValue={isEdit ? selectedLaunch?.observations : ""} className="uppercase text-xs min-h-[80px]" />
       </div>
     </div>
   );
@@ -346,7 +476,13 @@ export default function LancamentosPage() {
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">LANÇAMENTOS</h2>
           <p className="text-muted-foreground uppercase text-[10px] sm:text-sm">GESTOR DE BANCO DE HORAS E AFASTAMENTOS.</p>
         </div>
-        <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+        <Dialog open={isAddOpen} onOpenChange={(open) => {
+          setIsAddOpen(open);
+          if (!open) {
+            setSelectedLaunch(null);
+            setSelectedEmployeeId("");
+          }
+        }}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2 uppercase font-bold text-xs h-9">
               <Plus className="h-4 w-4" /> NOVO LANÇAMENTO
@@ -356,7 +492,7 @@ export default function LancamentosPage() {
             <form onSubmit={handleAddLaunch} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EFETUAR LANÇAMENTO</DialogTitle></DialogHeader>
               <ScrollArea className="flex-1 p-6 pt-2">
-                {renderForm()}
+                {renderForm(false)}
                 <ScrollBar orientation="vertical" />
               </ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
@@ -446,13 +582,19 @@ export default function LancamentosPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+      <Dialog open={isEditOpen} onOpenChange={(open) => {
+        setIsEditOpen(open);
+        if (!open) {
+          setSelectedLaunch(null);
+          setSelectedEmployeeId("");
+        }
+      }}>
         <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
           {selectedLaunch && (
             <form onSubmit={handleUpdateLaunch} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EDITAR LANÇAMENTO</DialogTitle></DialogHeader>
               <ScrollArea className="flex-1 p-6 pt-2">
-                {renderForm(selectedLaunch)}
+                {renderForm(true)}
                 <ScrollBar orientation="vertical" />
               </ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
