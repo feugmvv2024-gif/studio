@@ -137,7 +137,7 @@ export default function LancamentosPage() {
       setFormDays(selectedLaunch.days || 0);
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
-    } else {
+    } else if (isAddOpen) {
       setHoursInput("");
       setSelectedEmployeeId("");
       setFormDays(0);
@@ -266,8 +266,7 @@ export default function LancamentosPage() {
                       <div
                         key={emp.id}
                         className={cn("flex flex-col p-2.5 rounded-sm hover:bg-muted cursor-pointer border-b last:border-0", selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary")}
-                        onPointerDown={(e) => {
-                          e.preventDefault();
+                        onClick={() => {
                           setSelectedEmployeeId(emp.id);
                           setIsEmployeePopoverOpen(false);
                           setSearchEmployeeTerm("");
