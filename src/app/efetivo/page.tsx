@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -115,13 +116,23 @@ export default function EfetivoPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
+  // Queries para o efetivo
   const employeesRef = React.useMemo(() => {
     if (!firestore) return null;
-    // Otimização: Limite de 100 registros para economizar custos de leitura inicial
     return query(collection(firestore, 'employees'), orderBy('qra', 'asc'), limit(100));
   }, [firestore]);
 
+  // Queries para carregar as opções das configurações
+  const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
+  const shiftsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shifts'), orderBy('name', 'asc')) : null, [firestore]);
+  const rolesRef = React.useMemo(() => firestore ? query(collection(firestore, 'roles'), orderBy('name', 'asc')) : null, [firestore]);
+  const unitsRef = React.useMemo(() => firestore ? query(collection(firestore, 'units'), orderBy('name', 'asc')) : null, [firestore]);
+
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
+  const { data: schedules } = useCollection(schedulesRef);
+  const { data: shifts } = useCollection(shiftsRef);
+  const { data: roles } = useCollection(rolesRef);
+  const { data: units } = useCollection(unitsRef);
 
   const stats = React.useMemo(() => {
     if (!employees) return { total: 0, active: 0, pending: 0 };
@@ -377,12 +388,52 @@ export default function EfetivoPage() {
                       </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="grid gap-2"><Label htmlFor="unit" className="uppercase text-xs font-bold">SETOR</Label><Input id="unit" name="unit" required className="uppercase h-9" /></div>
-                      <div className="grid gap-2"><Label htmlFor="escala" className="uppercase text-xs font-bold">ESCALA</Label><Input id="escala" name="escala" required className="uppercase h-9" /></div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="unit" className="uppercase text-xs font-bold">SETOR</Label>
+                        <Select name="unit" required>
+                          <SelectTrigger className="h-9 uppercase text-xs"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+                          <SelectContent>
+                            {units.length > 0 ? units.map((u: any) => (
+                              <SelectItem key={u.id} value={u.name} className="uppercase text-xs">{u.name}</SelectItem>
+                            )) : <SelectItem value="DEFAULT" disabled>CADASTRE SETORES NAS CONFIGS</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="escala" className="uppercase text-xs font-bold">ESCALA</Label>
+                        <Select name="escala" required>
+                          <SelectTrigger className="h-9 uppercase text-xs"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+                          <SelectContent>
+                            {schedules.length > 0 ? schedules.map((s: any) => (
+                              <SelectItem key={s.id} value={s.name} className="uppercase text-xs">{s.name}</SelectItem>
+                            )) : <SelectItem value="DEFAULT" disabled>CADASTRE ESCALAS NAS CONFIGS</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="grid gap-2"><Label htmlFor="turno" className="uppercase text-xs font-bold">TURNO</Label><Input id="turno" name="turno" required className="uppercase h-9" /></div>
-                      <div className="grid gap-2"><Label htmlFor="role" className="uppercase text-xs font-bold">CARGO</Label><Input id="role" name="role" required className="uppercase h-9" /></div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="turno" className="uppercase text-xs font-bold">TURNO</Label>
+                        <Select name="turno" required>
+                          <SelectTrigger className="h-9 uppercase text-xs"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+                          <SelectContent>
+                            {shifts.length > 0 ? shifts.map((s: any) => (
+                              <SelectItem key={s.id} value={s.name} className="uppercase text-xs">{s.name}</SelectItem>
+                            )) : <SelectItem value="DEFAULT" disabled>CADASTRE TURNOS NAS CONFIGS</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="role" className="uppercase text-xs font-bold">CARGO</Label>
+                        <Select name="role" required>
+                          <SelectTrigger className="h-9 uppercase text-xs"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+                          <SelectContent>
+                            {roles.length > 0 ? roles.map((r: any) => (
+                              <SelectItem key={r.id} value={r.name} className="uppercase text-xs">{r.name}</SelectItem>
+                            )) : <SelectItem value="DEFAULT" disabled>CADASTRE CARGOS NAS CONFIGS</SelectItem>}
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                   </div>
                   <ScrollBar orientation="vertical" />
@@ -473,24 +524,64 @@ export default function EfetivoPage() {
                     <div className="grid gap-2">
                       <Label htmlFor="edit-status" className="uppercase text-xs font-bold">STATUS</Label>
                       <Select name="status" defaultValue={selectedEmployee.status} disabled={selectedEmployee.status === "PENDENTE"}>
-                        <SelectTrigger id="edit-status" className="h-9"><SelectValue /></SelectTrigger>
+                        <SelectTrigger id="edit-status" className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="PENDENTE">PENDENTE</SelectItem>
-                          <SelectItem value="ATIVO">ATIVO</SelectItem>
-                          <SelectItem value="FÉRIAS">FÉRIAS</SelectItem>
-                          <SelectItem value="LICENÇA">LICENÇA</SelectItem>
-                          <SelectItem value="INATIVO">INATIVO</SelectItem>
+                          <SelectItem value="PENDENTE" className="uppercase text-xs">PENDENTE</SelectItem>
+                          <SelectItem value="ATIVO" className="uppercase text-xs">ATIVO</SelectItem>
+                          <SelectItem value="FÉRIAS" className="uppercase text-xs">FÉRIAS</SelectItem>
+                          <SelectItem value="LICENÇA" className="uppercase text-xs">LICENÇA</SelectItem>
+                          <SelectItem value="INATIVO" className="uppercase text-xs">INATIVO</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2"><Label htmlFor="edit-unit" className="uppercase text-xs font-bold">SETOR</Label><Input id="edit-unit" name="unit" defaultValue={selectedEmployee.unit} required className="uppercase h-9" /></div>
-                    <div className="grid gap-2"><Label htmlFor="edit-escala" className="uppercase text-xs font-bold">ESCALA</Label><Input id="edit-escala" name="escala" defaultValue={selectedEmployee.escala} required className="uppercase h-9" /></div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-unit" className="uppercase text-xs font-bold">SETOR</Label>
+                      <Select name="unit" defaultValue={selectedEmployee.unit} required>
+                        <SelectTrigger className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {units.map((u: any) => (
+                            <SelectItem key={u.id} value={u.name} className="uppercase text-xs">{u.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-escala" className="uppercase text-xs font-bold">ESCALA</Label>
+                      <Select name="escala" defaultValue={selectedEmployee.escala} required>
+                        <SelectTrigger className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {schedules.map((s: any) => (
+                            <SelectItem key={s.id} value={s.name} className="uppercase text-xs">{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="grid gap-2"><Label htmlFor="edit-turno" className="uppercase text-xs font-bold">TURNO</Label><Input id="edit-turno" name="turno" defaultValue={selectedEmployee.turno} required className="uppercase h-9" /></div>
-                    <div className="grid gap-2"><Label htmlFor="edit-role" className="uppercase text-xs font-bold">CARGO</Label><Input id="edit-role" name="role" defaultValue={selectedEmployee.role} required className="uppercase h-9" /></div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-turno" className="uppercase text-xs font-bold">TURNO</Label>
+                      <Select name="turno" defaultValue={selectedEmployee.turno} required>
+                        <SelectTrigger className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {shifts.map((s: any) => (
+                            <SelectItem key={s.id} value={s.name} className="uppercase text-xs">{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-role" className="uppercase text-xs font-bold">CARGO</Label>
+                      <Select name="role" defaultValue={selectedEmployee.role} required>
+                        <SelectTrigger className="h-9 uppercase text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {roles.map((r: any) => (
+                            <SelectItem key={r.id} value={r.name} className="uppercase text-xs">{r.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
                 </div>
                 <ScrollBar orientation="vertical" />
