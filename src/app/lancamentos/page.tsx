@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -8,13 +7,7 @@ import {
   Edit, 
   Trash2, 
   Loader2, 
-  FileText,
-  Calendar,
-  Clock,
   MoreHorizontal,
-  X,
-  Filter,
-  User,
   Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -67,7 +60,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { useFirestore, useCollection } from '@/firebase'
 import { 
   collection, 
@@ -78,8 +71,7 @@ import {
   orderBy, 
   updateDoc, 
   limit, 
-  serverTimestamp,
-  where
+  serverTimestamp
 } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
@@ -87,8 +79,8 @@ import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
 
-// Função para formatar data BRT (São Paulo)
-function getSaoPauloDate() {
+// Utilitários
+const getSaoPauloDate = () => {
   const now = new Date();
   return new Intl.DateTimeFormat('pt-BR', {
     timeZone: 'America/Sao_Paulo',
@@ -96,21 +88,16 @@ function getSaoPauloDate() {
     month: '2-digit',
     day: '2-digit',
   }).format(now).split('/').reverse().join('-');
-}
+};
 
-// Função para aplicar máscara de horas (HH:MM)
-function applyHoursMask(value: string) {
-  let v = value.replace(/\D/g, ""); // Remove tudo que não é dígito
-  if (v.length > 6) v = v.slice(0, 6); // Limite de 6 dígitos (9999:59)
-  
-  if (v.length <= 2) {
-    return v;
-  } else {
-    const minutes = v.slice(-2);
-    const hours = v.slice(0, -2);
-    return `${hours}:${minutes}`;
-  }
-}
+const applyHoursMask = (value: string) => {
+  let v = value.replace(/\D/g, "");
+  if (v.length > 6) v = v.slice(0, 6);
+  if (v.length <= 2) return v;
+  const minutes = v.slice(-2);
+  const hours = v.slice(0, -2);
+  return `${hours}:${minutes}`;
+};
 
 export default function LancamentosPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
@@ -120,9 +107,9 @@ export default function LancamentosPage() {
   const [launchToDelete, setLaunchToDelete] = React.useState<string | null>(null)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  
+  // Estados do Formulário
   const [hoursInput, setHoursInput] = React.useState("")
-
-  // Estados para o formulário dinâmico
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
   const [searchEmployeeTerm, setSearchEmployeeTerm] = React.useState("")
   const [formDays, setFormDays] = React.useState<number>(0)
@@ -133,7 +120,16 @@ export default function LancamentosPage() {
   const firestore = useFirestore()
   const { toast } = useToast()
 
-  // Sincroniza o valor do input de horas e servidor com o lançamento selecionado para edição
+  // Queries
+  const launchesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'launches'), orderBy('createdAt', 'desc'), limit(100)) : null, [firestore]);
+  const employeesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
+  const launchTypesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'launchTypes'), orderBy('name', 'asc')) : null, [firestore]);
+
+  const { data: launches, loading: loadingLaunches } = useCollection(launchesQuery)
+  const { data: employees } = useCollection(employeesQuery)
+  const { data: launchTypes } = useCollection(launchTypesQuery)
+
+  // Sincronização de Edição
   React.useEffect(() => {
     if (selectedLaunch) {
       setHoursInput(selectedLaunch.hours || "");
@@ -141,50 +137,26 @@ export default function LancamentosPage() {
       setFormDays(selectedLaunch.days || 0);
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
-    } else if (isAddOpen) {
+    } else {
       setHoursInput("");
       setSelectedEmployeeId("");
       setFormDays(0);
       setFormStartDate(getSaoPauloDate());
       setFormEndDate(getSaoPauloDate());
     }
-  }, [selectedLaunch, isAddOpen]);
+  }, [selectedLaunch, isAddOpen, isEditOpen]);
 
-  // Cálculo automático da Data Fim
+  // Cálculo Automático de Data Fim
   React.useEffect(() => {
     if (formStartDate && formDays > 0) {
-      try {
-        const start = new Date(formStartDate + "T00:00:00");
-        const end = new Date(start);
-        end.setDate(start.getDate() + (formDays - 1)); // -1 porque o dia de início conta como primeiro dia
-        setFormEndDate(end.toISOString().split('T')[0]);
-      } catch (e) {
-        // Silently fail for invalid dates during typing
-      }
+      const start = new Date(formStartDate + "T00:00:00");
+      const end = new Date(start);
+      end.setDate(start.getDate() + (formDays - 1));
+      setFormEndDate(end.toISOString().split('T')[0]);
     } else {
       setFormEndDate(formStartDate);
     }
   }, [formStartDate, formDays]);
-
-  // Queries otimizadas
-  const launchesQuery = React.useMemo(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'launches'), orderBy('createdAt', 'desc'), limit(100));
-  }, [firestore]);
-
-  const employeesQuery = React.useMemo(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'employees'), orderBy('name', 'asc'));
-  }, [firestore]);
-
-  const launchTypesQuery = React.useMemo(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'launchTypes'), orderBy('name', 'asc'));
-  }, [firestore]);
-
-  const { data: launches, loading: loadingLaunches } = useCollection(launchesQuery)
-  const { data: employees } = useCollection(employeesQuery)
-  const { data: launchTypes } = useCollection(launchTypesQuery)
 
   const filteredLaunches = React.useMemo(() => {
     if (!launches) return [];
@@ -196,7 +168,6 @@ export default function LancamentosPage() {
     );
   }, [launches, searchTerm]);
 
-  // Filtragem de servidores para o autocomplete
   const filteredEmployeesForSelection = React.useMemo(() => {
     if (!employees) return [];
     const term = searchEmployeeTerm.toLowerCase();
@@ -212,7 +183,14 @@ export default function LancamentosPage() {
     [employees, selectedEmployeeId]
   );
 
-  async function handleAddLaunch(e: React.FormEvent<HTMLFormElement>) {
+  const resetForm = () => {
+    setSelectedLaunch(null);
+    setSelectedEmployeeId("");
+    setHoursInput("");
+    setSearchEmployeeTerm("");
+  };
+
+  async function handleMutation(e: React.FormEvent<HTMLFormElement>, isUpdate: boolean) {
     e.preventDefault();
     if (!firestore || !selectedEmployee) {
       toast({ variant: "destructive", title: "ERRO", description: "SELECIONE UM SERVIDOR." });
@@ -221,8 +199,7 @@ export default function LancamentosPage() {
 
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-
-    const newLaunch = {
+    const data = {
       date: formData.get('date') as string,
       employeeId: selectedEmployeeId,
       employeeName: selectedEmployee.name || "N/A",
@@ -235,114 +212,39 @@ export default function LancamentosPage() {
       startDate: formStartDate,
       endDate: formEndDate,
       observations: (formData.get('observations') as string || "").toUpperCase(),
-      createdAt: serverTimestamp()
+      ...(isUpdate ? {} : { createdAt: serverTimestamp() })
     };
 
-    try {
-      await addDoc(collection(firestore, 'launches'), newLaunch);
+    const docRef = isUpdate ? doc(firestore, 'launches', selectedLaunch.id) : null;
+    const action = isUpdate ? updateDoc(docRef!, data) : addDoc(collection(firestore, 'launches'), data);
+
+    action.then(() => {
+      toast({ title: "SUCESSO!", description: isUpdate ? "LANÇAMENTO ATUALIZADO." : "LANÇAMENTO REALIZADO." });
       setIsAddOpen(false);
-      setHoursInput("");
-      setSelectedEmployeeId("");
-      toast({ title: "SUCESSO!", description: "LANÇAMENTO REALIZADO." });
-    } catch (err) {
-      const error = new FirestorePermissionError({
-        path: 'launches',
-        operation: 'create',
-        requestResourceData: newLaunch
-      });
-      errorEmitter.emit('permission-error', error);
-    } finally {
-      setIsSubmitting(false);
-    }
-  }
-
-  async function handleUpdateLaunch(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!firestore || !selectedLaunch || !selectedEmployee) return;
-
-    setIsSubmitting(true);
-    const formData = new FormData(e.currentTarget);
-
-    const updates = {
-      date: formData.get('date') as string,
-      employeeId: selectedEmployeeId,
-      employeeName: selectedEmployee.name || "N/A",
-      employeeQra: selectedEmployee.qra || "N/A",
-      escala: selectedEmployee.escala || "N/A",
-      turno: selectedEmployee.turno || "N/A",
-      type: (formData.get('type') as string).toUpperCase(),
-      days: Number(formDays),
-      hours: hoursInput,
-      startDate: formStartDate,
-      endDate: formEndDate,
-      observations: (formData.get('observations') as string || "").toUpperCase(),
-    };
-
-    const docRef = doc(firestore, 'launches', selectedLaunch.id);
-    try {
-      await updateDoc(docRef, updates);
       setIsEditOpen(false);
-      setSelectedLaunch(null);
-      setHoursInput("");
-      setSelectedEmployeeId("");
-      toast({ title: "SUCESSO!", description: "LANÇAMENTO ATUALIZADO." });
-    } catch (err) {
-      const error = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'update',
-        requestResourceData: updates
-      });
-      errorEmitter.emit('permission-error', error);
-    } finally {
-      setIsSubmitting(false);
-    }
+      resetForm();
+    }).catch(err => {
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: isUpdate ? docRef!.path : 'launches',
+        operation: isUpdate ? 'update' : 'create',
+        requestResourceData: data
+      }));
+    }).finally(() => setIsSubmitting(false));
   }
 
-  async function confirmDelete() {
-    if (!firestore || !launchToDelete) return;
-    const docRef = doc(firestore, 'launches', launchToDelete);
-    try {
-      await deleteDoc(docRef);
-      setIsDeleteAlertOpen(false);
-      setLaunchToDelete(null);
-      toast({ title: "REMOVIDO", description: "LANÇAMENTO EXCLUÍDO." });
-    } catch (err) {
-      const error = new FirestorePermissionError({
-        path: docRef.path,
-        operation: 'delete'
-      });
-      errorEmitter.emit('permission-error', error);
-    }
-  }
-
-  const renderForm = (isEdit: boolean = false) => (
+  const renderForm = (isEdit: boolean) => (
     <div className="grid gap-4 py-4">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">DATA DO LANÇAMENTO</Label>
-          <Input 
-            name="date" 
-            type="date" 
-            defaultValue={isEdit ? selectedLaunch?.date : getSaoPauloDate()} 
-            required 
-            className="h-9" 
-          />
+          <Label className="uppercase text-[10px] font-bold">DATA LANÇAMENTO</Label>
+          <Input name="date" type="date" defaultValue={isEdit ? selectedLaunch?.date : getSaoPauloDate()} required className="h-9" />
         </div>
         <div className="grid gap-2 sm:col-span-2">
           <Label className="uppercase text-[10px] font-bold">SERVIDOR (BUSCA POR QRA OU NOME)</Label>
           <Popover open={isEmployeePopoverOpen} onOpenChange={setIsEmployeePopoverOpen} modal={false}>
             <PopoverTrigger asChild>
-              <Button
-                variant="outline"
-                role="combobox"
-                aria-expanded={isEmployeePopoverOpen}
-                className="justify-between h-9 uppercase text-[11px] font-normal w-full"
-              >
-                {selectedEmployee ? (
-                  <span className="truncate">{selectedEmployee.name} ({selectedEmployee.qra})</span>
-                ) : (
-                  "BUSCAR SERVIDOR..."
-                )}
+              <Button variant="outline" className="justify-between h-9 uppercase text-[11px] font-normal w-full">
+                {selectedEmployee ? `${selectedEmployee.name} (${selectedEmployee.qra})` : "BUSCAR SERVIDOR..."}
                 <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
@@ -350,95 +252,63 @@ export default function LancamentosPage() {
               <div className="flex flex-col">
                 <div className="flex items-center border-b p-2">
                   <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
-                  <Input
-                    placeholder="DIGITE QRA OU NOME PARA FILTRAR..."
-                    className="h-9 border-none focus-visible:ring-0 uppercase text-[11px]"
-                    value={searchEmployeeTerm}
-                    onChange={(e) => setSearchEmployeeTerm(e.target.value)}
-                    autoFocus
+                  <Input 
+                    placeholder="DIGITE QRA OU NOME..." 
+                    className="h-9 border-none focus-visible:ring-0 uppercase text-[11px]" 
+                    value={searchEmployeeTerm} 
+                    onChange={(e) => setSearchEmployeeTerm(e.target.value)} 
+                    autoFocus 
                   />
                 </div>
                 <ScrollArea className="h-[250px]">
                   <div className="p-1">
-                    {filteredEmployeesForSelection.length === 0 ? (
-                      <div className="p-4 text-center text-[10px] uppercase text-muted-foreground italic">
-                        NENHUM SERVIDOR ENCONTRADO.
-                      </div>
-                    ) : (
-                      filteredEmployeesForSelection.map((emp) => (
-                        <div
-                          key={emp.id}
-                          role="button"
-                          className={cn(
-                            "flex flex-col w-full text-left p-2.5 rounded-sm hover:bg-muted cursor-pointer transition-colors border-b last:border-0",
-                            selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary"
-                          )}
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            setSelectedEmployeeId(emp.id);
-                            setIsEmployeePopoverOpen(false);
-                            setSearchEmployeeTerm("");
-                          }}
-                        >
-                          <div className="flex items-center justify-between w-full pointer-events-none">
-                            <span className={cn("font-bold uppercase text-[11px]", selectedEmployeeId === emp.id && "text-primary")}>
-                              {emp.name}
-                            </span>
-                            {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-primary" />}
-                          </div>
-                          <div className="flex gap-2 mt-1 pointer-events-none">
-                            <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">QRA: {emp.qra}</span>
-                            <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">MAT: {emp.matricula}</span>
-                          </div>
+                    {filteredEmployeesForSelection.map((emp) => (
+                      <div
+                        key={emp.id}
+                        className={cn("flex flex-col p-2.5 rounded-sm hover:bg-muted cursor-pointer border-b last:border-0", selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary")}
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          setSelectedEmployeeId(emp.id);
+                          setIsEmployeePopoverOpen(false);
+                          setSearchEmployeeTerm("");
+                        }}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <span className={cn("font-bold uppercase text-[11px]", selectedEmployeeId === emp.id && "text-primary")}>{emp.name}</span>
+                          {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-primary" />}
                         </div>
-                      ))
-                    )}
+                        <div className="flex gap-2 mt-1">
+                          <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">QRA: {emp.qra}</span>
+                          <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono">MAT: {emp.matricula}</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </ScrollArea>
               </div>
             </PopoverContent>
           </Popover>
-          <input type="hidden" name="employeeId" value={selectedEmployeeId} required />
         </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">TIPO DE LANÇAMENTO</Label>
+          <Label className="uppercase text-[10px] font-bold">TIPO</Label>
           <Select name="type" defaultValue={isEdit ? selectedLaunch?.type : undefined} required>
-            <SelectTrigger className="h-9 uppercase text-[11px]">
-              <SelectValue placeholder="SELECIONE O TIPO..." />
-            </SelectTrigger>
+            <SelectTrigger className="h-9 uppercase text-[11px]"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
             <SelectContent>
-              {launchTypes?.map((type: any) => (
-                <SelectItem key={type.id} value={type.name} className="uppercase text-[11px]">
-                  {type.name}
-                </SelectItem>
-              ))}
+              {launchTypes?.map((type: any) => <SelectItem key={type.id} value={type.name} className="uppercase text-[11px]">{type.name}</SelectItem>)}
             </SelectContent>
           </Select>
         </div>
         <div className="grid grid-cols-2 gap-2">
           <div className="grid gap-2">
             <Label className="uppercase text-[10px] font-bold">DIAS</Label>
-            <Input 
-              name="days" 
-              type="number" 
-              value={formDays} 
-              onChange={(e) => setFormDays(Number(e.target.value))} 
-              className="h-9" 
-            />
+            <Input name="days" type="number" value={formDays} onChange={(e) => setFormDays(Number(e.target.value))} className="h-9" />
           </div>
           <div className="grid gap-2">
             <Label className="uppercase text-[10px] font-bold">HORAS (HH:MM)</Label>
-            <Input 
-              name="hours" 
-              placeholder="00:00" 
-              value={hoursInput} 
-              onChange={(e) => setHoursInput(applyHoursMask(e.target.value))} 
-              required 
-              className="h-9" 
-            />
+            <Input name="hours" placeholder="00:00" value={hoursInput} onChange={(e) => setHoursInput(applyHoursMask(e.target.value))} required className="h-9" />
           </div>
         </div>
       </div>
@@ -446,23 +316,11 @@ export default function LancamentosPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="grid gap-2">
           <Label className="uppercase text-[10px] font-bold">DATA INÍCIO</Label>
-          <Input 
-            name="startDate" 
-            type="date" 
-            value={formStartDate} 
-            onChange={(e) => setFormStartDate(e.target.value)} 
-            className="h-9" 
-          />
+          <Input name="startDate" type="date" value={formStartDate} onChange={(e) => setFormStartDate(e.target.value)} className="h-9" />
         </div>
         <div className="grid gap-2">
-          <Label className="uppercase text-[10px] font-bold">DATA FIM (CALCULADO)</Label>
-          <Input 
-            name="endDate" 
-            type="date" 
-            value={formEndDate} 
-            readOnly 
-            className="h-9 bg-muted/50 cursor-not-allowed" 
-          />
+          <Label className="uppercase text-[10px] font-bold">DATA FIM</Label>
+          <Input name="endDate" type="date" value={formEndDate} readOnly className="h-9 bg-muted/50 cursor-not-allowed" />
         </div>
       </div>
 
@@ -478,32 +336,19 @@ export default function LancamentosPage() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">LANÇAMENTOS</h2>
-          <p className="text-muted-foreground uppercase text-[10px] sm:text-sm">GESTOR DE BANCO DE HORAS E AFASTAMENTOS.</p>
+          <p className="text-muted-foreground uppercase text-[10px]">GESTOR DE BANCO DE HORAS E AFASTAMENTOS.</p>
         </div>
-        <Dialog open={isAddOpen} onOpenChange={(open) => {
-          setIsAddOpen(open);
-          if (!open) {
-            setSelectedLaunch(null);
-            setSelectedEmployeeId("");
-          }
-        }}>
+        <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) resetForm(); }}>
           <DialogTrigger asChild>
-            <Button size="sm" className="gap-2 uppercase font-bold text-xs h-9">
-              <Plus className="h-4 w-4" /> NOVO LANÇAMENTO
-            </Button>
+            <Button size="sm" className="gap-2 uppercase font-bold text-xs h-9"><Plus className="h-4 w-4" /> NOVO LANÇAMENTO</Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
-            <form onSubmit={handleAddLaunch} className="flex flex-col h-full">
+            <form onSubmit={(e) => handleMutation(e, false)} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EFETUAR LANÇAMENTO</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2">
-                {renderForm(false)}
-                <ScrollBar orientation="vertical" />
-              </ScrollArea>
+              <ScrollArea className="flex-1 p-6 pt-2">{renderForm(false)}<ScrollBar /></ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
                 <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
-                <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "GRAVAR"}
-                </Button>
+                <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "GRAVAR"}</Button>
               </DialogFooter>
             </form>
           </DialogContent>
@@ -514,18 +359,11 @@ export default function LancamentosPage() {
         <CardHeader className="p-4 border-b">
           <div className="relative max-w-md">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="BUSCAR POR SERVIDOR OU TIPO..." 
-              className="pl-8 uppercase h-9 text-[10px] sm:text-xs" 
-              value={searchTerm} 
-              onChange={(e) => setSearchTerm(e.target.value)} 
-            />
+            <Input placeholder="BUSCAR POR SERVIDOR OU TIPO..." className="pl-8 uppercase h-9 text-[10px]" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          {loadingLaunches ? (
-            <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-          ) : (
+          {loadingLaunches ? <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/50">
@@ -537,48 +375,37 @@ export default function LancamentosPage() {
                     <TableHead className="font-bold uppercase text-[9px] min-w-[110px]">TIPO</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[60px]">DIAS</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[70px]">HORAS</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">DATA INÍCIO</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">DATA FIM</TableHead>
+                    <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">INÍCIO</TableHead>
+                    <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">FIM</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">OBSERVAÇÕES</TableHead>
                     <TableHead className="text-right font-bold uppercase text-[9px] pr-4">AÇÕES</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLaunches.length === 0 ? (
-                    <TableRow><TableCell colSpan={11} className="text-center py-8 text-muted-foreground uppercase text-xs italic">NENHUM LANÇAMENTO ENCONTRADO.</TableCell></TableRow>
-                  ) : (
-                    filteredLaunches.map((launch, index) => (
-                      <TableRow key={launch.id} className="hover:bg-muted/30 transition-colors">
-                        <TableCell className="font-mono text-[9px] text-muted-foreground px-4">{filteredLaunches.length - index}</TableCell>
-                        <TableCell className="text-[11px] font-medium whitespace-nowrap">{launch.date?.split('-').reverse().join('/')}</TableCell>
-                        <TableCell>
-                          <div className="flex flex-col">
-                            <span className="font-bold text-[11px] uppercase whitespace-nowrap">{launch.employeeName}</span>
-                            <span className="text-[9px] text-muted-foreground font-mono uppercase">{launch.employeeQra}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-[10px] uppercase whitespace-nowrap">
-                          {launch.escala} / {launch.turno}
-                        </TableCell>
-                        <TableCell><Badge variant="outline" className="text-[9px] uppercase border-primary/30 text-primary whitespace-nowrap">{launch.type}</Badge></TableCell>
-                        <TableCell className="text-[11px] font-bold">{launch.days || 0}D</TableCell>
-                        <TableCell className="text-[11px] font-bold text-primary whitespace-nowrap">{launch.hours}H</TableCell>
-                        <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/') || "---"}</TableCell>
-                        <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/') || "---"}</TableCell>
-                        <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground">{launch.observations || "---"}</TableCell>
-                        <TableCell className="text-right pr-4">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5" /> EDITAR</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  {filteredLaunches.map((launch, index) => (
+                    <TableRow key={launch.id} className="hover:bg-muted/30">
+                      <TableCell className="font-mono text-[9px] px-4">{filteredLaunches.length - index}</TableCell>
+                      <TableCell className="text-[11px] whitespace-nowrap">{launch.date?.split('-').reverse().join('/')}</TableCell>
+                      <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase">{launch.employeeName}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra}</span></div></TableCell>
+                      <TableCell className="text-[10px] uppercase">{launch.escala} / {launch.turno}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-[9px] uppercase">{launch.type}</Badge></TableCell>
+                      <TableCell className="text-[11px] font-bold">{launch.days || 0}D</TableCell>
+                      <TableCell className="text-[11px] font-bold text-primary">{launch.hours}H</TableCell>
+                      <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/')}</TableCell>
+                      <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/')}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground">{launch.observations}</TableCell>
+                      <TableCell className="text-right pr-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setIsEditOpen(true); }} className="uppercase text-[10px]"><Edit className="mr-2 h-3.5 w-3.5" /> EDITAR</DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setIsDeleteAlertOpen(true); }} className="text-destructive uppercase text-[10px]"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -586,26 +413,15 @@ export default function LancamentosPage() {
         </CardContent>
       </Card>
 
-      <Dialog open={isEditOpen} onOpenChange={(open) => {
-        setIsEditOpen(open);
-        if (!open) {
-          setSelectedLaunch(null);
-          setSelectedEmployeeId("");
-        }
-      }}>
+      <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="sm:max-w-[600px] max-h-[95vh] flex flex-col p-0 overflow-hidden">
           {selectedLaunch && (
-            <form onSubmit={handleUpdateLaunch} className="flex flex-col h-full">
+            <form onSubmit={(e) => handleMutation(e, true)} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2"><DialogTitle className="uppercase">EDITAR LANÇAMENTO</DialogTitle></DialogHeader>
-              <ScrollArea className="flex-1 p-6 pt-2">
-                {renderForm(true)}
-                <ScrollBar orientation="vertical" />
-              </ScrollArea>
+              <ScrollArea className="flex-1 p-6 pt-2">{renderForm(true)}<ScrollBar /></ScrollArea>
               <DialogFooter className="p-6 pt-4 border-t gap-2 sm:gap-0">
                 <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)} className="uppercase text-xs font-bold">CANCELAR</Button>
-                <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR ALTERAÇÕES"}
-                </Button>
+                <Button type="submit" disabled={isSubmitting} className="uppercase text-xs font-bold">{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR"}</Button>
               </DialogFooter>
             </form>
           )}
@@ -613,15 +429,9 @@ export default function LancamentosPage() {
       </Dialog>
 
       <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
-        <AlertDialogContent className="max-w-[90vw] sm:max-w-lg">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO</AlertDialogTitle>
-            <AlertDialogDescription className="uppercase text-[10px]">AÇÃO IRREVERSÍVEL. O LANÇAMENTO SERÁ REMOVIDO DO HISTÓRICO.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="uppercase text-xs">CANCELAR</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive uppercase text-xs">EXCLUIR</AlertDialogAction>
-          </AlertDialogFooter>
+        <AlertDialogContent className="max-w-[90vw]">
+          <AlertDialogHeader><AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO</AlertDialogTitle><AlertDialogDescription className="uppercase text-[10px]">AÇÃO IRREVERSÍVEL. O LANÇAMENTO SERÁ REMOVIDO.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel className="uppercase text-xs">CANCELAR</AlertDialogCancel><AlertDialogAction onClick={() => { if (launchToDelete) deleteDoc(doc(firestore, 'launches', launchToDelete)).then(() => toast({ title: "REMOVIDO" })).catch(err => errorEmitter.emit('permission-error', new FirestorePermissionError({ path: `launches/${launchToDelete}`, operation: 'delete' }))).finally(() => setIsDeleteAlertOpen(false)); }} className="bg-destructive uppercase text-xs">EXCLUIR</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </div>
