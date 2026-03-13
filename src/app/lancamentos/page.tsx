@@ -236,7 +236,6 @@ export default function LancamentosPage() {
 
   const renderFormFields = (isEdit: boolean) => (
     <div className="space-y-4 py-4 px-2">
-      {/* Banner de informação azul conforme a imagem */}
       <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 flex items-center gap-3">
         <div className="bg-white rounded-full p-1 border border-blue-200 shadow-sm">
           <Info className="h-4 w-4 text-blue-500" />
@@ -247,7 +246,6 @@ export default function LancamentosPage() {
       </div>
 
       <div className="space-y-4">
-        {/* SERVIDOR (NOME OU QRA) */}
         <div className="grid gap-1.5 relative">
           <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">SERVIDOR (NOME OU QRA)</Label>
           <div className="relative">
@@ -304,7 +302,6 @@ export default function LancamentosPage() {
           <input type="hidden" name="employeeId" value={selectedEmployeeId} required />
         </div>
 
-        {/* DATA LANÇAMENTO, TURNO, ESCALA */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="grid gap-1.5">
             <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DATA LANÇAMENTO</Label>
@@ -330,7 +327,6 @@ export default function LancamentosPage() {
           </div>
         </div>
 
-        {/* TIPO DE LANÇAMENTO */}
         <div className="grid gap-1.5">
           <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">TIPO DE LANÇAMENTO</Label>
           <Select name="type" defaultValue={isEdit ? selectedLaunch?.type : undefined} required>
@@ -343,7 +339,6 @@ export default function LancamentosPage() {
           </Select>
         </div>
 
-        {/* HORAS, DIAS, DATA DE, DATA FIM */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           <div className="grid gap-1.5">
             <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">HORAS (HH:MM)</Label>
@@ -388,7 +383,6 @@ export default function LancamentosPage() {
           </div>
         </div>
 
-        {/* OBSERVAÇÃO */}
         <div className="grid gap-1.5">
           <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">OBSERVAÇÃO</Label>
           <Textarea 
@@ -503,9 +497,9 @@ export default function LancamentosPage() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
-                            <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setIsEditOpen(true); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setIsDeleteAlertOpen(true); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -518,7 +512,6 @@ export default function LancamentosPage() {
         </CardContent>
       </Card>
 
-      {/* DIALOG DE EDIÇÃO COM O MESMO LAYOUT */}
       <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if (!open) resetForm(); }}>
         <DialogContent className="sm:max-w-[700px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
           {selectedLaunch && (
