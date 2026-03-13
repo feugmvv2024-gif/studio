@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -81,6 +82,16 @@ import { useToast } from "@/hooks/use-toast";
 import { ScrollArea } from "@/components/ui/scroll-area"
 import * as XLSX from 'xlsx';
 
+// Função auxiliar movida para fora para evitar recriação
+function generateValidationCode() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let code = '';
+  for (let i = 0; i < 6; i++) {
+    code += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return code;
+}
+
 export default function EfetivoPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
@@ -113,7 +124,6 @@ export default function EfetivoPage() {
 
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
 
-  // Estatísticas dos Cards
   const stats = React.useMemo(() => {
     if (!employees) return { total: 0, active: 0, pending: 0 };
     return {
@@ -122,15 +132,6 @@ export default function EfetivoPage() {
       pending: employees.filter(e => e.status === "PENDENTE").length
     };
   }, [employees]);
-
-  function generateValidationCode() {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-    let code = '';
-    for (let i = 0; i < 6; i++) {
-      code += chars.charAt(Math.floor(Math.random() * chars.length));
-    }
-    return code;
-  }
 
   React.useEffect(() => {
     if (isAddOpen) {
@@ -182,14 +183,9 @@ export default function EfetivoPage() {
     };
 
     setIsAddOpen(false);
-    
     addDoc(collection(firestore, 'employees'), newEmployee)
-      .then(() => {
-        toast({ title: "SUCESSO!", description: "REGISTRO CRIADO EM MODO PENDENTE." });
-      })
-      .catch(() => {
-        toast({ variant: "destructive", title: "ERRO", description: "FALHA AO SALVAR." });
-      });
+      .then(() => toast({ title: "SUCESSO!", description: "REGISTRO CRIADO." }))
+      .catch(() => toast({ variant: "destructive", title: "ERRO", description: "FALHA AO SALVAR." }));
   }
 
   function handleUpdateEmployee(e: React.FormEvent<HTMLFormElement>) {
@@ -199,7 +195,6 @@ export default function EfetivoPage() {
     const formData = new FormData(e.currentTarget);
     const updates: any = {
       name: (formData.get('name') as string).toUpperCase(),
-      email: (formData.get('email') as string || "").toUpperCase(),
       matricula: (formData.get('matricula') as string).toUpperCase(),
       validationCode: (formData.get('validationCode') as string || "").toUpperCase(),
       escala: (formData.get('escala') as string).toUpperCase(),
@@ -218,12 +213,8 @@ export default function EfetivoPage() {
     setSelectedEmployee(null);
 
     updateDoc(doc(firestore, 'employees', id), updates)
-      .then(() => {
-        toast({ title: "SUCESSO!", description: "REGISTRO ATUALIZADO." });
-      })
-      .catch(() => {
-        toast({ variant: "destructive", title: "ERRO", description: "FALHA AO ATUALIZAR." });
-      });
+      .then(() => toast({ title: "SUCESSO!", description: "REGISTRO ATUALIZADO." }))
+      .catch(() => toast({ variant: "destructive", title: "ERRO", description: "FALHA AO ATUALIZAR." }));
   }
 
   function handleImportExcel(e: React.ChangeEvent<HTMLInputElement>) {
@@ -262,7 +253,7 @@ export default function EfetivoPage() {
             }
           });
 
-          toast({ title: "IMPORTAÇÃO CONCLUÍDA", description: `${data.length} REGISTROS PROCESSADOS COMO PENDENTES.` });
+          toast({ title: "IMPORTAÇÃO CONCLUÍDA", description: `${data.length} REGISTROS PROCESSADOS.` });
         } catch (error) {
           toast({ variant: "destructive", title: "ERRO NA IMPORTAÇÃO" });
         } finally {
@@ -276,11 +267,9 @@ export default function EfetivoPage() {
 
   function confirmDelete() {
     if (!firestore || !employeeToDelete) return;
-    
     const id = employeeToDelete;
     setEmployeeToDelete(null);
     setIsDeleteAlertOpen(false);
-    
     deleteDoc(doc(firestore, 'employees', id))
       .then(() => toast({ title: "REGISTRO REMOVIDO" }))
       .catch(() => toast({ variant: "destructive", title: "ERRO AO EXCLUIR" }));
@@ -288,15 +277,10 @@ export default function EfetivoPage() {
 
   function handleBatchDelete() {
     if (!firestore || selectedIds.length === 0) return;
-    
     const idsToRemove = [...selectedIds];
     setSelectedIds([]);
     setIsBatchDeleteAlertOpen(false);
-
-    idsToRemove.forEach(id => {
-      deleteDoc(doc(firestore, 'employees', id));
-    });
-
+    idsToRemove.forEach(id => deleteDoc(doc(firestore, 'employees', id)));
     toast({ title: "EXCLUSÃO EM LOTE", description: `${idsToRemove.length} REGISTROS REMOVIDOS.` });
   }
 
@@ -309,24 +293,10 @@ export default function EfetivoPage() {
   }
 
   const toggleSelect = (id: string) => {
-    if (selectedIds.includes(id)) {
-      setSelectedIds(selectedIds.filter(i => i !== id));
-    } else {
-      setSelectedIds([...selectedIds, id]);
-    }
+    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   }
 
-  const clearFilters = () => {
-    setFilters({
-      qra: "",
-      name: "",
-      escala: "",
-      turno: "",
-      role: "",
-      unit: ""
-    });
-  };
-
+  const clearFilters = () => setFilters({ qra: "", name: "", escala: "", turno: "", role: "", unit: "" });
   const hasActiveFilters = Object.values(filters).some(v => v !== "");
 
   return (
@@ -347,29 +317,18 @@ export default function EfetivoPage() {
               EXCLUIR ({selectedIds.length})
             </Button>
           )}
-          <input
-            type="file"
-            accept=".xlsx, .xls"
-            className="hidden"
-            ref={fileInputRef}
-            onChange={handleImportExcel}
-          />
+          <input type="file" accept=".xlsx, .xls" className="hidden" ref={fileInputRef} onChange={handleImportExcel} />
           <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={loadingImport}>
             {loadingImport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             IMPORTAR EXCEL
           </Button>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
-                <UserPlus className="h-4 w-4" />
-                NOVO REGISTRO
-              </Button>
+              <Button className="gap-2"><UserPlus className="h-4 w-4" />NOVO REGISTRO</Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[500px]">
               <form onSubmit={handleAddEmployee}>
-                <DialogHeader>
-                  <DialogTitle className="uppercase">CADASTRAR INTEGRANTE</DialogTitle>
-                </DialogHeader>
+                <DialogHeader><DialogTitle className="uppercase">CADASTRAR INTEGRANTE</DialogTitle></DialogHeader>
                 <ScrollArea className="max-h-[60vh] pr-4 mt-4">
                   <div className="grid gap-4 py-2">
                     <div className="grid gap-2">
@@ -377,55 +336,23 @@ export default function EfetivoPage() {
                       <Input id="name" name="name" required className="uppercase" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="qra" className="uppercase">QRA</Label>
-                        <Input id="qra" name="qra" required className="uppercase" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="matricula" className="uppercase">MATRÍCULA</Label>
-                        <Input id="matricula" name="matricula" required className="uppercase" />
-                      </div>
+                      <div className="grid gap-2"><Label htmlFor="qra" className="uppercase">QRA</Label><Input id="qra" name="qra" required className="uppercase" /></div>
+                      <div className="grid gap-2"><Label htmlFor="matricula" className="uppercase">MATRÍCULA</Label><Input id="matricula" name="matricula" required className="uppercase" /></div>
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO (AUTOMÁTICO)</Label>
+                      <Label htmlFor="validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label>
                       <div className="flex gap-2">
-                        <Input 
-                          id="validationCode" 
-                          name="validationCode" 
-                          value={generatedCode} 
-                          onChange={(e) => setGeneratedCode(e.target.value.toUpperCase())}
-                          className="uppercase font-mono font-bold text-primary" 
-                        />
-                        <Button 
-                          type="button" 
-                          variant="outline" 
-                          size="icon" 
-                          onClick={() => setGeneratedCode(generateValidationCode())}
-                          title="GERAR NOVO CÓDIGO"
-                        >
-                          <RefreshCw className="h-4 w-4" />
-                        </Button>
+                        <Input id="validationCode" name="validationCode" value={generatedCode} onChange={(e) => setGeneratedCode(e.target.value.toUpperCase())} className="uppercase font-mono font-bold text-primary" />
+                        <Button type="button" variant="outline" size="icon" onClick={() => setGeneratedCode(generateValidationCode())}><RefreshCw className="h-4 w-4" /></Button>
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="unit" className="uppercase">SETOR</Label>
-                        <Input id="unit" name="unit" required className="uppercase" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="escala" className="uppercase">ESCALA</Label>
-                        <Input id="escala" name="escala" required className="uppercase" />
-                      </div>
+                      <div className="grid gap-2"><Label htmlFor="unit" className="uppercase">SETOR</Label><Input id="unit" name="unit" required className="uppercase" /></div>
+                      <div className="grid gap-2"><Label htmlFor="escala" className="uppercase">ESCALA</Label><Input id="escala" name="escala" required className="uppercase" /></div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label htmlFor="turno" className="uppercase">TURNO</Label>
-                        <Input id="turno" name="turno" required className="uppercase" />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label htmlFor="role" className="uppercase">CARGO</Label>
-                        <Input id="role" name="role" required className="uppercase" />
-                      </div>
+                      <div className="grid gap-2"><Label htmlFor="turno" className="uppercase">TURNO</Label><Input id="turno" name="turno" required className="uppercase" /></div>
+                      <div className="grid gap-2"><Label htmlFor="role" className="uppercase">CARGO</Label><Input id="role" name="role" required className="uppercase" /></div>
                     </div>
                   </div>
                 </ScrollArea>
@@ -439,7 +366,6 @@ export default function EfetivoPage() {
         </div>
       </div>
 
-      {/* Cards de Estatísticas */}
       <div className="grid gap-4 md:grid-cols-3">
         <Card className="card-shadow border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -448,7 +374,7 @@ export default function EfetivoPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-[10px] text-muted-foreground uppercase">SERVIDORES CADASTRADOS NO SISTEMA</p>
+            <p className="text-[10px] text-muted-foreground uppercase">SERVIDORES CADASTRADOS</p>
           </CardContent>
         </Card>
         <Card className="card-shadow border-green-500/20 bg-green-50/50">
@@ -458,7 +384,7 @@ export default function EfetivoPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{stats.active}</div>
-            <p className="text-[10px] text-muted-foreground uppercase">AGENTES COM CADASTRO ATIVO</p>
+            <p className="text-[10px] text-muted-foreground uppercase">AGENTES ATIVOS</p>
           </CardContent>
         </Card>
         <Card className="card-shadow border-orange-500/20 bg-orange-50/50">
@@ -468,7 +394,7 @@ export default function EfetivoPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
-            <p className="text-[10px] text-muted-foreground uppercase">AGUARDANDO VALIDAÇÃO PELO AGENTE</p>
+            <p className="text-[10px] text-muted-foreground uppercase">AGUARDANDO VALIDAÇÃO</p>
           </CardContent>
         </Card>
       </div>
@@ -477,15 +403,11 @@ export default function EfetivoPage() {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO</AlertDialogTitle>
-            <AlertDialogDescription className="uppercase text-xs">
-              ESTA AÇÃO NÃO PODE SER DESFEITA. O REGISTRO SERÁ REMOVIDO PERMANENTEMENTE DO BANCO DE DADOS.
-            </AlertDialogDescription>
+            <AlertDialogDescription className="uppercase text-xs">AÇÃO IRREVERSÍVEL. O REGISTRO SERÁ REMOVIDO.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="uppercase">CANCELAR</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 uppercase">
-              EXCLUIR REGISTRO
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive uppercase">EXCLUIR</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -493,16 +415,12 @@ export default function EfetivoPage() {
       <AlertDialog open={isBatchDeleteAlertOpen} onOpenChange={setIsBatchDeleteAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO EM LOTE</AlertDialogTitle>
-            <AlertDialogDescription className="uppercase text-xs">
-              VOCÊ ESTÁ PRESTES A EXCLUIR {selectedIds.length} REGISTROS. ESTA AÇÃO É IRREVERSÍVEL.
-            </AlertDialogDescription>
+            <AlertDialogTitle className="uppercase">EXCLUIR {selectedIds.length} REGISTROS?</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-xs">ESTA AÇÃO É IRREVERSÍVEL.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="uppercase">CANCELAR</AlertDialogCancel>
-            <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive hover:bg-destructive/90 uppercase">
-              EXCLUIR SELECIONADOS
-            </AlertDialogAction>
+            <AlertDialogAction onClick={handleBatchDelete} className="bg-destructive uppercase">EXCLUIR SELECIONADOS</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -511,46 +429,20 @@ export default function EfetivoPage() {
         <DialogContent className="sm:max-w-[500px]">
           {selectedEmployee && (
             <form onSubmit={handleUpdateEmployee}>
-              <DialogHeader>
-                <DialogTitle className="uppercase">EDITAR SERVIDOR</DialogTitle>
-              </DialogHeader>
+              <DialogHeader><DialogTitle className="uppercase">EDITAR SERVIDOR</DialogTitle></DialogHeader>
               <ScrollArea className="max-h-[60vh] pr-4 mt-4">
                 <div className="grid gap-4 py-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-name" className="uppercase">NOME COMPLETO</Label>
-                    <Input id="edit-name" name="name" defaultValue={selectedEmployee.name} required className="uppercase" />
+                  <div className="grid gap-2"><Label htmlFor="edit-name" className="uppercase">NOME COMPLETO</Label><Input id="edit-name" name="name" defaultValue={selectedEmployee.name} required className="uppercase" /></div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2"><Label htmlFor="edit-qra" className="uppercase">QRA</Label><Input id="edit-qra" name="qra" defaultValue={selectedEmployee.qra} required className="uppercase" /></div>
+                    <div className="grid gap-2"><Label htmlFor="edit-matricula" className="uppercase">MATRÍCULA</Label><Input id="edit-matricula" name="matricula" defaultValue={selectedEmployee.matricula} required className="uppercase" /></div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-qra" className="uppercase">QRA</Label>
-                      <Input id="edit-qra" name="qra" defaultValue={selectedEmployee.qra} required className="uppercase" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-matricula" className="uppercase">MATRÍCULA</Label>
-                      <Input id="edit-matricula" name="matricula" defaultValue={selectedEmployee.matricula} required className="uppercase" />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label>
-                      <Input 
-                        id="edit-validationCode" 
-                        name="validationCode" 
-                        defaultValue={selectedEmployee.validationCode} 
-                        className="uppercase font-mono font-bold text-primary" 
-                      />
-                    </div>
+                    <div className="grid gap-2"><Label htmlFor="edit-validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label><Input id="edit-validationCode" name="validationCode" defaultValue={selectedEmployee.validationCode} className="uppercase font-mono font-bold text-primary" /></div>
                     <div className="grid gap-2">
                       <Label htmlFor="edit-status" className="uppercase">STATUS</Label>
-                      <Select 
-                        name="status" 
-                        defaultValue={selectedEmployee.status} 
-                        disabled={selectedEmployee.status === "PENDENTE"}
-                      >
-                        <SelectTrigger id="edit-status">
-                          <SelectValue placeholder="SELECIONE..." />
-                        </SelectTrigger>
+                      <Select name="status" defaultValue={selectedEmployee.status} disabled={selectedEmployee.status === "PENDENTE"}>
+                        <SelectTrigger id="edit-status"><SelectValue /></SelectTrigger>
                         <SelectContent>
                           <SelectItem value="PENDENTE">PENDENTE</SelectItem>
                           <SelectItem value="ATIVO">ATIVO</SelectItem>
@@ -559,33 +451,15 @@ export default function EfetivoPage() {
                           <SelectItem value="INATIVO">INATIVO</SelectItem>
                         </SelectContent>
                       </Select>
-                      {selectedEmployee.status === "PENDENTE" && (
-                        <p className="text-[9px] text-muted-foreground uppercase flex items-center gap-1">
-                          <AlertCircle className="h-2.5 w-2.5" /> BLOQUEADO ATÉ ATIVAÇÃO PELO AGENTE.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-unit" className="uppercase">SETOR</Label>
-                      <Input id="edit-unit" name="unit" defaultValue={selectedEmployee.unit} required className="uppercase" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-escala" className="uppercase">ESCALA</Label>
-                      <Input id="edit-escala" name="escala" defaultValue={selectedEmployee.escala} required className="uppercase" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-turno" className="uppercase">TURNO</Label>
-                      <Input id="edit-turno" name="turno" defaultValue={selectedEmployee.turno} required className="uppercase" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-role" className="uppercase">CARGO</Label>
-                      <Input id="edit-role" name="role" defaultValue={selectedEmployee.role} required className="uppercase" />
-                    </div>
+                    <div className="grid gap-2"><Label htmlFor="edit-unit" className="uppercase">SETOR</Label><Input id="edit-unit" name="unit" defaultValue={selectedEmployee.unit} required className="uppercase" /></div>
+                    <div className="grid gap-2"><Label htmlFor="edit-escala" className="uppercase">ESCALA</Label><Input id="edit-escala" name="escala" defaultValue={selectedEmployee.escala} required className="uppercase" /></div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2"><Label htmlFor="edit-turno" className="uppercase">TURNO</Label><Input id="edit-turno" name="turno" defaultValue={selectedEmployee.turno} required className="uppercase" /></div>
+                    <div className="grid gap-2"><Label htmlFor="edit-role" className="uppercase">CARGO</Label><Input id="edit-role" name="role" defaultValue={selectedEmployee.role} required className="uppercase" /></div>
                   </div>
                 </div>
               </ScrollArea>
@@ -602,83 +476,24 @@ export default function EfetivoPage() {
         <CardHeader className="flex flex-row items-center gap-2 space-y-0">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="BUSCAR POR SERVIDOR, MATRÍCULA OU QRA..."
-              className="pl-8 uppercase"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+            <Input placeholder="BUSCAR POR SERVIDOR, MATRÍCULA OU QRA..." className="pl-8 uppercase" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
-          
           <Popover>
             <PopoverTrigger asChild>
               <Button variant={hasActiveFilters ? "default" : "outline"} className="gap-2">
-                <Filter className="h-4 w-4" />
-                FILTROS
-                {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px] bg-white text-primary">!</Badge>}
+                <Filter className="h-4 w-4" /> FILTROS {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-5 w-5 p-0 flex items-center justify-center rounded-full text-[10px] bg-white text-primary">!</Badge>}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[400px] p-4" align="end">
               <div className="grid gap-4">
-                <div className="flex items-center justify-between border-b pb-2">
-                  <h4 className="font-bold uppercase text-xs">FILTROS AVANÇADOS</h4>
-                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}>
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
+                <div className="flex items-center justify-between border-b pb-2"><h4 className="font-bold uppercase text-xs">FILTROS AVANÇADOS</h4><Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}><X className="h-4 w-4" /></Button></div>
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="grid gap-1.5">
-                    <Label className="text-[10px] uppercase font-bold">QRA</Label>
-                    <Input 
-                      className="h-8 text-xs uppercase" 
-                      value={filters.qra} 
-                      onChange={(e) => setFilters({...filters, qra: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-[10px] uppercase font-bold">NOME</Label>
-                    <Input 
-                      className="h-8 text-xs uppercase" 
-                      value={filters.name} 
-                      onChange={(e) => setFilters({...filters, name: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-[10px] uppercase font-bold">ESCALA</Label>
-                    <Input 
-                      className="h-8 text-xs uppercase" 
-                      value={filters.escala} 
-                      onChange={(e) => setFilters({...filters, escala: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-[10px] uppercase font-bold">TURNO</Label>
-                    <Input 
-                      className="h-8 text-xs uppercase" 
-                      value={filters.turno} 
-                      onChange={(e) => setFilters({...filters, turno: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-[10px] uppercase font-bold">CARGO</Label>
-                    <Input 
-                      className="h-8 text-xs uppercase" 
-                      value={filters.role} 
-                      onChange={(e) => setFilters({...filters, role: e.target.value})}
-                    />
-                  </div>
-                  <div className="grid gap-1.5">
-                    <Label className="text-[10px] uppercase font-bold">SETOR</Label>
-                    <Input 
-                      className="h-8 text-xs uppercase" 
-                      value={filters.unit} 
-                      onChange={(e) => setFilters({...filters, unit: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="flex justify-between gap-2 border-t pt-3">
-                  <Button variant="ghost" size="sm" className="text-[10px] uppercase h-7" onClick={clearFilters}>LIMPAR</Button>
-                  <Button size="sm" className="text-[10px] uppercase h-7">APLICAR</Button>
+                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">QRA</Label><Input className="h-8 text-xs uppercase" value={filters.qra} onChange={(e) => setFilters({...filters, qra: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">NOME</Label><Input className="h-8 text-xs uppercase" value={filters.name} onChange={(e) => setFilters({...filters, name: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">ESCALA</Label><Input className="h-8 text-xs uppercase" value={filters.escala} onChange={(e) => setFilters({...filters, escala: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">TURNO</Label><Input className="h-8 text-xs uppercase" value={filters.turno} onChange={(e) => setFilters({...filters, turno: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">CARGO</Label><Input className="h-8 text-xs uppercase" value={filters.role} onChange={(e) => setFilters({...filters, role: e.target.value})} /></div>
+                  <div className="grid gap-1.5"><Label className="text-[10px] uppercase font-bold">SETOR</Label><Input className="h-8 text-xs uppercase" value={filters.unit} onChange={(e) => setFilters({...filters, unit: e.target.value})} /></div>
                 </div>
               </div>
             </PopoverContent>
@@ -686,20 +501,13 @@ export default function EfetivoPage() {
         </CardHeader>
         <CardContent>
           {loadingCollection ? (
-            <div className="flex h-32 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
+            <div className="flex h-32 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : (
             <div className="rounded-md border overflow-hidden">
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="w-[40px]">
-                      <Checkbox 
-                        checked={filteredEmployees.length > 0 && selectedIds.length === filteredEmployees.length}
-                        onCheckedChange={toggleSelectAll}
-                      />
-                    </TableHead>
+                    <TableHead className="w-[40px]"><Checkbox checked={filteredEmployees.length > 0 && selectedIds.length === filteredEmployees.length} onCheckedChange={toggleSelectAll} /></TableHead>
                     <TableHead className="w-[50px] font-bold uppercase text-[10px]">Nº</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">QRAs</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">SERVIDOR</TableHead>
@@ -715,13 +523,8 @@ export default function EfetivoPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredEmployees.map((employee, index) => (
-                    <TableRow key={employee.id} className="hover:bg-muted/30 transition-colors border-b">
-                      <TableCell>
-                        <Checkbox 
-                          checked={selectedIds.includes(employee.id)}
-                          onCheckedChange={() => toggleSelect(employee.id)}
-                        />
-                      </TableCell>
+                    <TableRow key={employee.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell><Checkbox checked={selectedIds.includes(employee.id)} onCheckedChange={() => toggleSelect(employee.id)} /></TableCell>
                       <TableCell className="font-mono text-[10px] text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.qra}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.name}</TableCell>
@@ -729,60 +532,18 @@ export default function EfetivoPage() {
                       <TableCell className="text-xs uppercase">{employee.escala}</TableCell>
                       <TableCell className="text-xs uppercase">{employee.turno}</TableCell>
                       <TableCell className="text-xs uppercase">{employee.role}</TableCell>
+                      <TableCell><Badge variant="secondary" className="uppercase text-[9px]">{employee.unit}</Badge></TableCell>
+                      <TableCell className="text-xs uppercase">{employee.validationCode || "---"}</TableCell>
                       <TableCell>
-                        <Badge variant="secondary" className="font-normal uppercase text-[9px]">{employee.unit}</Badge>
-                      </TableCell>
-                      <TableCell className="text-xs uppercase">
-                        {employee.validationCode ? (
-                          <div className="flex items-center gap-1.5 text-primary">
-                            <Key className="h-3 w-3" />
-                            {employee.validationCode}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">---</span>
-                        )}
-                      </TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={employee.status === "PENDENTE" ? "outline" : "default"}
-                          className={`uppercase text-[9px] font-bold ${
-                            employee.status === "PENDENTE" 
-                              ? "border-orange-500 text-orange-600 bg-orange-50" 
-                              : employee.status === "ATIVO"
-                                ? "bg-green-600"
-                                : "bg-blue-600"
-                          }`}
-                        >
-                          {employee.status || "PENDENTE"}
-                        </Badge>
+                        <Badge variant={employee.status === "PENDENTE" ? "outline" : "default"} className={`uppercase text-[9px] font-bold ${employee.status === "PENDENTE" ? "border-orange-500 text-orange-600 bg-orange-50" : "bg-green-600"}`}>{employee.status || "PENDENTE"}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-7 w-7">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
+                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem 
-                              onSelect={() => {
-                                setSelectedEmployee(employee);
-                                setTimeout(() => setIsEditOpen(true), 150); 
-                              }} 
-                              className="uppercase text-xs cursor-pointer"
-                            >
-                              <Edit className="mr-2 h-3.5 w-3.5" /> EDITAR
-                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setSelectedEmployee(employee); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-xs cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5" /> EDITAR</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              onSelect={() => {
-                                setEmployeeToDelete(employee.id);
-                                setTimeout(() => setIsDeleteAlertOpen(true), 150); 
-                              }} 
-                              className="text-destructive uppercase text-xs cursor-pointer"
-                            >
-                              <Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR
-                            </DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setEmployeeToDelete(employee.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-xs cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
