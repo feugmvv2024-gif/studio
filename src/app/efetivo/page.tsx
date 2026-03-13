@@ -44,6 +44,16 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { useFirestore, useCollection } from '@/firebase';
@@ -55,9 +65,11 @@ import * as XLSX from 'xlsx';
 export default function EfetivoPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false)
   const [selectedEmployee, setSelectedEmployee] = React.useState<any>(null)
+  const [employeeToDelete, setEmployeeToDelete] = React.useState<string | null>(null)
   const [searchTerm, setSearchTerm] = React.useState("")
-  const [loading, setLoading] = React.useState(false)
+  const [loadingImport, setLoadingImport] = React.useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -71,11 +83,12 @@ export default function EfetivoPage() {
 
   const filteredEmployees = React.useMemo(() => {
     if (!employees) return [];
+    const term = searchTerm.toLowerCase();
     return employees.filter(emp => 
-      emp.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.qra?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.matricula?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.unit?.toLowerCase().includes(searchTerm.toLowerCase())
+      emp.name?.toLowerCase().includes(term) ||
+      emp.qra?.toLowerCase().includes(term) ||
+      emp.matricula?.toLowerCase().includes(term) ||
+      emp.unit?.toLowerCase().includes(term)
     );
   }, [employees, searchTerm]);
 
@@ -84,46 +97,29 @@ export default function EfetivoPage() {
     if (!firestore) return;
 
     const formData = new FormData(e.currentTarget);
-    
-    const name = (formData.get('name') as string).toUpperCase();
-    const matricula = (formData.get('matricula') as string).toUpperCase();
-    const escala = (formData.get('escala') as string).toUpperCase();
-    const turno = (formData.get('turno') as string).toUpperCase();
-    const role = (formData.get('role') as string).toUpperCase();
-    const unit = (formData.get('unit') as string).toUpperCase();
-    const email = (formData.get('email') as string || "").toUpperCase();
-    const qra = (formData.get('qra') as string || "").toUpperCase();
-
     const newEmployee = {
-      name,
-      email,
-      matricula,
-      escala,
-      turno,
-      role,
-      unit,
-      qra,
+      name: (formData.get('name') as string).toUpperCase(),
+      email: (formData.get('email') as string || "").toUpperCase(),
+      matricula: (formData.get('matricula') as string).toUpperCase(),
+      escala: (formData.get('escala') as string).toUpperCase(),
+      turno: (formData.get('turno') as string).toUpperCase(),
+      role: (formData.get('role') as string).toUpperCase(),
+      unit: (formData.get('unit') as string).toUpperCase(),
+      qra: (formData.get('qra') as string || "").toUpperCase(),
       status: "ATIVO",
       avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
       admissionDate: new Date().toISOString().split('T')[0]
     };
 
-    // Atualização Otimista: Fecha o modal imediatamente
+    // Fechamento instantâneo para UI fluida
     setIsAddOpen(false);
     
     addDoc(collection(firestore, 'employees'), newEmployee)
       .then(() => {
-        toast({
-          title: "SUCESSO!",
-          description: "NOVO REGISTRO CRIADO COM SUCESSO.",
-        });
+        toast({ title: "SUCESSO!", description: "REGISTRO CRIADO." });
       })
-      .catch((error) => {
-        toast({
-          variant: "destructive",
-          title: "ERRO",
-          description: "NÃO FOI POSSÍVEL SALVAR O REGISTRO.",
-        });
+      .catch(() => {
+        toast({ variant: "destructive", title: "ERRO", description: "FALHA AO SALVAR." });
       });
   }
 
@@ -132,7 +128,6 @@ export default function EfetivoPage() {
     if (!firestore || !selectedEmployee) return;
 
     const formData = new FormData(e.currentTarget);
-    
     const updates = {
       name: (formData.get('name') as string).toUpperCase(),
       email: (formData.get('email') as string || "").toUpperCase(),
@@ -144,25 +139,16 @@ export default function EfetivoPage() {
       qra: (formData.get('qra') as string || "").toUpperCase(),
     };
 
-    // Atualização Otimista: Fecha o modal imediatamente
+    const id = selectedEmployee.id;
     setIsEditOpen(false);
-    const employeeId = selectedEmployee.id;
     setSelectedEmployee(null);
 
-    const employeeDoc = doc(firestore, 'employees', employeeId);
-    updateDoc(employeeDoc, updates)
+    updateDoc(doc(firestore, 'employees', id), updates)
       .then(() => {
-        toast({
-          title: "SUCESSO!",
-          description: "REGISTRO ATUALIZADO COM SUCESSO.",
-        });
+        toast({ title: "SUCESSO!", description: "REGISTRO ATUALIZADO." });
       })
-      .catch((error) => {
-        toast({
-          variant: "destructive",
-          title: "ERRO",
-          description: "NÃO FOI POSSÍVEL ATUALIZAR O REGISTRO.",
-        });
+      .catch(() => {
+        toast({ variant: "destructive", title: "ERRO", description: "FALHA AO ATUALIZAR." });
       });
   }
 
@@ -170,90 +156,68 @@ export default function EfetivoPage() {
     const file = e.target.files?.[0];
     if (!file || !firestore) return;
 
-    setLoading(true);
+    setLoadingImport(true);
     const reader = new FileReader();
+
     reader.onload = (evt) => {
-      try {
-        const bstr = evt.target?.result;
-        const wb = XLSX.read(bstr, { type: 'binary' });
-        const wsname = wb.SheetNames[0];
-        const ws = wb.Sheets[wsname];
-        const data = XLSX.utils.sheet_to_json(ws) as any[];
+      // Pequeno timeout para permitir que a UI mostre o loader antes de travar o thread com o processamento
+      setTimeout(() => {
+        try {
+          const bstr = evt.target?.result;
+          const wb = XLSX.read(bstr, { type: 'binary' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const data = XLSX.utils.sheet_to_json(ws) as any[];
 
-        let importedCount = 0;
+          data.forEach((row) => {
+            const name = (row['SERVIDOR'] || "").toString().toUpperCase();
+            const qra = (row['QRAs'] || row['QRA'] || "").toString().toUpperCase();
+            const matricula = (row['MATRICULA'] || row['MATRÍCULA'] || "").toString().toUpperCase();
+            const escala = (row['ESCALA'] || "").toString().toUpperCase();
+            const turno = (row['TURNO'] || "").toString().toUpperCase();
+            const role = (row['CARGO'] || "").toString().toUpperCase();
+            const unit = (row['SETOR'] || "").toString().toUpperCase();
 
-        data.forEach((row) => {
-          const name = (row['SERVIDOR'] || "").toString().toUpperCase();
-          const qra = (row['QRAs'] || row['QRA'] || "").toString().toUpperCase();
-          const matricula = (row['MATRICULA'] || row['MATRÍCULA'] || "").toString().toUpperCase();
-          const escala = (row['ESCALA'] || "").toString().toUpperCase();
-          const turno = (row['TURNO'] || "").toString().toUpperCase();
-          const role = (row['CARGO'] || "").toString().toUpperCase();
-          const unit = (row['SETOR'] || "").toString().toUpperCase();
+            if (name && matricula) {
+              addDoc(collection(firestore, 'employees'), {
+                name, qra, matricula, escala, turno, role, unit,
+                status: "ATIVO",
+                avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
+                admissionDate: new Date().toISOString().split('T')[0],
+                email: ""
+              });
+            }
+          });
 
-          if (name && matricula) {
-            const newEmployee = {
-              name,
-              qra,
-              matricula,
-              escala,
-              turno,
-              role,
-              unit,
-              status: "ATIVO",
-              avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
-              admissionDate: new Date().toISOString().split('T')[0],
-              email: ""
-            };
-            addDoc(collection(firestore, 'employees'), newEmployee);
-            importedCount++;
-          }
-        });
-
-        toast({
-          title: "IMPORTAÇÃO INICIADA!",
-          description: `${importedCount} REGISTROS ESTÃO SENDO PROCESSADOS.`,
-        });
-      } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "ERRO NA IMPORTAÇÃO",
-          description: "VERIFIQUE SE O ARQUIVO ESTÁ NO FORMATO CORRETO.",
-        });
-      } finally {
-        setLoading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
+          toast({ title: "IMPORTAÇÃO CONCLUÍDA", description: `${data.length} REGISTROS PROCESSADOS.` });
+        } catch (error) {
+          toast({ variant: "destructive", title: "ERRO NA IMPORTAÇÃO" });
+        } finally {
+          setLoadingImport(false);
+          if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      }, 50);
     };
     reader.readAsBinaryString(file);
   }
 
-  function handleDelete(id: string) {
-    if (!firestore) return;
+  function confirmDelete() {
+    if (!firestore || !employeeToDelete) return;
     
-    // confirm() é síncrono e trava a UI, mas aqui o deleteDoc não será esperado com await
-    if (!confirm("TEM CERTEZA QUE DESEJA EXCLUIR ESTE REGISTRO?")) return;
+    const id = employeeToDelete;
+    setEmployeeToDelete(null);
+    setIsDeleteAlertOpen(false);
     
     deleteDoc(doc(firestore, 'employees', id))
-      .then(() => {
-        toast({
-          title: "REGISTRO REMOVIDO",
-        });
-      })
-      .catch(() => {
-        toast({
-          variant: "destructive",
-          title: "ERRO AO EXCLUIR",
-        });
-      });
+      .then(() => toast({ title: "REGISTRO REMOVIDO" }))
+      .catch(() => toast({ variant: "destructive", title: "ERRO AO EXCLUIR" }));
   }
 
   return (
     <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-3xl font-bold tracking-tight uppercase">EFETIVO</h2>
-          <p className="text-muted-foreground uppercase text-sm">GERENCIE O REGISTRO E DADOS DE TODO O EFETIVO DA UNIDADE.</p>
+          <h2 className="text-3xl font-bold tracking-tight uppercase text-primary">EFETIVO</h2>
+          <p className="text-muted-foreground uppercase text-sm">GESTÃO INTEGRADA DO EFETIVO DA UNIDADE.</p>
         </div>
         <div className="flex gap-2">
           <input
@@ -263,8 +227,8 @@ export default function EfetivoPage() {
             ref={fileInputRef}
             onChange={handleImportExcel}
           />
-          <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={loading}>
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+          <Button variant="outline" className="gap-2" onClick={() => fileInputRef.current?.click()} disabled={loadingImport}>
+            {loadingImport ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             IMPORTAR EXCEL
           </Button>
           <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
@@ -277,58 +241,49 @@ export default function EfetivoPage() {
             <DialogContent className="sm:max-w-[500px]">
               <form onSubmit={handleAddEmployee}>
                 <DialogHeader>
-                  <DialogTitle className="uppercase">CADASTRAR NOVO INTEGRANTE</DialogTitle>
-                  <DialogDescription className="uppercase text-xs">
-                    PREENCHA OS DADOS BÁSICOS. TODA INFORMAÇÃO SERÁ GRAVADA EM MAIÚSCULAS.
-                  </DialogDescription>
+                  <DialogTitle className="uppercase">CADASTRAR INTEGRANTE</DialogTitle>
                 </DialogHeader>
-                <ScrollArea className="max-h-[60vh] pr-4">
-                  <div className="grid gap-4 py-4">
+                <ScrollArea className="max-h-[60vh] pr-4 mt-4">
+                  <div className="grid gap-4 py-2">
                     <div className="grid gap-2">
-                      <Label htmlFor="name" className="uppercase">SERVIDOR (NOME COMPLETO)</Label>
-                      <Input id="name" name="name" placeholder="EX: JOÃO DA SILVA" required className="uppercase" />
+                      <Label htmlFor="name" className="uppercase">NOME COMPLETO</Label>
+                      <Input id="name" name="name" required className="uppercase" />
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label htmlFor="qra" className="uppercase">QRA</Label>
-                        <Input id="qra" name="qra" placeholder="EX: A. RODRIGUES" required className="uppercase" />
+                        <Input id="qra" name="qra" required className="uppercase" />
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="matricula" className="uppercase">MATRÍCULA</Label>
-                        <Input id="matricula" name="matricula" placeholder="EX: 123456" required className="uppercase" />
+                        <Input id="matricula" name="matricula" required className="uppercase" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="unit" className="uppercase">SETOR / UNIDADE</Label>
-                        <Input id="unit" name="unit" placeholder="EX: ROMU / PATAMO" required className="uppercase" />
+                        <Label htmlFor="unit" className="uppercase">SETOR</Label>
+                        <Input id="unit" name="unit" required className="uppercase" />
                       </div>
                       <div className="grid gap-2">
                         <Label htmlFor="escala" className="uppercase">ESCALA</Label>
-                        <Input id="escala" name="escala" placeholder="EX: 12X36 / 24X72" required className="uppercase" />
+                        <Input id="escala" name="escala" required className="uppercase" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label htmlFor="turno" className="uppercase">TURNO</Label>
-                        <Input id="turno" name="turno" placeholder="EX: DIURNO / NOTURNO" required className="uppercase" />
+                        <Input id="turno" name="turno" required className="uppercase" />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="role" className="uppercase">CARGO / FUNÇÃO</Label>
-                        <Input id="role" name="role" placeholder="EX: AGENTE DE SEGURANÇA" required className="uppercase" />
+                        <Label htmlFor="role" className="uppercase">CARGO</Label>
+                        <Input id="role" name="role" required className="uppercase" />
                       </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="email" className="uppercase">E-MAIL (OPCIONAL)</Label>
-                      <Input id="email" name="email" type="email" placeholder="EX: JOAO.SILVA@GMVV.GOV.BR" className="uppercase" />
                     </div>
                   </div>
                 </ScrollArea>
-                <DialogFooter>
+                <DialogFooter className="mt-6">
                   <Button variant="outline" type="button" onClick={() => setIsAddOpen(false)}>CANCELAR</Button>
-                  <Button type="submit">
-                    GERAR REGISTRO
-                  </Button>
+                  <Button type="submit">GRAVAR</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -336,20 +291,36 @@ export default function EfetivoPage() {
         </div>
       </div>
 
+      {/* Alerta de Exclusão Assíncrono (Não Bloqueante) */}
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="uppercase">CONFIRMAR EXCLUSÃO</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-xs">
+              ESTA AÇÃO NÃO PODE SER DESFEITA. O REGISTRO SERÁ REMOVIDO PERMANENTEMENTE DO BANCO DE DADOS.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="uppercase">CANCELAR</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDelete} className="bg-destructive hover:bg-destructive/90 uppercase">
+              EXCLUIR REGISTRO
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Modal de Edição */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-[500px]">
           {selectedEmployee && (
             <form onSubmit={handleUpdateEmployee}>
               <DialogHeader>
-                <DialogTitle className="uppercase">EDITAR REGISTRO</DialogTitle>
-                <DialogDescription className="uppercase text-xs">
-                  ATUALIZE OS DADOS DO SERVIDOR. TODA INFORMAÇÃO SERÁ SALVA EM MAIÚSCULAS.
-                </DialogDescription>
+                <DialogTitle className="uppercase">EDITAR SERVIDOR</DialogTitle>
               </DialogHeader>
-              <ScrollArea className="max-h-[60vh] pr-4">
-                <div className="grid gap-4 py-4">
+              <ScrollArea className="max-h-[60vh] pr-4 mt-4">
+                <div className="grid gap-4 py-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="edit-name" className="uppercase">SERVIDOR (NOME COMPLETO)</Label>
+                    <Label htmlFor="edit-name" className="uppercase">NOME COMPLETO</Label>
                     <Input id="edit-name" name="name" defaultValue={selectedEmployee.name} required className="uppercase" />
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -364,7 +335,7 @@ export default function EfetivoPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="edit-unit" className="uppercase">SETOR / UNIDADE</Label>
+                      <Label htmlFor="edit-unit" className="uppercase">SETOR</Label>
                       <Input id="edit-unit" name="unit" defaultValue={selectedEmployee.unit} required className="uppercase" />
                     </div>
                     <div className="grid gap-2">
@@ -372,48 +343,27 @@ export default function EfetivoPage() {
                       <Input id="edit-escala" name="escala" defaultValue={selectedEmployee.escala} required className="uppercase" />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-turno" className="uppercase">TURNO</Label>
-                      <Input id="edit-turno" name="turno" defaultValue={selectedEmployee.turno} required className="uppercase" />
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="edit-role" className="uppercase">CARGO / FUNÇÃO</Label>
-                      <Input id="edit-role" name="role" defaultValue={selectedEmployee.role} required className="uppercase" />
-                    </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-email" className="uppercase">E-MAIL (OPCIONAL)</Label>
-                    <Input id="edit-email" name="email" type="email" defaultValue={selectedEmployee.email} className="uppercase" />
-                  </div>
                 </div>
               </ScrollArea>
-              <DialogFooter>
+              <DialogFooter className="mt-6">
                 <Button variant="outline" type="button" onClick={() => setIsEditOpen(false)}>CANCELAR</Button>
-                <Button type="submit">
-                  SALVAR ALTERAÇÕES
-                </Button>
+                <Button type="submit">SALVAR</Button>
               </DialogFooter>
             </form>
           )}
         </DialogContent>
       </Dialog>
 
-      <Card className="card-shadow">
+      <Card className="card-shadow border-primary/20">
         <CardHeader>
-          <div className="flex items-center gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="BUSCAR POR SERVIDOR, MATRÍCULA, SETOR OU QRA..."
-                className="pl-8 uppercase"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
-            </Button>
+          <div className="relative flex-1">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="BUSCAR POR SERVIDOR, MATRÍCULA OU QRA..."
+              className="pl-8 uppercase"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
           </div>
         </CardHeader>
         <CardContent>
@@ -422,77 +372,57 @@ export default function EfetivoPage() {
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
-            <div className="rounded-md border">
+            <div className="rounded-md border overflow-hidden">
               <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead className="w-[50px] font-bold uppercase text-[11px]">Nº</TableHead>
-                    <TableHead className="font-bold uppercase text-[11px]">QRAs</TableHead>
-                    <TableHead className="font-bold uppercase text-[11px]">SERVIDOR</TableHead>
-                    <TableHead className="font-bold uppercase text-[11px]">MATRÍCULA</TableHead>
-                    <TableHead className="font-bold uppercase text-[11px]">ESCALA</TableHead>
-                    <TableHead className="font-bold uppercase text-[11px]">TURNO</TableHead>
-                    <TableHead className="font-bold uppercase text-[11px]">CARGO</TableHead>
-                    <TableHead className="font-bold uppercase text-[11px]">SETOR</TableHead>
-                    <TableHead className="text-right font-bold uppercase text-[11px]">AÇÕES</TableHead>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="w-[50px] font-bold uppercase text-[10px]">Nº</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">QRAs</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">SERVIDOR</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">MATRÍCULA</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">ESCALA</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">TURNO</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">CARGO</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">SETOR</TableHead>
+                    <TableHead className="text-right font-bold uppercase text-[10px]">AÇÕES</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredEmployees.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={9} className="text-center py-8 text-muted-foreground uppercase">
-                        NENHUM INTEGRANTE ENCONTRADO.
+                  {filteredEmployees.map((employee, index) => (
+                    <TableRow key={employee.id} className="hover:bg-muted/30 transition-colors border-b">
+                      <TableCell className="font-mono text-[10px] text-muted-foreground">{index + 1}</TableCell>
+                      <TableCell className="font-semibold text-xs uppercase">{employee.qra}</TableCell>
+                      <TableCell className="font-semibold text-xs uppercase">{employee.name}</TableCell>
+                      <TableCell className="font-mono text-xs uppercase">{employee.matricula}</TableCell>
+                      <TableCell className="text-xs uppercase">{employee.escala}</TableCell>
+                      <TableCell className="text-xs uppercase">{employee.turno}</TableCell>
+                      <TableCell className="text-xs uppercase">{employee.role}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="font-normal uppercase text-[9px]">{employee.unit}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => { setSelectedEmployee(employee); setIsEditOpen(true); }} className="uppercase text-xs">
+                              <Edit className="mr-2 h-3.5 w-3.5" /> EDITAR
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              onClick={() => { setEmployeeToDelete(employee.id); setIsDeleteAlertOpen(true); }} 
+                              className="text-destructive uppercase text-xs"
+                            >
+                              <Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredEmployees.map((employee, index) => (
-                      <TableRow key={employee.id} className="hover:bg-muted/30 transition-colors">
-                        <TableCell className="font-mono text-xs">{index + 1}</TableCell>
-                        <TableCell>
-                          <span className="font-semibold uppercase text-xs">{employee.qra}</span>
-                        </TableCell>
-                        <TableCell>
-                          <span className="font-semibold uppercase text-xs">{employee.name}</span>
-                        </TableCell>
-                        <TableCell className="font-mono text-xs uppercase">{employee.matricula}</TableCell>
-                        <TableCell className="text-xs uppercase">{employee.escala}</TableCell>
-                        <TableCell className="text-xs uppercase">{employee.turno}</TableCell>
-                        <TableCell className="text-xs uppercase">{employee.role}</TableCell>
-                        <TableCell className="text-xs uppercase">
-                          <Badge variant="secondary" className="font-normal uppercase text-[10px]">{employee.unit}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-[160px]">
-                              <DropdownMenuLabel className="uppercase text-[10px]">GERENCIAR</DropdownMenuLabel>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="uppercase text-[11px] cursor-pointer" 
-                                onClick={() => {
-                                  setSelectedEmployee(employee);
-                                  setIsEditOpen(true);
-                                }}
-                              >
-                                <Edit className="mr-2 h-3.5 w-3.5" /> EDITAR
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                className="text-destructive uppercase text-[11px] cursor-pointer" 
-                                onClick={() => handleDelete(employee.id)}
-                              >
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
+                  ))}
                 </TableBody>
               </Table>
             </div>
