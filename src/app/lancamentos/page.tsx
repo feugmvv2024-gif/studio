@@ -141,14 +141,14 @@ export default function LancamentosPage() {
       setFormDays(selectedLaunch.days || 0);
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
-    } else {
+    } else if (isAddOpen) {
       setHoursInput("");
       setSelectedEmployeeId("");
       setFormDays(0);
-      setFormStartDate("");
-      setFormEndDate("");
+      setFormStartDate(getSaoPauloDate());
+      setFormEndDate(getSaoPauloDate());
     }
-  }, [selectedLaunch, isAddOpen, isEditOpen]);
+  }, [selectedLaunch, isAddOpen]);
 
   // Cálculo automático da Data Fim
   React.useEffect(() => {
@@ -156,7 +156,7 @@ export default function LancamentosPage() {
       try {
         const start = new Date(formStartDate + "T00:00:00");
         const end = new Date(start);
-        end.setDate(start.getDate() + formDays);
+        end.setDate(start.getDate() + (formDays - 1)); // -1 porque o dia de início conta como primeiro dia
         setFormEndDate(end.toISOString().split('T')[0]);
       } catch (e) {
         console.error("Erro ao calcular data fim", e);
@@ -202,8 +202,9 @@ export default function LancamentosPage() {
     const term = searchEmployeeTerm.toLowerCase();
     return employees.filter(emp => 
       emp.name?.toLowerCase().includes(term) || 
-      emp.qra?.toLowerCase().includes(term)
-    ).slice(0, 10); // Limite de visualização para performance
+      emp.qra?.toLowerCase().includes(term) ||
+      emp.matricula?.toLowerCase().includes(term)
+    ).slice(0, 50);
   }, [employees, searchEmployeeTerm]);
 
   const selectedEmployee = React.useMemo(() => 
@@ -225,11 +226,9 @@ export default function LancamentosPage() {
       date: formData.get('date') as string,
       employeeId: selectedEmployeeId,
       employeeName: selectedEmployee.name || "N/A",
-      employeeNameQra: `${selectedEmployee.name || "N/A"} (${selectedEmployee.qra || "N/A"})`,
       employeeQra: selectedEmployee.qra || "N/A",
       escala: selectedEmployee.escala || "N/A",
       turno: selectedEmployee.turno || "N/A",
-      escalaTurno: `${selectedEmployee.escala || "N/A"} / ${selectedEmployee.turno || "N/A"}`,
       type: (formData.get('type') as string).toUpperCase(),
       days: Number(formDays),
       hours: hoursInput,
@@ -268,11 +267,9 @@ export default function LancamentosPage() {
       date: formData.get('date') as string,
       employeeId: selectedEmployeeId,
       employeeName: selectedEmployee.name || "N/A",
-      employeeNameQra: `${selectedEmployee.name || "N/A"} (${selectedEmployee.qra || "N/A"})`,
       employeeQra: selectedEmployee.qra || "N/A",
       escala: selectedEmployee.escala || "N/A",
       turno: selectedEmployee.turno || "N/A",
-      escalaTurno: `${selectedEmployee.escala || "N/A"} / ${selectedEmployee.turno || "N/A"}`,
       type: (formData.get('type') as string).toUpperCase(),
       days: Number(formDays),
       hours: hoursInput,
@@ -320,7 +317,6 @@ export default function LancamentosPage() {
 
   const renderForm = (isEdit: boolean = false) => (
     <div className="grid gap-4 py-4">
-      {/* Primeira Linha: Data de Lançamento (Menor) e Servidor (Maior) */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="grid gap-2">
           <Label className="uppercase text-[10px] font-bold">DATA DO LANÇAMENTO</Label>
@@ -340,7 +336,7 @@ export default function LancamentosPage() {
                 variant="outline"
                 role="combobox"
                 aria-expanded={isEmployeePopoverOpen}
-                className="justify-between h-9 uppercase text-[11px] font-normal"
+                className="justify-between h-9 uppercase text-[11px] font-normal w-full"
               >
                 {selectedEmployee ? (
                   <span className="truncate">{selectedEmployee.name} ({selectedEmployee.qra})</span>
@@ -350,18 +346,19 @@ export default function LancamentosPage() {
                 <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-0" align="start">
+            <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[450px] p-0 shadow-xl" align="start">
               <div className="flex flex-col">
                 <div className="flex items-center border-b p-2">
                   <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                   <Input
-                    placeholder="DIGITE QRA OU NOME..."
-                    className="h-8 border-none focus-visible:ring-0 uppercase text-[11px]"
+                    placeholder="DIGITE QRA OU NOME PARA FILTRAR..."
+                    className="h-9 border-none focus-visible:ring-0 uppercase text-[11px]"
                     value={searchEmployeeTerm}
                     onChange={(e) => setSearchEmployeeTerm(e.target.value)}
+                    autoFocus
                   />
                 </div>
-                <ScrollArea className="h-[200px]">
+                <ScrollArea className="h-[250px]">
                   <div className="p-1">
                     {filteredEmployeesForSelection.length === 0 ? (
                       <div className="p-4 text-center text-[10px] uppercase text-muted-foreground italic">
@@ -369,11 +366,12 @@ export default function LancamentosPage() {
                       </div>
                     ) : (
                       filteredEmployeesForSelection.map((emp) => (
-                        <div
+                        <button
                           key={emp.id}
+                          type="button"
                           className={cn(
-                            "flex items-center justify-between p-2 rounded-sm cursor-pointer hover:bg-muted/50 transition-colors uppercase text-[11px]",
-                            selectedEmployeeId === emp.id && "bg-primary/10 text-primary font-bold"
+                            "flex flex-col w-full text-left p-2.5 rounded-sm hover:bg-muted transition-colors border-b last:border-0",
+                            selectedEmployeeId === emp.id && "bg-primary/5 border-l-4 border-l-primary"
                           )}
                           onClick={() => {
                             setSelectedEmployeeId(emp.id);
@@ -381,12 +379,17 @@ export default function LancamentosPage() {
                             setSearchEmployeeTerm("");
                           }}
                         >
-                          <div className="flex flex-col">
-                            <span>{emp.name}</span>
-                            <span className="text-[9px] text-muted-foreground font-mono">{emp.qra}</span>
+                          <div className="flex items-center justify-between w-full">
+                            <span className={cn("font-bold uppercase text-[11px]", selectedEmployeeId === emp.id && "text-primary")}>
+                              {emp.name}
+                            </span>
+                            {selectedEmployeeId === emp.id && <Check className="h-4 w-4 text-primary" />}
                           </div>
-                          {selectedEmployeeId === emp.id && <Check className="h-4 w-4" />}
-                        </div>
+                          <div className="flex gap-2 mt-1">
+                            <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">QRA: {emp.qra}</span>
+                            <span className="text-[9px] bg-muted px-1.5 py-0.5 rounded font-mono text-muted-foreground">MAT: {emp.matricula}</span>
+                          </div>
+                        </button>
                       ))
                     )}
                   </div>
@@ -456,8 +459,8 @@ export default function LancamentosPage() {
             name="endDate" 
             type="date" 
             value={formEndDate} 
-            onChange={(e) => setFormEndDate(e.target.value)} 
-            className="h-9 bg-muted/30" 
+            readOnly 
+            className="h-9 bg-muted/50 cursor-not-allowed" 
           />
         </div>
       </div>
