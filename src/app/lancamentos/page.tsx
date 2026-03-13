@@ -8,7 +8,8 @@ import {
   Trash2, 
   Loader2, 
   MoreHorizontal,
-  Check
+  Check,
+  ChevronsUpDown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -52,6 +53,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
@@ -72,6 +86,7 @@ import { useToast } from "@/hooks/use-toast"
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import { cn } from "@/lib/utils"
 
 // Utilitários
 const getSaoPauloDate = () => {
@@ -108,6 +123,7 @@ export default function LancamentosPage() {
   const [formDays, setFormDays] = React.useState<number>(0)
   const [formStartDate, setFormStartDate] = React.useState<string>("")
   const [formEndDate, setFormEndDate] = React.useState<string>("")
+  const [openCombobox, setOpenCombobox] = React.useState(false)
 
   const firestore = useFirestore()
   const { toast } = useToast()
@@ -225,24 +241,56 @@ export default function LancamentosPage() {
         
         <div className="grid gap-2 sm:col-span-2">
           <Label className="uppercase text-[10px] font-bold">SERVIDOR</Label>
-          <Select 
-            value={selectedEmployeeId} 
-            onValueChange={setSelectedEmployeeId} 
-            required
-          >
-            <SelectTrigger className="h-9 uppercase text-[11px]">
-              <SelectValue placeholder="SELECIONE O SERVIDOR..." />
-            </SelectTrigger>
-            <SelectContent>
-              <ScrollArea className="h-[200px]">
-                {employees?.map((emp: any) => (
-                  <SelectItem key={emp.id} value={emp.id} className="uppercase text-[11px]">
-                    {emp.name} (QRA: {emp.qra})
-                  </SelectItem>
-                ))}
-              </ScrollArea>
-            </SelectContent>
-          </Select>
+          <Popover open={openCombobox} onOpenChange={setOpenCombobox}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={openCombobox}
+                className="w-full justify-between h-9 uppercase text-[11px] font-normal"
+              >
+                {selectedEmployee ? `${selectedEmployee.name} (QRA: ${selectedEmployee.qra})` : "BUSCAR E SELECIONAR SERVIDOR..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[380px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Digite o nome, QRA ou matrícula..." className="h-9 uppercase text-[11px]" />
+                <CommandList>
+                  <CommandEmpty className="py-4 text-center text-xs uppercase text-muted-foreground">
+                    Nenhum servidor encontrado.
+                  </CommandEmpty>
+                  <CommandGroup>
+                    <ScrollArea className="h-[200px]">
+                      {employees?.map((emp) => (
+                        <CommandItem
+                          key={emp.id}
+                          value={`${emp.name} ${emp.qra} ${emp.matricula}`}
+                          onSelect={() => {
+                            setSelectedEmployeeId(emp.id);
+                            setOpenCombobox(false);
+                          }}
+                          className="uppercase text-[11px] cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4 text-primary",
+                              selectedEmployeeId === emp.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span className="font-bold">{emp.name}</span>
+                            <span className="text-[9px] text-muted-foreground">QRA: {emp.qra} | MAT: {emp.matricula}</span>
+                          </div>
+                        </CommandItem>
+                      ))}
+                    </ScrollArea>
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
+          <input type="hidden" name="employeeId" value={selectedEmployeeId} required />
         </div>
       </div>
 
