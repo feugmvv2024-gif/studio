@@ -19,7 +19,6 @@ export default function SettingsPage() {
   const firestore = useFirestore()
   const { toast } = useToast()
 
-  // Queries ordenadas de A-Z
   const schedulesQuery = React.useMemo(() => {
     if (!firestore) return null
     return query(collection(firestore, 'schedules'), orderBy('name', 'asc'))
@@ -39,7 +38,6 @@ export default function SettingsPage() {
     setIsSubmitting(true)
     const val = newValue.toUpperCase().trim()
     
-    // Evitar duplicados simples localmente antes de tentar salvar
     const list = category === 'schedules' ? schedules : shifts
     if (list.some((item: any) => item.name === val)) {
       toast({ variant: "destructive", title: "ERRO", description: "ESTE ITEM JÁ EXISTE." })
@@ -69,47 +67,47 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto space-y-6 animate-in fade-in duration-500 px-2 sm:px-0">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <Settings2 className="h-8 w-8 text-primary" />
-          <h2 className="text-3xl font-bold tracking-tight uppercase text-primary">CONFIGURAÇÃO</h2>
+          <Settings2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">CONFIGURAÇÃO</h2>
         </div>
-        <p className="text-muted-foreground uppercase text-sm">GERENCIE AS DEFINIÇÕES GERAIS DE ESCALAS E TURNOS DO SISTEMA.</p>
+        <p className="text-muted-foreground uppercase text-[10px] sm:text-sm">GERENCIE AS DEFINIÇÕES GERAIS DO SISTEMA.</p>
       </div>
 
       <Tabs defaultValue="schedules" className="w-full">
         <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-          <TabsTrigger value="schedules" className="gap-2 uppercase text-xs font-bold">
+          <TabsTrigger value="schedules" className="gap-2 uppercase text-[10px] sm:text-xs font-bold">
             <Calendar className="h-4 w-4" /> ESCALAS
           </TabsTrigger>
-          <TabsTrigger value="shifts" className="gap-2 uppercase text-xs font-bold">
+          <TabsTrigger value="shifts" className="gap-2 uppercase text-[10px] sm:text-xs font-bold">
             <Clock className="h-4 w-4" /> TURNOS
           </TabsTrigger>
         </TabsList>
 
-        {/* ABA DE ESCALAS */}
-        <TabsContent value="schedules" className="mt-6">
+        <TabsContent value="schedules" className="mt-4 sm:mt-6">
           <Card className="card-shadow border-primary/10">
-            <CardHeader>
-              <CardTitle className="text-xl uppercase flex items-center gap-2">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl uppercase flex items-center gap-2">
                 GERENCIAR ESCALAS
               </CardTitle>
-              <CardDescription className="uppercase text-[10px]">ADICIONE OU REMOVA AS ESCALAS DE SERVIÇO DISPONÍVEIS.</CardDescription>
+              <CardDescription className="uppercase text-[9px] sm:text-[10px]">DEFINIÇÕES DE ESCALAS DE SERVIÇO.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex gap-2">
+            <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 sm:pt-0">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input 
-                  placeholder="EX: 12X36, 24X72, ADMINISTRATIVA..." 
+                  placeholder="EX: 12X36, ADMINISTRATIVA..." 
                   value={newValue}
                   onChange={(e) => setNewValue(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddItem('schedules')}
-                  className="uppercase font-semibold"
+                  className="uppercase font-semibold text-xs sm:text-sm h-9 sm:h-10"
                 />
                 <Button 
                   onClick={() => handleAddItem('schedules')} 
                   disabled={isSubmitting || !newValue.trim()}
-                  className="gap-2"
+                  size="sm"
+                  className="gap-2 w-full sm:w-auto h-9 sm:h-10"
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   ADICIONAR
@@ -122,16 +120,16 @@ export default function SettingsPage() {
                 {loadingSchedules ? (
                   <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                 ) : schedules.length === 0 ? (
-                  <p className="text-center py-4 text-xs text-muted-foreground uppercase italic">NENHUMA ESCALA CADASTRADA.</p>
+                  <p className="text-center py-4 text-[10px] sm:text-xs text-muted-foreground uppercase italic">NENHUMA ESCALA CADASTRADA.</p>
                 ) : (
-                  <div className="grid sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {schedules.map((item: any) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors group">
-                        <span className="font-bold text-sm uppercase">{item.name}</span>
+                      <div key={item.id} className="flex items-center justify-between p-2 sm:p-3 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors group">
+                        <span className="font-bold text-xs sm:text-sm uppercase">{item.name}</span>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-7 w-7 sm:h-8 sm:w-8 text-destructive opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={() => handleDeleteItem(item.id, 'schedules')}
                         >
                           <Trash2 className="h-4 w-4" />
@@ -145,28 +143,28 @@ export default function SettingsPage() {
           </Card>
         </TabsContent>
 
-        {/* ABA DE TURNOS */}
-        <TabsContent value="shifts" className="mt-6">
+        <TabsContent value="shifts" className="mt-4 sm:mt-6">
           <Card className="card-shadow border-primary/10">
-            <CardHeader>
-              <CardTitle className="text-xl uppercase flex items-center gap-2">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="text-lg sm:text-xl uppercase flex items-center gap-2">
                 GERENCIAR TURNOS
               </CardTitle>
-              <CardDescription className="uppercase text-[10px]">ADICIONE OU REMOVA OS TURNOS DE TRABALHO.</CardDescription>
+              <CardDescription className="uppercase text-[9px] sm:text-[10px]">DEFINIÇÕES DE TURNOS DE TRABALHO.</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex gap-2">
+            <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 sm:pt-0">
+              <div className="flex flex-col sm:flex-row gap-2">
                 <Input 
-                  placeholder="EX: DIURNO, NOTURNO, ALFA, BRAVO..." 
+                  placeholder="EX: DIURNO, ALFA, BRAVO..." 
                   value={newValue}
                   onChange={(e) => setNewValue(e.target.value.toUpperCase())}
                   onKeyDown={(e) => e.key === 'Enter' && handleAddItem('shifts')}
-                  className="uppercase font-semibold"
+                  className="uppercase font-semibold text-xs sm:text-sm h-9 sm:h-10"
                 />
                 <Button 
                   onClick={() => handleAddItem('shifts')} 
                   disabled={isSubmitting || !newValue.trim()}
-                  className="gap-2"
+                  size="sm"
+                  className="gap-2 w-full sm:w-auto h-9 sm:h-10"
                 >
                   {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
                   ADICIONAR
@@ -179,16 +177,16 @@ export default function SettingsPage() {
                 {loadingShifts ? (
                   <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
                 ) : shifts.length === 0 ? (
-                  <p className="text-center py-4 text-xs text-muted-foreground uppercase italic">NENHUM TURNO CADASTRADO.</p>
+                  <p className="text-center py-4 text-[10px] sm:text-xs text-muted-foreground uppercase italic">NENHUM TURNO CADASTRADO.</p>
                 ) : (
-                  <div className="grid sm:grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {shifts.map((item: any) => (
-                      <div key={item.id} className="flex items-center justify-between p-3 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors group">
-                        <span className="font-bold text-sm uppercase">{item.name}</span>
+                      <div key={item.id} className="flex items-center justify-between p-2 sm:p-3 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors group">
+                        <span className="font-bold text-xs sm:text-sm uppercase">{item.name}</span>
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          className="h-8 w-8 text-destructive opacity-0 group-hover:opacity-100 transition-opacity"
+                          className="h-7 w-7 sm:h-8 sm:w-8 text-destructive opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                           onClick={() => handleDeleteItem(item.id, 'shifts')}
                         >
                           <Trash2 className="h-4 w-4" />
