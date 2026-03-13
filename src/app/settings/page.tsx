@@ -2,7 +2,7 @@
 "use client"
 
 import * as React from "react"
-import { Plus, Trash2, Loader2, Settings2, Calendar, Clock, Briefcase, FilePlus, LayoutGrid } from "lucide-react"
+import { Plus, Trash2, Loader2, Settings2, Calendar, Clock, Briefcase, FilePlus, LayoutGrid, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +13,7 @@ import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
+import { Badge } from "@/components/ui/badge"
 
 type Category = 'schedules' | 'shifts' | 'roles' | 'launchTypes' | 'units';
 
@@ -53,34 +54,37 @@ export default function SettingsPage() {
       return
     }
 
-    try {
-      await addDoc(collection(firestore, category), { name: val })
-      setNewValue("")
-      toast({ title: "SUCESSO", description: "ITEM ADICIONADO COM SUCESSO." })
-    } catch (error: any) {
-      const permissionError = new FirestorePermissionError({
-        path: category,
-        operation: 'create',
-        requestResourceData: { name: val }
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    } finally {
-      setIsSubmitting(false)
-    }
+    const payload = { name: val };
+    addDoc(collection(firestore, category), payload)
+      .then(() => {
+        setNewValue("")
+        toast({ title: "SUCESSO", description: "ITEM ADICIONADO COM SUCESSO." })
+      })
+      .catch((error: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: category,
+          operation: 'create',
+          requestResourceData: payload
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => setIsSubmitting(false))
   }
 
   async function handleDeleteItem(id: string, category: Category) {
     if (!firestore) return
-    try {
-      await deleteDoc(doc(firestore, category, id))
-      toast({ title: "REMOVIDO", description: "ITEM EXCLUÍDO COM SUCESSO." })
-    } catch (error: any) {
-      const permissionError = new FirestorePermissionError({
-        path: `${category}/${id}`,
-        operation: 'delete'
-      });
-      errorEmitter.emit('permission-error', permissionError);
-    }
+    const docRef = doc(firestore, category, id);
+    deleteDoc(docRef)
+      .then(() => {
+        toast({ title: "REMOVIDO", description: "ITEM EXCLUÍDO COM SUCESSO." })
+      })
+      .catch((error: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'delete'
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
   }
 
   const renderCategoryContent = (
@@ -91,49 +95,59 @@ export default function SettingsPage() {
     loading: boolean, 
     placeholder: string
   ) => (
-    <Card className="card-shadow border-primary/10">
-      <CardHeader className="p-4 sm:p-6">
-        <CardTitle className="text-lg sm:text-xl uppercase flex items-center gap-2">
-          {title}
-        </CardTitle>
-        <CardDescription className="uppercase text-[9px] sm:text-[10px]">{description}</CardDescription>
+    <Card className="card-shadow border-none rounded-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+      <CardHeader className="p-6 pb-4">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <CardTitle className="text-xl font-bold uppercase flex items-center gap-3">
+              {title}
+              <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-2 py-0.5 rounded-lg text-xs">
+                {items.length}
+              </Badge>
+            </CardTitle>
+            <CardDescription className="uppercase text-[10px] font-medium tracking-wide text-muted-foreground">
+              {description}
+            </CardDescription>
+          </div>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4 sm:space-y-6 p-4 sm:p-6 sm:pt-0">
-        <div className="flex flex-col sm:flex-row gap-2">
+      <CardContent className="p-6 pt-0 space-y-6">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Input 
             placeholder={placeholder} 
             value={newValue}
             onChange={(e) => setNewValue(e.target.value.toUpperCase())}
             onKeyDown={(e) => e.key === 'Enter' && handleAddItem(category)}
-            className="uppercase font-semibold text-xs sm:text-sm h-9 sm:h-10"
+            className="uppercase font-semibold text-xs h-11 bg-background/50 focus:bg-background transition-all border-muted"
           />
           <Button 
             onClick={() => handleAddItem(category)} 
             disabled={isSubmitting || !newValue.trim()}
-            size="sm"
-            className="gap-2 w-full sm:w-auto h-9 sm:h-10"
+            className="gap-2 w-full sm:w-auto h-11 px-6 uppercase font-bold text-xs bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 rounded-xl"
           >
             {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
             ADICIONAR
           </Button>
         </div>
 
-        <Separator />
+        <Separator className="bg-muted/50" />
 
-        <div className="grid gap-2">
+        <div className="grid gap-3">
           {loading ? (
-            <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            <div className="flex justify-center p-8"><Loader2 className="h-8 w-8 animate-spin text-primary opacity-50" /></div>
           ) : items.length === 0 ? (
-            <p className="text-center py-4 text-[10px] sm:text-xs text-muted-foreground uppercase italic">NENHUM ITEM CADASTRADO.</p>
+            <div className="text-center py-12 border-2 border-dashed border-muted/50 rounded-2xl">
+              <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest italic">NENHUM ITEM CADASTRADO.</p>
+            </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
               {items.map((item: any) => (
-                <div key={item.id} className="flex items-center justify-between p-2 sm:p-3 rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors group">
-                  <span className="font-bold text-xs sm:text-sm uppercase">{item.name}</span>
+                <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-muted bg-background hover:bg-slate-50 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <span className="font-bold text-xs uppercase tracking-tight text-slate-700">{item.name}</span>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-7 w-7 sm:h-8 sm:w-8 text-destructive opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
+                    className="h-8 w-8 text-destructive hover:bg-red-50 hover:text-destructive rounded-lg transition-colors"
                     onClick={() => handleDeleteItem(item.id, category)}
                   >
                     <Trash2 className="h-4 w-4" />
@@ -148,53 +162,59 @@ export default function SettingsPage() {
   );
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in duration-500 px-2 sm:px-0">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col gap-2">
-        <div className="flex items-center gap-2">
-          <Settings2 className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">CONFIGURAÇÃO</h2>
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-50 p-2 rounded-xl">
+            <Settings2 className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">CONFIGURAÇÃO</h2>
+            <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">GERENCIE AS DEFINIÇÕES GERAIS DO SISTEMA.</p>
+          </div>
         </div>
-        <p className="text-muted-foreground uppercase text-[10px] sm:text-sm">GERENCIE AS DEFINIÇÕES GERAIS DO SISTEMA.</p>
       </div>
 
       <Tabs defaultValue="launchTypes" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 lg:w-full h-auto p-1 gap-1">
-          <TabsTrigger value="launchTypes" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
+        <TabsList className="flex flex-wrap items-center justify-start bg-muted/40 p-1.5 rounded-2xl h-auto gap-1">
+          <TabsTrigger value="launchTypes" className="flex-1 gap-2 uppercase text-[10px] font-bold py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all whitespace-nowrap">
             <FilePlus className="h-4 w-4" /> LANÇAMENTOS
           </TabsTrigger>
-          <TabsTrigger value="schedules" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
+          <TabsTrigger value="schedules" className="flex-1 gap-2 uppercase text-[10px] font-bold py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all whitespace-nowrap">
             <Calendar className="h-4 w-4" /> ESCALAS
           </TabsTrigger>
-          <TabsTrigger value="shifts" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
+          <TabsTrigger value="shifts" className="flex-1 gap-2 uppercase text-[10px] font-bold py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all whitespace-nowrap">
             <Clock className="h-4 w-4" /> TURNOS
           </TabsTrigger>
-          <TabsTrigger value="roles" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
+          <TabsTrigger value="roles" className="flex-1 gap-2 uppercase text-[10px] font-bold py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all whitespace-nowrap">
             <Briefcase className="h-4 w-4" /> CARGOS
           </TabsTrigger>
-          <TabsTrigger value="units" className="gap-2 uppercase text-[9px] sm:text-xs font-bold py-2">
+          <TabsTrigger value="units" className="flex-1 gap-2 uppercase text-[10px] font-bold py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all whitespace-nowrap">
             <LayoutGrid className="h-4 w-4" /> SETORES
           </TabsTrigger>
         </TabsList>
 
-        <TabsContent value="launchTypes" className="mt-4 sm:mt-6">
-          {renderCategoryContent('launchTypes', 'TIPOS DE LANÇAMENTO', 'DEFINIÇÕES PARA O BANCO DE HORAS.', launchTypes, loadingLaunchTypes, 'EX: OPERAÇÃO, EXTRA, COMPENSAÇÃO...')}
-        </TabsContent>
+        <div className="mt-8">
+          <TabsContent value="launchTypes">
+            {renderCategoryContent('launchTypes', 'Gerenciar Lançamentos', 'DEFINIÇÕES PARA O BANCO DE HORAS.', launchTypes || [], loadingLaunchTypes, 'EX: OPERAÇÃO, EXTRA, COMPENSAÇÃO...')}
+          </TabsContent>
 
-        <TabsContent value="schedules" className="mt-4 sm:mt-6">
-          {renderCategoryContent('schedules', 'GERENCIAR ESCALAS', 'DEFINIÇÕES DE ESCALAS DE SERVIÇO.', schedules, loadingSchedules, 'EX: 12X36, ADMINISTRATIVA...')}
-        </TabsContent>
+          <TabsContent value="schedules">
+            {renderCategoryContent('schedules', 'Gerenciar Escalas', 'DEFINIÇÕES DE ESCALAS DE SERVIÇO.', schedules || [], loadingSchedules, 'EX: 12X36, ADMINISTRATIVA...')}
+          </TabsContent>
 
-        <TabsContent value="shifts" className="mt-4 sm:mt-6">
-          {renderCategoryContent('shifts', 'GERENCIAR TURNOS', 'DEFINIÇÕES DE TURNOS DE TRABALHO.', shifts, loadingShifts, 'EX: DIURNO, ALFA, BRAVO...')}
-        </TabsContent>
+          <TabsContent value="shifts">
+            {renderCategoryContent('shifts', 'Gerenciar Turnos', 'DEFINIÇÕES DE TURNOS DE TRABALHO.', shifts || [], loadingShifts, 'EX: DIURNO, ALFA, BRAVO...')}
+          </TabsContent>
 
-        <TabsContent value="roles" className="mt-4 sm:mt-6">
-          {renderCategoryContent('roles', 'GERENCIAR CARGOS', 'DEFINIÇÕES DE CARGOS E FUNÇÕES.', roles, loadingRoles, 'EX: INSPETOR, AGENTE, COORDENADOR...')}
-        </TabsContent>
+          <TabsContent value="roles">
+            {renderCategoryContent('roles', 'Gerenciar Cargos', 'DEFINIÇÕES DE CARGOS E FUNÇÕES.', roles || [], loadingRoles, 'EX: INSPETOR, AGENTE, COORDENADOR...')}
+          </TabsContent>
 
-        <TabsContent value="units" className="mt-4 sm:mt-6">
-          {renderCategoryContent('units', 'GERENCIAR SETORES', 'DEFINIÇÕES DE SETORES E UNIDADES.', units, loadingUnits, 'EX: UNIDADE CENTRO, ADM, OPERACIONAL...')}
-        </TabsContent>
+          <TabsContent value="units">
+            {renderCategoryContent('units', 'Gerenciar Setores', 'DEFINIÇÕES DE SETORES E UNIDADES.', units || [], loadingUnits, 'EX: UNIDADE CENTRO, ADM, OPERACIONAL...')}
+          </TabsContent>
+        </div>
       </Tabs>
     </div>
   )
