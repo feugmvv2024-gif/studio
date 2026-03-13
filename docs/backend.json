@@ -23,6 +23,28 @@
       },
       "required": ["name", "qra", "role", "status", "matricula", "escala", "turno", "unit"]
     },
+    "Launch": {
+      "title": "Launch",
+      "description": "Registro de lançamento operacional (banco de horas, folgas, etc).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string", "format": "date", "description": "Data do lançamento (BRT)." },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "employeeQra": { "type": "string" },
+        "escala": { "type": "string" },
+        "turno": { "type": "string" },
+        "type": { "type": "string", "description": "Tipo de lançamento vindo das configurações." },
+        "days": { "type": "number" },
+        "hours": { "type": "string", "description": "Formato HH:mm, suportando > 24h." },
+        "startDate": { "type": "string", "format": "date" },
+        "endDate": { "type": "string", "format": "date" },
+        "observations": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["date", "employeeId", "type", "hours"]
+    },
     "Request": {
       "title": "Operational Request",
       "description": "Solicitação operacional enviada por um funcionário (férias, permuta, etc).",
@@ -88,20 +110,6 @@
         "name": { "type": "string" }
       },
       "required": ["name"]
-    },
-    "TimeBankEntry": {
-      "title": "Time Bank Entry",
-      "description": "Registro de horas extras ou compensações.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "employeeId": { "type": "string" },
-        "date": { "type": "string" },
-        "type": { "type": "string", "enum": ["Extra", "Compensação"] },
-        "hours": { "type": "string" },
-        "description": { "type": "string" }
-      },
-      "required": ["employeeId", "date", "type", "hours"]
     }
   },
   "auth": {
@@ -111,6 +119,10 @@
     "/employees/{employeeId}": {
       "schema": "#/backend/entities/Employee",
       "description": "Coleção de funcionários da unidade."
+    },
+    "/launches/{launchId}": {
+      "schema": "#/backend/entities/Launch",
+      "description": "Coleção global de lançamentos operacionais."
     },
     "/requests/{requestId}": {
       "schema": "#/backend/entities/Request",
@@ -135,10 +147,6 @@
     "/launchTypes/{launchTypeId}": {
       "schema": "#/backend/entities/LaunchType",
       "description": "Coleção de tipos de lançamento configurados."
-    },
-    "/employees/{employeeId}/timeBank/{entryId}": {
-      "schema": "#/backend/entities/TimeBankEntry",
-      "description": "Sub-coleção com o histórico de banco de horas por funcionário."
     }
   }
 }
