@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -196,7 +195,6 @@ export default function EfetivoPage() {
       qra: (formData.get('qra') as string || "").toUpperCase(),
     };
 
-    // Só permite atualizar o status se não for mais PENDENTE
     if (selectedEmployee.status !== "PENDENTE") {
       updates.status = (formData.get('status') as string).toUpperCase();
     }
@@ -657,13 +655,13 @@ export default function EfetivoPage() {
                     <TableHead className="w-[50px] font-bold uppercase text-[10px]">Nº</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">QRAs</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">SERVIDOR</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px]">STATUS</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">MATRÍCULA</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px]">CÓD. VALIDAÇÃO</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">ESCALA</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">TURNO</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">CARGO</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">SETOR</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">CÓD. VALIDAÇÃO</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">STATUS</TableHead>
                     <TableHead className="text-right font-bold uppercase text-[10px]">AÇÕES</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -679,6 +677,23 @@ export default function EfetivoPage() {
                       <TableCell className="font-mono text-[10px] text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.qra}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.name}</TableCell>
+                      <TableCell className="font-mono text-xs uppercase">{employee.matricula}</TableCell>
+                      <TableCell className="text-xs uppercase">{employee.escala}</TableCell>
+                      <TableCell className="text-xs uppercase">{employee.turno}</TableCell>
+                      <TableCell className="text-xs uppercase">{employee.role}</TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="font-normal uppercase text-[9px]">{employee.unit}</Badge>
+                      </TableCell>
+                      <TableCell className="text-xs uppercase">
+                        {employee.validationCode ? (
+                          <div className="flex items-center gap-1.5 text-primary">
+                            <Key className="h-3 w-3" />
+                            {employee.validationCode}
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">---</span>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge 
                           variant={employee.status === "PENDENTE" ? "outline" : "default"}
@@ -692,23 +707,6 @@ export default function EfetivoPage() {
                         >
                           {employee.status || "PENDENTE"}
                         </Badge>
-                      </TableCell>
-                      <TableCell className="font-mono text-xs uppercase">{employee.matricula}</TableCell>
-                      <TableCell className="text-xs uppercase">
-                        {employee.validationCode ? (
-                          <div className="flex items-center gap-1.5 text-primary">
-                            <Key className="h-3 w-3" />
-                            {employee.validationCode}
-                          </div>
-                        ) : (
-                          <span className="text-muted-foreground">---</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-xs uppercase">{employee.escala}</TableCell>
-                      <TableCell className="text-xs uppercase">{employee.turno}</TableCell>
-                      <TableCell className="text-xs uppercase">{employee.role}</TableCell>
-                      <TableCell>
-                        <Badge variant="secondary" className="font-normal uppercase text-[9px]">{employee.unit}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
                         <DropdownMenu>
