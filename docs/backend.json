@@ -16,7 +16,7 @@
         "turno": { "type": "string" },
         "role": { "type": "string" },
         "unit": { "type": "string" },
-        "status": { "type": "string", "enum": ["ATIVO", "FÉRIAS", "LICENÇA", "INATIVO"] },
+        "status": { "type": "string", "enum": ["PENDENTE", "ATIVO", "FÉRIAS", "LICENÇA", "INATIVO"] },
         "avatar": { "type": "string" },
         "admissionDate": { "type": "string", "format": "date" },
         "phone": { "type": "string" }

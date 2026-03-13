@@ -14,7 +14,8 @@ import {
   Filter,
   X,
   Key,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -64,6 +65,13 @@ import {
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useFirestore, useCollection } from '@/firebase';
 import { collection, addDoc, doc, deleteDoc, query, orderBy, updateDoc } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
@@ -155,7 +163,7 @@ export default function EfetivoPage() {
       role: (formData.get('role') as string).toUpperCase(),
       unit: (formData.get('unit') as string).toUpperCase(),
       qra: (formData.get('qra') as string || "").toUpperCase(),
-      status: "ATIVO",
+      status: "PENDENTE",
       avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
       admissionDate: new Date().toISOString().split('T')[0]
     };
@@ -164,7 +172,7 @@ export default function EfetivoPage() {
     
     addDoc(collection(firestore, 'employees'), newEmployee)
       .then(() => {
-        toast({ title: "SUCESSO!", description: "REGISTRO CRIADO." });
+        toast({ title: "SUCESSO!", description: "REGISTRO CRIADO EM MODO PENDENTE." });
       })
       .catch(() => {
         toast({ variant: "destructive", title: "ERRO", description: "FALHA AO SALVAR." });
@@ -176,7 +184,7 @@ export default function EfetivoPage() {
     if (!firestore || !selectedEmployee) return;
 
     const formData = new FormData(e.currentTarget);
-    const updates = {
+    const updates: any = {
       name: (formData.get('name') as string).toUpperCase(),
       email: (formData.get('email') as string || "").toUpperCase(),
       matricula: (formData.get('matricula') as string).toUpperCase(),
@@ -187,6 +195,11 @@ export default function EfetivoPage() {
       unit: (formData.get('unit') as string).toUpperCase(),
       qra: (formData.get('qra') as string || "").toUpperCase(),
     };
+
+    // Só permite atualizar o status se não for mais PENDENTE
+    if (selectedEmployee.status !== "PENDENTE") {
+      updates.status = (formData.get('status') as string).toUpperCase();
+    }
 
     const id = selectedEmployee.id;
     setIsEditOpen(false);
@@ -229,7 +242,7 @@ export default function EfetivoPage() {
             if (name && matricula) {
               addDoc(collection(firestore, 'employees'), {
                 name, qra, matricula, validationCode, escala, turno, role, unit,
-                status: "ATIVO",
+                status: "PENDENTE",
                 avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
                 admissionDate: new Date().toISOString().split('T')[0],
                 email: ""
@@ -237,7 +250,7 @@ export default function EfetivoPage() {
             }
           });
 
-          toast({ title: "IMPORTAÇÃO CONCLUÍDA", description: `${data.length} REGISTROS PROCESSADOS.` });
+          toast({ title: "IMPORTAÇÃO CONCLUÍDA", description: `${data.length} REGISTROS PROCESSADOS COMO PENDENTES.` });
         } catch (error) {
           toast({ variant: "destructive", title: "ERRO NA IMPORTAÇÃO" });
         } finally {
@@ -471,9 +484,10 @@ export default function EfetivoPage() {
                       <Input id="edit-matricula" name="matricula" defaultValue={selectedEmployee.matricula} required className="uppercase" />
                     </div>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label>
-                    <div className="flex gap-2">
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-validationCode" className="uppercase">CÓDIGO DE VALIDAÇÃO</Label>
                       <Input 
                         id="edit-validationCode" 
                         name="validationCode" 
@@ -481,7 +495,32 @@ export default function EfetivoPage() {
                         className="uppercase font-mono font-bold text-primary" 
                       />
                     </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-status" className="uppercase">STATUS</Label>
+                      <Select 
+                        name="status" 
+                        defaultValue={selectedEmployee.status} 
+                        disabled={selectedEmployee.status === "PENDENTE"}
+                      >
+                        <SelectTrigger id="edit-status">
+                          <SelectValue placeholder="SELECIONE..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PENDENTE">PENDENTE</SelectItem>
+                          <SelectItem value="ATIVO">ATIVO</SelectItem>
+                          <SelectItem value="FÉRIAS">FÉRIAS</SelectItem>
+                          <SelectItem value="LICENÇA">LICENÇA</SelectItem>
+                          <SelectItem value="INATIVO">INATIVO</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      {selectedEmployee.status === "PENDENTE" && (
+                        <p className="text-[9px] text-muted-foreground uppercase flex items-center gap-1">
+                          <AlertCircle className="h-2.5 w-2.5" /> BLOQUEADO ATÉ ATIVAÇÃO PELO AGENTE.
+                        </p>
+                      )}
+                    </div>
                   </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="edit-unit" className="uppercase">SETOR</Label>
@@ -618,6 +657,7 @@ export default function EfetivoPage() {
                     <TableHead className="w-[50px] font-bold uppercase text-[10px]">Nº</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">QRAs</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">SERVIDOR</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px]">STATUS</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">MATRÍCULA</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">CÓD. VALIDAÇÃO</TableHead>
                     <TableHead className="font-bold uppercase text-[10px]">ESCALA</TableHead>
@@ -639,6 +679,20 @@ export default function EfetivoPage() {
                       <TableCell className="font-mono text-[10px] text-muted-foreground">{index + 1}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.qra}</TableCell>
                       <TableCell className="font-semibold text-xs uppercase">{employee.name}</TableCell>
+                      <TableCell>
+                        <Badge 
+                          variant={employee.status === "PENDENTE" ? "outline" : "default"}
+                          className={`uppercase text-[9px] font-bold ${
+                            employee.status === "PENDENTE" 
+                              ? "border-orange-500 text-orange-600 bg-orange-50" 
+                              : employee.status === "ATIVO"
+                                ? "bg-green-600"
+                                : "bg-blue-600"
+                          }`}
+                        >
+                          {employee.status || "PENDENTE"}
+                        </Badge>
+                      </TableCell>
                       <TableCell className="font-mono text-xs uppercase">{employee.matricula}</TableCell>
                       <TableCell className="text-xs uppercase">
                         {employee.validationCode ? (
