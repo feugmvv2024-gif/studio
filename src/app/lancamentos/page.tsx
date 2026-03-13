@@ -90,6 +90,20 @@ function getSaoPauloDate() {
   }).format(now).split('/').reverse().join('-');
 }
 
+// Função para aplicar máscara de horas (HH:MM)
+function applyHoursMask(value: string) {
+  let v = value.replace(/\D/g, ""); // Remove tudo que não é dígito
+  if (v.length > 6) v = v.slice(0, 6); // Limite de 6 dígitos (9999:59)
+  
+  if (v.length <= 2) {
+    return v;
+  } else {
+    const minutes = v.slice(-2);
+    const hours = v.slice(0, -2);
+    return `${hours}:${minutes}`;
+  }
+}
+
 export default function LancamentosPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
@@ -98,9 +112,19 @@ export default function LancamentosPage() {
   const [launchToDelete, setLaunchToDelete] = React.useState<string | null>(null)
   const [searchTerm, setSearchTerm] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [hoursInput, setHoursInput] = React.useState("")
 
   const firestore = useFirestore()
   const { toast } = useToast()
+
+  // Sincroniza o valor do input de horas com o lançamento selecionado para edição
+  React.useEffect(() => {
+    if (selectedLaunch) {
+      setHoursInput(selectedLaunch.hours || "");
+    } else {
+      setHoursInput("");
+    }
+  }, [selectedLaunch, isAddOpen, isEditOpen]);
 
   // Queries otimizadas
   const launchesQuery = React.useMemo(() => {
@@ -152,7 +176,7 @@ export default function LancamentosPage() {
       escalaTurno: `${employee?.escala || "N/A"} / ${employee?.turno || "N/A"}`,
       type: (formData.get('type') as string).toUpperCase(),
       days: Number(formData.get('days') || 0),
-      hours: formData.get('hours') as string,
+      hours: hoursInput,
       startDate: formData.get('startDate') as string,
       endDate: formData.get('endDate') as string,
       observations: (formData.get('observations') as string || "").toUpperCase(),
@@ -162,6 +186,7 @@ export default function LancamentosPage() {
     try {
       await addDoc(collection(firestore, 'launches'), newLaunch);
       setIsAddOpen(false);
+      setHoursInput("");
       toast({ title: "SUCESSO!", description: "LANÇAMENTO REALIZADO." });
     } catch (err) {
       const error = new FirestorePermissionError({
@@ -195,7 +220,7 @@ export default function LancamentosPage() {
       escalaTurno: `${employee?.escala || "N/A"} / ${employee?.turno || "N/A"}`,
       type: (formData.get('type') as string).toUpperCase(),
       days: Number(formData.get('days') || 0),
-      hours: formData.get('hours') as string,
+      hours: hoursInput,
       startDate: formData.get('startDate') as string,
       endDate: formData.get('endDate') as string,
       observations: (formData.get('observations') as string || "").toUpperCase(),
@@ -206,6 +231,7 @@ export default function LancamentosPage() {
       await updateDoc(docRef, updates);
       setIsEditOpen(false);
       setSelectedLaunch(null);
+      setHoursInput("");
       toast({ title: "SUCESSO!", description: "LANÇAMENTO ATUALIZADO." });
     } catch (err) {
       const error = new FirestorePermissionError({
@@ -247,7 +273,7 @@ export default function LancamentosPage() {
           <Label className="uppercase text-[10px] font-bold">SERVIDOR</Label>
           <Select name="employeeId" defaultValue={launch?.employeeId} required>
             <SelectTrigger className="h-9 uppercase text-[11px]">
-              <SelectValue placeholder="SELECIONE O AGENTE..." />
+              <SelectValue placeholder="SELECIONE O TIPO..." />
             </SelectTrigger>
             <SelectContent>
               {employees?.map((emp: any) => (
@@ -283,7 +309,14 @@ export default function LancamentosPage() {
           </div>
           <div className="grid gap-2">
             <Label className="uppercase text-[10px] font-bold">HORAS (HH:MM)</Label>
-            <Input name="hours" placeholder="00:00" defaultValue={launch?.hours} required className="h-9" />
+            <Input 
+              name="hours" 
+              placeholder="00:00" 
+              value={hoursInput} 
+              onChange={(e) => setHoursInput(applyHoursMask(e.target.value))} 
+              required 
+              className="h-9" 
+            />
           </div>
         </div>
       </div>
