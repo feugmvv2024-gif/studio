@@ -101,7 +101,7 @@ export default function EfetivoPage() {
       turno,
       role,
       unit,
-      qra: `QRA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`.toUpperCase(),
+      qra: (formData.get('qra') as string || "").toUpperCase(),
       status: "ATIVO",
       avatar: `https://picsum.photos/seed/${Math.random()}/100/100`,
       admissionDate: new Date().toISOString().split('T')[0]
@@ -139,6 +139,7 @@ export default function EfetivoPage() {
     const role = (formData.get('role') as string).toUpperCase();
     const unit = (formData.get('unit') as string).toUpperCase();
     const email = (formData.get('email') as string || "").toUpperCase();
+    const qra = (formData.get('qra') as string || "").toUpperCase();
 
     try {
       const employeeDoc = doc(firestore, 'employees', selectedEmployee.id);
@@ -149,7 +150,8 @@ export default function EfetivoPage() {
         escala,
         turno,
         role,
-        unit
+        unit,
+        qra
       });
       setIsEditOpen(false);
       setSelectedEmployee(null);
@@ -186,7 +188,7 @@ export default function EfetivoPage() {
 
         for (const row of data) {
           const name = (row['SERVIDOR'] || "").toString().toUpperCase();
-          const qra = (row['QRAs'] || row['QRA'] || `QRA-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`).toString().toUpperCase();
+          const qra = (row['QRAs'] || row['QRA'] || "").toString().toUpperCase();
           const matricula = (row['MATRICULA'] || row['MATRÍCULA'] || "").toString().toUpperCase();
           const escala = (row['ESCALA'] || "").toString().toUpperCase();
           const turno = (row['TURNO'] || "").toString().toUpperCase();
@@ -288,27 +290,33 @@ export default function EfetivoPage() {
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
-                        <Label htmlFor="matricula" className="uppercase">MATRÍCULA</Label>
-                        <Input id="matricula" name="matricula" placeholder="EX: 123456" required className="uppercase" />
+                        <Label htmlFor="qra" className="uppercase">QRA</Label>
+                        <Input id="qra" name="qra" placeholder="EX: A. RODRIGUES" required className="uppercase" />
                       </div>
                       <div className="grid gap-2">
-                        <Label htmlFor="unit" className="uppercase">SETOR / UNIDADE</Label>
-                        <Input id="unit" name="unit" placeholder="EX: ROMU / PATAMO" required className="uppercase" />
+                        <Label htmlFor="matricula" className="uppercase">MATRÍCULA</Label>
+                        <Input id="matricula" name="matricula" placeholder="EX: 123456" required className="uppercase" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
+                        <Label htmlFor="unit" className="uppercase">SETOR / UNIDADE</Label>
+                        <Input id="unit" name="unit" placeholder="EX: ROMU / PATAMO" required className="uppercase" />
+                      </div>
+                      <div className="grid gap-2">
                         <Label htmlFor="escala" className="uppercase">ESCALA</Label>
                         <Input id="escala" name="escala" placeholder="EX: 12X36 / 24X72" required className="uppercase" />
                       </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label htmlFor="turno" className="uppercase">TURNO</Label>
                         <Input id="turno" name="turno" placeholder="EX: DIURNO / NOTURNO" required className="uppercase" />
                       </div>
-                    </div>
-                    <div className="grid gap-2">
-                      <Label htmlFor="role" className="uppercase">CARGO / FUNÇÃO</Label>
-                      <Input id="role" name="role" placeholder="EX: AGENTE DE SEGURANÇA" required className="uppercase" />
+                      <div className="grid gap-2">
+                        <Label htmlFor="role" className="uppercase">CARGO / FUNÇÃO</Label>
+                        <Input id="role" name="role" placeholder="EX: AGENTE DE SEGURANÇA" required className="uppercase" />
+                      </div>
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="email" className="uppercase">E-MAIL (OPCIONAL)</Label>
@@ -347,27 +355,33 @@ export default function EfetivoPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
-                      <Label htmlFor="edit-matricula" className="uppercase">MATRÍCULA</Label>
-                      <Input id="edit-matricula" name="matricula" defaultValue={selectedEmployee.matricula} required className="uppercase" />
+                      <Label htmlFor="edit-qra" className="uppercase">QRA</Label>
+                      <Input id="edit-qra" name="qra" defaultValue={selectedEmployee.qra} required className="uppercase" />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="edit-unit" className="uppercase">SETOR / UNIDADE</Label>
-                      <Input id="edit-unit" name="unit" defaultValue={selectedEmployee.unit} required className="uppercase" />
+                      <Label htmlFor="edit-matricula" className="uppercase">MATRÍCULA</Label>
+                      <Input id="edit-matricula" name="matricula" defaultValue={selectedEmployee.matricula} required className="uppercase" />
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
+                      <Label htmlFor="edit-unit" className="uppercase">SETOR / UNIDADE</Label>
+                      <Input id="edit-unit" name="unit" defaultValue={selectedEmployee.unit} required className="uppercase" />
+                    </div>
+                    <div className="grid gap-2">
                       <Label htmlFor="edit-escala" className="uppercase">ESCALA</Label>
                       <Input id="edit-escala" name="escala" defaultValue={selectedEmployee.escala} required className="uppercase" />
                     </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="grid gap-2">
                       <Label htmlFor="edit-turno" className="uppercase">TURNO</Label>
                       <Input id="edit-turno" name="turno" defaultValue={selectedEmployee.turno} required className="uppercase" />
                     </div>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="edit-role" className="uppercase">CARGO / FUNÇÃO</Label>
-                    <Input id="edit-role" name="role" defaultValue={selectedEmployee.role} required className="uppercase" />
+                    <div className="grid gap-2">
+                      <Label htmlFor="edit-role" className="uppercase">CARGO / FUNÇÃO</Label>
+                      <Input id="edit-role" name="role" defaultValue={selectedEmployee.role} required className="uppercase" />
+                    </div>
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="edit-email" className="uppercase">E-MAIL (OPCIONAL)</Label>
@@ -437,7 +451,7 @@ export default function EfetivoPage() {
                       <TableRow key={employee.id} className="hover:bg-muted/30 transition-colors">
                         <TableCell className="font-mono text-xs">{index + 1}</TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="font-mono uppercase text-[10px]">{employee.qra}</Badge>
+                          <Badge variant="outline" className="font-semibold uppercase text-[10px]">{employee.qra}</Badge>
                         </TableCell>
                         <TableCell>
                           <span className="font-semibold uppercase text-xs">{employee.name}</span>
