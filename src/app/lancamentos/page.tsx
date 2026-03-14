@@ -422,7 +422,7 @@ export default function LancamentosPage() {
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2 uppercase font-bold text-xs h-9 shadow-md"><Plus className="h-4 w-4" /> NOVO LANÇAMENTO</Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[700px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
+          <DialogContent className="sm:max-w-[800px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
             <form onSubmit={(e) => handleMutation(e, false)} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2 border-b flex flex-row items-center justify-between space-y-0">
                 <div className="flex items-center gap-3">
@@ -530,7 +530,7 @@ export default function LancamentosPage() {
       </Card>
 
       <Dialog open={isEditOpen} onOpenChange={(open) => { setIsEditOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="sm:max-w-[700px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
+        <DialogContent className="sm:max-w-[800px] max-h-[95vh] flex flex-col p-0 overflow-hidden rounded-2xl shadow-2xl border-none">
           {selectedLaunch && (
             <form onSubmit={(e) => handleMutation(e, true)} className="flex flex-col h-full">
               <DialogHeader className="p-6 pb-2 border-b flex flex-row items-center justify-between space-y-0">
