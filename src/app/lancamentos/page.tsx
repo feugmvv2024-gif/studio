@@ -139,8 +139,8 @@ export default function LancamentosPage() {
       setHoursInput(selectedLaunch.hours || "");
       setSelectedEmployeeId(selectedLaunch.employeeId || "");
       setSearchEmployeeTerm(`${selectedLaunch.employeeName} (${selectedLaunch.employeeQra})`);
-      setFormDays(selectedLaunch.days || "");
-      setFormQtdEscala(selectedLaunch.qtdEscala || "");
+      setFormDays(selectedLaunch.days ?? "");
+      setFormQtdEscala(selectedLaunch.qtdEscala ?? "");
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
     } else if (isAddOpen) {
@@ -502,16 +502,16 @@ export default function LancamentosPage() {
                   {filteredLaunches.map((launch, index) => (
                     <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
                       <TableCell className="font-mono text-[9px] px-4 text-muted-foreground">{filteredLaunches.length - index}</TableCell>
-                      <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/')}</TableCell>
-                      <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra}</span></div></TableCell>
+                      <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/') || "-"}</TableCell>
+                      <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
                       <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[9px] uppercase font-bold border-blue-200 text-blue-700 bg-blue-50/50">{launch.type}</Badge></TableCell>
-                      <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || 0}</TableCell>
-                      <TableCell className="text-[11px] font-bold text-center">{launch.days || 0}</TableCell>
-                      <TableCell className="text-[11px] font-black text-blue-600 text-center">{launch.hours}H</TableCell>
-                      <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/')}</TableCell>
-                      <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/')}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">{launch.observations}</TableCell>
+                      <TableCell><Badge variant="outline" className="text-[9px] uppercase font-bold border-blue-200 text-blue-700 bg-blue-50/50">{launch.type || "-"}</Badge></TableCell>
+                      <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala ?? "-"}</TableCell>
+                      <TableCell className="text-[11px] font-bold text-center">{launch.days ?? "-"}</TableCell>
+                      <TableCell className="text-[11px] font-black text-blue-600 text-center">{launch.hours ? `${launch.hours}H` : "-"}</TableCell>
+                      <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/') || "-"}</TableCell>
+                      <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/') || "-"}</TableCell>
+                      <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">{launch.observations || "-"}</TableCell>
                       <TableCell className="text-right pr-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
