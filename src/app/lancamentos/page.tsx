@@ -112,12 +112,12 @@ export default function LancamentosPage() {
   const [hoursInput, setHoursInput] = React.useState("")
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
   const [searchEmployeeTerm, setSearchEmployeeTerm] = React.useState("")
-  const [formDays, setFormDays] = React.useState<number>(0)
-  const [formQtdEscala, setFormQtdEscala] = React.useState<number>(0)
+  const [formDays, setFormDays] = React.useState<number | "">("")
+  const [formQtdEscala, setFormQtdEscala] = React.useState<number | "">("")
   const [formStartDate, setFormStartDate] = React.useState<string>("")
   const [formEndDate, setFormEndDate] = React.useState<string>("")
   
-  // Novos Estados para o Input Customizado
+  // Estados para a busca de Servidor
   const [showServidorSuggestions, setShowServidorSuggestions] = React.useState(false)
   const servidorSearchInputRef = React.useRef<HTMLInputElement>(null)
 
@@ -139,8 +139,8 @@ export default function LancamentosPage() {
       setHoursInput(selectedLaunch.hours || "");
       setSelectedEmployeeId(selectedLaunch.employeeId || "");
       setSearchEmployeeTerm(`${selectedLaunch.employeeName} (${selectedLaunch.employeeQra})`);
-      setFormDays(selectedLaunch.days || 0);
-      setFormQtdEscala(selectedLaunch.qtdEscala || 0);
+      setFormDays(selectedLaunch.days || "");
+      setFormQtdEscala(selectedLaunch.qtdEscala || "");
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
     } else if (isAddOpen) {
@@ -150,7 +150,7 @@ export default function LancamentosPage() {
 
   // Cálculo Automático de Data Fim
   React.useEffect(() => {
-    if (formStartDate && formDays > 0) {
+    if (formStartDate && typeof formDays === 'number' && formDays > 0) {
       const start = new Date(formStartDate + "T00:00:00");
       const end = new Date(start);
       end.setDate(start.getDate() + (formDays - 1));
@@ -190,8 +190,8 @@ export default function LancamentosPage() {
     setSelectedEmployeeId("");
     setSearchEmployeeTerm("");
     setHoursInput("");
-    setFormDays(0);
-    setFormQtdEscala(0);
+    setFormDays("");
+    setFormQtdEscala("");
     setFormStartDate("");
     setFormEndDate("");
   };
@@ -213,8 +213,8 @@ export default function LancamentosPage() {
       escala: selectedEmployee.escala || "N/A",
       turno: selectedEmployee.turno || "N/A",
       type: (formData.get('type') as string).toUpperCase(),
-      days: Number(formDays),
-      qtdEscala: Number(formQtdEscala),
+      days: formDays === "" ? 0 : Number(formDays),
+      qtdEscala: formQtdEscala === "" ? 0 : Number(formQtdEscala),
       hours: hoursInput,
       startDate: formStartDate,
       endDate: formEndDate,
@@ -361,8 +361,8 @@ export default function LancamentosPage() {
             <Input 
               name="qtdEscala" 
               type="number" 
-              value={formQtdEscala || ""} 
-              onChange={(e) => setFormQtdEscala(Number(e.target.value))} 
+              value={formQtdEscala} 
+              onChange={(e) => setFormQtdEscala(e.target.value === "" ? "" : Number(e.target.value))} 
               className="h-11 bg-background/50 border-muted text-center font-medium" 
             />
           </div>
@@ -371,13 +371,13 @@ export default function LancamentosPage() {
             <Input 
               name="days" 
               type="number" 
-              value={formDays || ""} 
-              onChange={(e) => setFormDays(Number(e.target.value))} 
+              value={formDays} 
+              onChange={(e) => setFormDays(e.target.value === "" ? "" : Number(e.target.value))} 
               className="h-11 bg-background/50 border-muted text-center font-medium" 
             />
           </div>
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DATA DE</Label>
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DATA INÍCIO</Label>
             <Input 
               name="startDate" 
               type="date" 
@@ -487,9 +487,11 @@ export default function LancamentosPage() {
                     <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">SERVIDOR</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">ESCALA/TURNO</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[110px]">TIPO</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[60px]">QTD</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[60px]">DIAS</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[70px]">HORAS</TableHead>
+                    <TableHead className="font-bold uppercase text-[9px] min-w-[60px] leading-tight text-center">
+                      QTD <br /> ESCALAS
+                    </TableHead>
+                    <TableHead className="font-bold uppercase text-[9px] min-w-[60px] text-center">DIAS</TableHead>
+                    <TableHead className="font-bold uppercase text-[9px] min-w-[70px] text-center">HORAS</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">INÍCIO</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">FIM</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">OBSERVAÇÕES</TableHead>
@@ -504,9 +506,9 @@ export default function LancamentosPage() {
                       <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra}</span></div></TableCell>
                       <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
                       <TableCell><Badge variant="outline" className="text-[9px] uppercase font-bold border-blue-200 text-blue-700 bg-blue-50/50">{launch.type}</Badge></TableCell>
-                      <TableCell className="text-[11px] font-medium">{launch.qtdEscala || 0}</TableCell>
-                      <TableCell className="text-[11px] font-bold">{launch.days || 0}D</TableCell>
-                      <TableCell className="text-[11px] font-black text-blue-600">{launch.hours}H</TableCell>
+                      <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || 0}</TableCell>
+                      <TableCell className="text-[11px] font-bold text-center">{launch.days || 0}</TableCell>
+                      <TableCell className="text-[11px] font-black text-blue-600 text-center">{launch.hours}H</TableCell>
                       <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/')}</TableCell>
                       <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/')}</TableCell>
                       <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">{launch.observations}</TableCell>
@@ -514,9 +516,9 @@ export default function LancamentosPage() {
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
-                            <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50 cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
                             <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
+                            <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50 cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
                           </DropdownMenuContent>
                         </DropdownMenu>
                       </TableCell>
@@ -552,7 +554,7 @@ export default function LancamentosPage() {
                   variant="secondary" 
                   type="button" 
                   onClick={() => setIsEditOpen(false)} 
-                  className="uppercase text-xs font-bold h-11 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  className="uppercase text-xs font-bold h-11 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 border-none"
                 >
                   CANCELAR
                 </Button>
@@ -561,7 +563,7 @@ export default function LancamentosPage() {
                   disabled={isSubmitting} 
                   className="uppercase text-xs font-bold h-11 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-200"
                 >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "SALVAR ALTERAÇÕES"}
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : "Salvar Alterações"}
                 </Button>
               </DialogFooter>
             </form>
