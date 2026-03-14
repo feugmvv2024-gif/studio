@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -112,6 +113,7 @@ export default function LancamentosPage() {
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
   const [searchEmployeeTerm, setSearchEmployeeTerm] = React.useState("")
   const [formDays, setFormDays] = React.useState<number>(0)
+  const [formQtdEscala, setFormQtdEscala] = React.useState<number>(0)
   const [formStartDate, setFormStartDate] = React.useState<string>("")
   const [formEndDate, setFormEndDate] = React.useState<string>("")
   
@@ -138,6 +140,7 @@ export default function LancamentosPage() {
       setSelectedEmployeeId(selectedLaunch.employeeId || "");
       setSearchEmployeeTerm(`${selectedLaunch.employeeName} (${selectedLaunch.employeeQra})`);
       setFormDays(selectedLaunch.days || 0);
+      setFormQtdEscala(selectedLaunch.qtdEscala || 0);
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
     } else if (isAddOpen) {
@@ -188,6 +191,7 @@ export default function LancamentosPage() {
     setSearchEmployeeTerm("");
     setHoursInput("");
     setFormDays(0);
+    setFormQtdEscala(0);
     setFormStartDate("");
     setFormEndDate("");
   };
@@ -210,6 +214,7 @@ export default function LancamentosPage() {
       turno: selectedEmployee.turno || "N/A",
       type: (formData.get('type') as string).toUpperCase(),
       days: Number(formDays),
+      qtdEscala: Number(formQtdEscala),
       hours: hoursInput,
       startDate: formStartDate,
       endDate: formEndDate,
@@ -339,7 +344,7 @@ export default function LancamentosPage() {
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <div className="grid gap-1.5">
             <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">HORAS (HH:MM)</Label>
             <Input 
@@ -349,6 +354,16 @@ export default function LancamentosPage() {
               onChange={(e) => setHoursInput(applyHoursMask(e.target.value))} 
               required 
               className="h-11 bg-background/50 border-muted text-center font-mono font-medium" 
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">QTD ESCALA</Label>
+            <Input 
+              name="qtdEscala" 
+              type="number" 
+              value={formQtdEscala || ""} 
+              onChange={(e) => setFormQtdEscala(Number(e.target.value))} 
+              className="h-11 bg-background/50 border-muted text-center font-medium" 
             />
           </div>
           <div className="grid gap-1.5">
@@ -472,6 +487,7 @@ export default function LancamentosPage() {
                     <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">SERVIDOR</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">ESCALA/TURNO</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[110px]">TIPO</TableHead>
+                    <TableHead className="font-bold uppercase text-[9px] min-w-[60px]">QTD</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[60px]">DIAS</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[70px]">HORAS</TableHead>
                     <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">INÍCIO</TableHead>
@@ -488,6 +504,7 @@ export default function LancamentosPage() {
                       <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra}</span></div></TableCell>
                       <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
                       <TableCell><Badge variant="outline" className="text-[9px] uppercase font-bold border-blue-200 text-blue-700 bg-blue-50/50">{launch.type}</Badge></TableCell>
+                      <TableCell className="text-[11px] font-medium">{launch.qtdEscala || 0}</TableCell>
                       <TableCell className="text-[11px] font-bold">{launch.days || 0}D</TableCell>
                       <TableCell className="text-[11px] font-black text-blue-600">{launch.hours}H</TableCell>
                       <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/')}</TableCell>

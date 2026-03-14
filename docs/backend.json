@@ -38,6 +38,7 @@
         "type": { "type": "string", "description": "Tipo de lançamento vindo das configurações." },
         "days": { "type": "number" },
         "hours": { "type": "string", "description": "Formato HH:mm, suportando > 24h." },
+        "qtdEscala": { "type": "number", "description": "Quantidade de escalas lançadas." },
         "startDate": { "type": "string", "format": "date" },
         "endDate": { "type": "string", "format": "date" },
         "observations": { "type": "string" },
