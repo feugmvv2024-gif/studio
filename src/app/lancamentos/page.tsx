@@ -506,8 +506,8 @@ export default function LancamentosPage() {
                       <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
                       <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
                       <TableCell><Badge variant="outline" className="text-[9px] uppercase font-bold border-blue-200 text-blue-700 bg-blue-50/50">{launch.type || "-"}</Badge></TableCell>
-                      <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala ?? "-"}</TableCell>
-                      <TableCell className="text-[11px] font-bold text-center">{launch.days ?? "-"}</TableCell>
+                      <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || "-"}</TableCell>
+                      <TableCell className="text-[11px] font-bold text-center">{launch.days || "-"}</TableCell>
                       <TableCell className="text-[11px] font-black text-blue-600 text-center">{launch.hours ? `${launch.hours}H` : "-"}</TableCell>
                       <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/') || "-"}</TableCell>
                       <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/') || "-"}</TableCell>
