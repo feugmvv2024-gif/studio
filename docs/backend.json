@@ -111,6 +111,20 @@
         "name": { "type": "string" }
       },
       "required": ["name"]
+    },
+    "ShiftPeriod": {
+      "title": "Shift Period",
+      "description": "Configuração de horários e duração de uma escala.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "escalaId": { "type": "string" },
+        "escalaName": { "type": "string" },
+        "startTime": { "type": "string", "description": "Formato HH:mm" },
+        "endTime": { "type": "string", "description": "Formato HH:mm" },
+        "duration": { "type": "string", "description": "Tempo calculado HH:mm" }
+      },
+      "required": ["escalaId", "startTime", "endTime", "duration"]
     }
   },
   "auth": {
@@ -148,6 +162,10 @@
     "/launchTypes/{launchTypeId}": {
       "schema": "#/backend/entities/LaunchType",
       "description": "Coleção de tipos de lançamento configurados."
+    },
+    "/shiftPeriods/{shiftPeriodId}": {
+      "schema": "#/backend/entities/ShiftPeriod",
+      "description": "Coleção de períodos configurados para as escalas."
     }
   }
 }
