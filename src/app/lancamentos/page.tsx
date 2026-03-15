@@ -116,6 +116,7 @@ export default function LancamentosPage() {
   const [formQtdEscala, setFormQtdEscala] = React.useState<number | "">("")
   const [formStartDate, setFormStartDate] = React.useState<string>("")
   const [formEndDate, setFormEndDate] = React.useState<string>("")
+  const [selectedType, setSelectedType] = React.useState<string>("")
   
   // Estados para a busca de Servidor
   const [showServidorSuggestions, setShowServidorSuggestions] = React.useState(false)
@@ -143,6 +144,7 @@ export default function LancamentosPage() {
       setFormQtdEscala(selectedLaunch.qtdEscala ?? "");
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
+      setSelectedType(selectedLaunch.type || "");
     } else if (isAddOpen) {
       resetForm();
     }
@@ -194,6 +196,7 @@ export default function LancamentosPage() {
     setFormQtdEscala("");
     setFormStartDate("");
     setFormEndDate("");
+    setSelectedType("");
   };
 
   async function handleMutation(e: React.FormEvent<HTMLFormElement>, isUpdate: boolean) {
@@ -212,7 +215,7 @@ export default function LancamentosPage() {
       employeeQra: selectedEmployee.qra || "N/A",
       escala: selectedEmployee.escala || "N/A",
       turno: selectedEmployee.turno || "N/A",
-      type: (formData.get('type') as string).toUpperCase(),
+      type: selectedType.toUpperCase(),
       days: formDays === "" ? 0 : Number(formDays),
       qtdEscala: formQtdEscala === "" ? 0 : Number(formQtdEscala),
       hours: hoursInput,
@@ -238,6 +241,8 @@ export default function LancamentosPage() {
       }));
     }).finally(() => setIsSubmitting(false));
   }
+
+  const isHoursRequired = ["BANCO DE HORA CREDITO", "BANCO DE HORAS DEBITO", "FOLGA"].includes(selectedType.toUpperCase());
 
   const renderFormFields = (isEdit: boolean) => (
     <div className="space-y-4 py-4 px-2">
@@ -334,7 +339,7 @@ export default function LancamentosPage() {
 
         <div className="grid gap-1.5">
           <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">TIPO DE LANÇAMENTO</Label>
-          <Select name="type" defaultValue={isEdit ? selectedLaunch?.type : undefined} required>
+          <Select value={selectedType} onValueChange={setSelectedType} required>
             <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50 border-muted">
               <SelectValue placeholder="--" />
             </SelectTrigger>
@@ -346,13 +351,13 @@ export default function LancamentosPage() {
 
         <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">HORAS (HH:MM)</Label>
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">HORAS (HH:MM) {isHoursRequired && '*'}</Label>
             <Input 
               name="hours" 
               placeholder="00:00" 
               value={hoursInput} 
               onChange={(e) => setHoursInput(applyHoursMask(e.target.value))} 
-              required 
+              required={isHoursRequired}
               className="h-11 bg-background/50 border-muted text-center font-mono font-medium" 
             />
           </div>
