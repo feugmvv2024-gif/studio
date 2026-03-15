@@ -242,7 +242,20 @@ export default function LancamentosPage() {
     }).finally(() => setIsSubmitting(false));
   }
 
-  const isHoursRequired = ["BANCO DE HORA CREDITO", "BANCO DE HORAS DEBITO", "FOLGA"].includes(selectedType.toUpperCase());
+  // Lógica de obrigatoriedade robusta (ignora acentos e normaliza o texto)
+  const isHoursRequired = React.useMemo(() => {
+    if (!selectedType) return false;
+    const normalizedType = selectedType
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    
+    return [
+      "BANCO DE HORAS CREDITO", 
+      "BANCO DE HORAS DEBITO", 
+      "FOLGA"
+    ].includes(normalizedType);
+  }, [selectedType]);
 
   const renderFormFields = (isEdit: boolean) => (
     <div className="space-y-4 py-4 px-2">
