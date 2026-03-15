@@ -9,6 +9,7 @@ import {
   LogOut,
   Settings,
   FilePlus,
+  BarChart3,
 } from "lucide-react"
 
 import {
@@ -31,6 +32,7 @@ const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
   { name: "Lançamentos", href: "/lancamentos", icon: FilePlus, admin: true },
   { name: "Efetivo", href: "/efetivo", icon: Users, admin: true },
+  { name: "Relatórios", href: "/relatorios", icon: BarChart3, admin: true },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
   { name: "Configuração", href: "/settings", icon: Settings, admin: true },
