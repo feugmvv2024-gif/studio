@@ -19,7 +19,8 @@
         "status": { "type": "string", "enum": ["PENDENTE", "ATIVO", "FÉRIAS", "LICENÇA", "INATIVO"] },
         "avatar": { "type": "string" },
         "admissionDate": { "type": "string", "format": "date" },
-        "phone": { "type": "string" }
+        "phone": { "type": "string" },
+        "accessLevel": { "type": "number", "description": "Nível de acesso calculado pelo cargo." }
       },
       "required": ["name", "qra", "role", "status", "matricula", "escala", "turno", "unit"]
     },
@@ -88,9 +89,10 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "name": { "type": "string" }
+        "name": { "type": "string" },
+        "accessLevel": { "type": "number", "description": "Nível de acesso (1-4)." }
       },
-      "required": ["name"]
+      "required": ["name", "accessLevel"]
     },
     "Unit": {
       "title": "Unit",

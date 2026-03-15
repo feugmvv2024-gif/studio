@@ -14,7 +14,8 @@ import {
   LayoutGrid, 
   X,
   History,
-  Timer
+  Timer,
+  ShieldAlert
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -51,7 +52,7 @@ const calculateDuration = (start: string, end: string) => {
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
   
-  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
+  if (isNaN(h1) || iisNaN(m1) || isNaN(h2) || iisNaN(m2)) return "";
   
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
@@ -69,6 +70,7 @@ const calculateDuration = (start: string, end: string) => {
 
 export default function SettingsPage() {
   const [newValue, setNewValue] = React.useState("")
+  const [newRoleLevel, setNewRoleLevel] = React.useState<string>("4")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   
   // Estados para Períodos
@@ -126,21 +128,27 @@ export default function SettingsPage() {
         endTime: periodData.endTime,
         duration: periodData.duration
       };
+    } else if (category === 'roles') {
+      payload = { 
+        name: newValue.toUpperCase().trim(),
+        accessLevel: Number(newRoleLevel)
+      };
     } else {
       payload = { name: newValue.toUpperCase().trim() };
-      
-      let currentList: any[] = [];
-      if (category === 'schedules') currentList = schedules;
-      else if (category === 'shifts') currentList = shifts;
-      else if (category === 'roles') currentList = roles;
-      else if (category === 'launchTypes') currentList = launchTypes;
-      else if (category === 'units') currentList = units;
+    }
 
-      if (currentList.some((item: any) => item.name === payload.name)) {
-        toast({ variant: "destructive", title: "ERRO", description: "ESTE ITEM JÁ EXISTE." })
-        setIsSubmitting(false)
-        return
-      }
+    // Validação de duplicidade
+    let currentList: any[] = [];
+    if (category === 'schedules') currentList = schedules;
+    else if (category === 'shifts') currentList = shifts;
+    else if (category === 'roles') currentList = roles;
+    else if (category === 'launchTypes') currentList = launchTypes;
+    else if (category === 'units') currentList = units;
+
+    if (category !== 'shiftPeriods' && currentList.some((item: any) => item.name === payload.name)) {
+      toast({ variant: "destructive", title: "ERRO", description: "ESTE ITEM JÁ EXISTE." })
+      setIsSubmitting(false)
+      return
     }
 
     addDoc(collection(firestore, category), payload)
@@ -148,6 +156,8 @@ export default function SettingsPage() {
         setNewValue("")
         if (category === 'shiftPeriods') {
           setPeriodData({ escalaId: "", startTime: "", endTime: "", duration: "" });
+        } else if (category === 'roles') {
+          setNewRoleLevel("4");
         }
         toast({ title: "SUCESSO", description: "ITEM ADICIONADO COM SUCESSO." })
       })
@@ -297,21 +307,44 @@ export default function SettingsPage() {
         ) : (
           <div className="space-y-6">
             <div className="flex flex-col sm:flex-row gap-3">
-              <Input 
-                placeholder={placeholder} 
-                value={newValue}
-                onChange={(e) => setNewValue(e.target.value.toUpperCase())}
-                onKeyDown={(e) => e.key === 'Enter' && handleAddItem(category)}
-                className="uppercase font-semibold text-xs h-11 bg-background/50 focus:bg-background transition-all border-muted"
-              />
-              <Button 
-                onClick={() => handleAddItem(category)} 
-                disabled={isSubmitting || !newValue.trim()}
-                className="gap-2 w-full sm:w-auto h-11 px-6 uppercase font-bold text-xs bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 rounded-xl"
-              >
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                ADICIONAR
-              </Button>
+              <div className="flex-1 flex flex-col gap-1.5">
+                {category === 'roles' && <Label className="text-[9px] uppercase font-bold text-muted-foreground">Nome do Cargo</Label>}
+                <Input 
+                  placeholder={placeholder} 
+                  value={newValue}
+                  onChange={(e) => setNewValue(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => e.key === 'Enter' && handleAddItem(category)}
+                  className="uppercase font-semibold text-xs h-11 bg-background/50 focus:bg-background transition-all border-muted"
+                />
+              </div>
+
+              {category === 'roles' && (
+                <div className="w-full sm:w-48 flex flex-col gap-1.5">
+                  <Label className="text-[9px] uppercase font-bold text-muted-foreground">Nível de Acesso</Label>
+                  <Select value={newRoleLevel} onValueChange={setNewRoleLevel}>
+                    <SelectTrigger className="h-11 uppercase text-xs font-bold bg-background/50">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1" className="uppercase text-[10px] font-bold">NÍVEL 1 (ADM)</SelectItem>
+                      <SelectItem value="2" className="uppercase text-[10px] font-bold">NÍVEL 2 (RH)</SelectItem>
+                      <SelectItem value="3" className="uppercase text-[10px] font-bold">NÍVEL 3 (SUP)</SelectItem>
+                      <SelectItem value="4" className="uppercase text-[10px] font-bold">NÍVEL 4 (OP)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1.5 justify-end">
+                <Button 
+                  onClick={() => handleAddItem(category)} 
+                  disabled={isSubmitting || !newValue.trim()}
+                  className="gap-2 w-full sm:w-auto h-11 px-6 uppercase font-bold text-xs bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 rounded-xl"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                  ADICIONAR
+                </Button>
+              </div>
             </div>
 
             <Separator className="bg-muted/50" />
@@ -327,7 +360,15 @@ export default function SettingsPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                   {items.map((item: any) => (
                     <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-muted bg-background hover:bg-slate-50 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300">
-                      <span className="font-bold text-xs uppercase tracking-tight text-slate-700">{item.name}</span>
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-bold text-xs uppercase tracking-tight text-slate-700">{item.name}</span>
+                        {category === 'roles' && (
+                          <div className="flex items-center gap-1.5">
+                            <ShieldAlert className="h-3 w-3 text-orange-500" />
+                            <span className="text-[9px] uppercase font-black text-muted-foreground">NÍVEL DE ACESSO: {item.accessLevel}</span>
+                          </div>
+                        )}
+                      </div>
                       <Button 
                         variant="ghost" 
                         size="icon" 
@@ -401,7 +442,7 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="roles">
-            {renderCategoryContent('roles', 'Gerenciar Cargos', 'DEFINIÇÕES DE CARGOS E FUNÇÕES.', roles || [], loadingRoles, 'EX: INSPETOR, AGENTE, COORDENADOR...')}
+            {renderCategoryContent('roles', 'Gerenciar Cargos', 'DEFINIÇÕES DE CARGOS E NÍVEIS DE ACESSO.', roles || [], loadingRoles, 'EX: INSPETOR, AGENTE, COORDENADOR...')}
           </TabsContent>
 
           <TabsContent value="units">
