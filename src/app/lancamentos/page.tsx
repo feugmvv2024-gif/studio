@@ -257,8 +257,8 @@ export default function LancamentosPage() {
     ].includes(normalizedType);
   }, [selectedType]);
 
-  // Lógica de obrigatoriedade robusta para Dias
-  const isDaysRequired = React.useMemo(() => {
+  // Lógica de obrigatoriedade robusta para Dias e Qtd Escala
+  const isMandatoryForEscala = React.useMemo(() => {
     if (!selectedType) return false;
     const normalizedType = selectedType
       .toUpperCase()
@@ -389,23 +389,24 @@ export default function LancamentosPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">QTD ESCALA</Label>
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">QTD ESCALA {isMandatoryForEscala && '*'}</Label>
             <Input 
               name="qtdEscala" 
               type="number" 
               value={formQtdEscala} 
               onChange={(e) => setFormQtdEscala(e.target.value === "" ? "" : Number(e.target.value))} 
+              required={isMandatoryForEscala}
               className="h-11 bg-background/50 border-muted text-center font-medium" 
             />
           </div>
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DIAS {isDaysRequired && '*'}</Label>
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DIAS {isMandatoryForEscala && '*'}</Label>
             <Input 
               name="days" 
               type="number" 
               value={formDays} 
               onChange={(e) => setFormDays(e.target.value === "" ? "" : Number(e.target.value))} 
-              required={isDaysRequired}
+              required={isMandatoryForEscala}
               className="h-11 bg-background/50 border-muted text-center font-medium" 
             />
           </div>
