@@ -242,7 +242,7 @@ export default function LancamentosPage() {
     }).finally(() => setIsSubmitting(false));
   }
 
-  // Lógica de obrigatoriedade robusta (ignora acentos e normaliza o texto)
+  // Lógica de obrigatoriedade robusta para Horas
   const isHoursRequired = React.useMemo(() => {
     if (!selectedType) return false;
     const normalizedType = selectedType
@@ -254,6 +254,20 @@ export default function LancamentosPage() {
       "BANCO DE HORAS CREDITO", 
       "BANCO DE HORAS DEBITO", 
       "FOLGA"
+    ].includes(normalizedType);
+  }, [selectedType]);
+
+  // Lógica de obrigatoriedade robusta para Dias
+  const isDaysRequired = React.useMemo(() => {
+    if (!selectedType) return false;
+    const normalizedType = selectedType
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    
+    return [
+      "ESCALA GSE", 
+      "ESCALA OPERACIONAL"
     ].includes(normalizedType);
   }, [selectedType]);
 
@@ -385,12 +399,13 @@ export default function LancamentosPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DIAS</Label>
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DIAS {isDaysRequired && '*'}</Label>
             <Input 
               name="days" 
               type="number" 
               value={formDays} 
               onChange={(e) => setFormDays(e.target.value === "" ? "" : Number(e.target.value))} 
+              required={isDaysRequired}
               className="h-11 bg-background/50 border-muted text-center font-medium" 
             />
           </div>
