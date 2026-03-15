@@ -157,8 +157,10 @@ export default function LancamentosPage() {
       const end = new Date(start);
       end.setDate(start.getDate() + (formDays - 1));
       setFormEndDate(end.toISOString().split('T')[0]);
-    } else {
+    } else if (formStartDate) {
       setFormEndDate(formStartDate);
+    } else {
+      setFormEndDate("");
     }
   }, [formStartDate, formDays]);
 
@@ -267,7 +269,7 @@ export default function LancamentosPage() {
     
     return [
       "ESCALA GSE", 
-      "ESCALA OPERACIONAL"
+      "ESCALA ESPECIAL"
     ].includes(normalizedType);
   }, [selectedType]);
 
