@@ -15,14 +15,16 @@ import {
   X,
   History,
   Timer,
-  ShieldAlert
+  ShieldAlert,
+  Edit2,
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useFirestore, useCollection } from '@/firebase'
-import { collection, addDoc, deleteDoc, doc, query, orderBy } from 'firebase/firestore'
+import { collection, addDoc, deleteDoc, doc, query, orderBy, updateDoc } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
 import { errorEmitter } from '@/firebase/error-emitter'
@@ -52,7 +54,7 @@ const calculateDuration = (start: string, end: string) => {
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
   
-  if (isNaN(h1) || iisNaN(m1) || isNaN(h2) || iisNaN(m2)) return "";
+  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
   
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
@@ -72,6 +74,7 @@ export default function SettingsPage() {
   const [newValue, setNewValue] = React.useState("")
   const [newRoleLevel, setNewRoleLevel] = React.useState<string>("4")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [editingId, setEditingId] = React.useState<string | null>(null)
   
   // Estados para Períodos
   const [periodData, setPeriodData] = React.useState({
@@ -107,6 +110,30 @@ export default function SettingsPage() {
     }
   }, [periodData.startTime, periodData.endTime]);
 
+  function handleCancelEdit() {
+    setEditingId(null)
+    setNewValue("")
+    setNewRoleLevel("4")
+    setPeriodData({ escalaId: "", startTime: "", endTime: "", duration: "" })
+  }
+
+  function handleEditItem(item: any, category: Category) {
+    setEditingId(item.id)
+    if (category === 'shiftPeriods') {
+      setPeriodData({
+        escalaId: item.escalaId,
+        startTime: item.startTime,
+        endTime: item.endTime,
+        duration: item.duration
+      })
+    } else {
+      setNewValue(item.name)
+      if (category === 'roles') {
+        setNewRoleLevel(String(item.accessLevel))
+      }
+    }
+  }
+
   async function handleAddItem(category: Category) {
     if (!firestore) return
 
@@ -137,7 +164,7 @@ export default function SettingsPage() {
       payload = { name: newValue.toUpperCase().trim() };
     }
 
-    // Validação de duplicidade
+    // Validação de duplicidade (apenas se não for edição ou se o nome mudou)
     let currentList: any[] = [];
     if (category === 'schedules') currentList = schedules;
     else if (category === 'shifts') currentList = shifts;
@@ -145,26 +172,24 @@ export default function SettingsPage() {
     else if (category === 'launchTypes') currentList = launchTypes;
     else if (category === 'units') currentList = units;
 
-    if (category !== 'shiftPeriods' && currentList.some((item: any) => item.name === payload.name)) {
+    if (!editingId && category !== 'shiftPeriods' && currentList.some((item: any) => item.name === payload.name)) {
       toast({ variant: "destructive", title: "ERRO", description: "ESTE ITEM JÁ EXISTE." })
       setIsSubmitting(false)
       return
     }
 
-    addDoc(collection(firestore, category), payload)
+    const docRef = editingId ? doc(firestore, category, editingId) : null;
+    const action = editingId ? updateDoc(docRef!, payload) : addDoc(collection(firestore, category), payload);
+
+    action
       .then(() => {
-        setNewValue("")
-        if (category === 'shiftPeriods') {
-          setPeriodData({ escalaId: "", startTime: "", endTime: "", duration: "" });
-        } else if (category === 'roles') {
-          setNewRoleLevel("4");
-        }
-        toast({ title: "SUCESSO", description: "ITEM ADICIONADO COM SUCESSO." })
+        handleCancelEdit()
+        toast({ title: "SUCESSO", description: editingId ? "REGISTRO ATUALIZADO COM SUCESSO." : "ITEM ADICIONADO COM SUCESSO." })
       })
       .catch((error: any) => {
         const permissionError = new FirestorePermissionError({
-          path: category,
-          operation: 'create',
+          path: editingId ? docRef!.path : category,
+          operation: editingId ? 'update' : 'create',
           requestResourceData: payload
         });
         errorEmitter.emit('permission-error', permissionError);
@@ -174,6 +199,7 @@ export default function SettingsPage() {
 
   async function handleDeleteItem(id: string, category: Category) {
     if (!firestore) return
+    if (editingId === id) handleCancelEdit()
     const docRef = doc(firestore, category, id);
     deleteDoc(docRef)
       .then(() => {
@@ -210,12 +236,20 @@ export default function SettingsPage() {
               {description}
             </CardDescription>
           </div>
+          {editingId && (
+            <Button variant="ghost" size="sm" onClick={handleCancelEdit} className="text-muted-foreground uppercase text-[10px] font-bold h-8 hover:bg-muted/50">
+              <X className="h-3 w-3 mr-1" /> CANCELAR EDIÇÃO
+            </Button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-6 pt-0 space-y-6">
         {category === 'shiftPeriods' ? (
           <div className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+            <div className={cn(
+              "grid grid-cols-1 md:grid-cols-4 gap-4 p-4 rounded-xl border transition-all",
+              editingId ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-100"
+            )}>
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground">Escala</Label>
                 <Select value={periodData.escalaId} onValueChange={(v) => setPeriodData(p => ({ ...p, escalaId: v }))}>
@@ -261,9 +295,12 @@ export default function SettingsPage() {
                   <Button 
                     onClick={() => handleAddItem('shiftPeriods')} 
                     disabled={isSubmitting || !periodData.escalaId || !periodData.duration}
-                    className="h-11 w-11 p-0 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 rounded-xl"
+                    className={cn(
+                      "h-11 w-11 p-0 rounded-xl shadow-lg transition-all",
+                      editingId ? "bg-amber-600 hover:bg-amber-700 shadow-amber-100" : "bg-blue-600 hover:bg-blue-700 shadow-blue-100"
+                    )}
                   >
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-5 w-5" />}
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Check className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
                   </Button>
                 </div>
               </div>
@@ -280,7 +317,10 @@ export default function SettingsPage() {
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {items.map((item: any) => (
-                  <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-muted bg-background hover:bg-slate-50 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <div key={item.id} className={cn(
+                    "flex items-center justify-between p-4 rounded-xl border bg-background hover:bg-slate-50 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300",
+                    editingId === item.id ? "border-amber-500 bg-amber-50/30" : "border-muted"
+                  )}>
                     <div className="flex flex-col gap-1">
                       <span className="font-black text-xs uppercase tracking-tight text-blue-600">{item.escalaName}</span>
                       <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-bold">
@@ -291,14 +331,24 @@ export default function SettingsPage() {
                         <span className="text-primary">{item.duration}H</span>
                       </div>
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="h-8 w-8 text-destructive hover:bg-red-50 hover:text-destructive rounded-lg transition-colors"
-                      onClick={() => handleDeleteItem(item.id, category)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-lg"
+                        onClick={() => handleEditItem(item, category)}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive hover:bg-red-50 hover:text-destructive rounded-lg transition-colors"
+                        onClick={() => handleDeleteItem(item.id, category)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -306,7 +356,10 @@ export default function SettingsPage() {
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className={cn(
+              "flex flex-col sm:flex-row gap-3 p-4 rounded-xl border transition-all",
+              editingId ? "bg-amber-50 border-amber-200" : "bg-transparent border-transparent"
+            )}>
               <div className="flex-1 flex flex-col gap-1.5">
                 {category === 'roles' && <Label className="text-[9px] uppercase font-bold text-muted-foreground">Nome do Cargo</Label>}
                 <Input 
@@ -339,10 +392,13 @@ export default function SettingsPage() {
                 <Button 
                   onClick={() => handleAddItem(category)} 
                   disabled={isSubmitting || !newValue.trim()}
-                  className="gap-2 w-full sm:w-auto h-11 px-6 uppercase font-bold text-xs bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 rounded-xl"
+                  className={cn(
+                    "gap-2 w-full sm:w-auto h-11 px-6 uppercase font-bold text-xs shadow-lg rounded-xl transition-all",
+                    editingId ? "bg-amber-600 hover:bg-amber-700 shadow-amber-100" : "bg-blue-600 hover:bg-blue-700 shadow-blue-100"
+                  )}
                 >
-                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-                  ADICIONAR
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingId ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {editingId ? "SALVAR" : "ADICIONAR"}
                 </Button>
               </div>
             </div>
@@ -359,7 +415,10 @@ export default function SettingsPage() {
               ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
                   {items.map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-4 rounded-xl border border-muted bg-background hover:bg-slate-50 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div key={item.id} className={cn(
+                      "flex items-center justify-between p-4 rounded-xl border bg-background hover:bg-slate-50 transition-all group animate-in fade-in slide-in-from-bottom-2 duration-300",
+                      editingId === item.id ? "border-amber-500 bg-amber-50/30" : "border-muted"
+                    )}>
                       <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-xs uppercase tracking-tight text-slate-700">{item.name}</span>
                         {category === 'roles' && (
@@ -369,14 +428,24 @@ export default function SettingsPage() {
                           </div>
                         )}
                       </div>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8 text-destructive hover:bg-red-50 hover:text-destructive rounded-lg transition-colors"
-                        onClick={() => handleDeleteItem(item.id, category)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-lg"
+                          onClick={() => handleEditItem(item, category)}
+                        >
+                          <Edit2 className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8 text-destructive hover:bg-red-50 hover:text-destructive rounded-lg transition-colors"
+                          onClick={() => handleDeleteItem(item.id, category)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -402,7 +471,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="launchTypes" className="w-full">
+      <Tabs defaultValue="launchTypes" className="w-full" onValueChange={() => handleCancelEdit()}>
         <TabsList className="flex flex-wrap items-center justify-start bg-muted/40 p-1.5 rounded-2xl h-auto gap-1">
           <TabsTrigger value="launchTypes" className="flex-1 gap-2 uppercase text-[10px] font-bold py-2.5 rounded-xl data-[state=active]:bg-white data-[state=active]:text-primary data-[state=active]:shadow-sm transition-all whitespace-nowrap">
             <FilePlus className="h-4 w-4" /> LANÇAMENTOS
