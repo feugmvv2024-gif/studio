@@ -38,6 +38,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 
 type Category = 'schedules' | 'shifts' | 'roles' | 'launchTypes' | 'units' | 'shiftPeriods';
 
@@ -162,20 +163,6 @@ export default function SettingsPage() {
       };
     } else {
       payload = { name: newValue.toUpperCase().trim() };
-    }
-
-    // Validação de duplicidade (apenas se não for edição ou se o nome mudou)
-    let currentList: any[] = [];
-    if (category === 'schedules') currentList = schedules;
-    else if (category === 'shifts') currentList = shifts;
-    else if (category === 'roles') currentList = roles;
-    else if (category === 'launchTypes') currentList = launchTypes;
-    else if (category === 'units') currentList = units;
-
-    if (!editingId && category !== 'shiftPeriods' && currentList.some((item: any) => item.name === payload.name)) {
-      toast({ variant: "destructive", title: "ERRO", description: "ESTE ITEM JÁ EXISTE." })
-      setIsSubmitting(false)
-      return
     }
 
     const docRef = editingId ? doc(firestore, category, editingId) : null;
