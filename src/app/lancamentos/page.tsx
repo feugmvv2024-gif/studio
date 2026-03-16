@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -259,8 +258,8 @@ export default function LancamentosPage() {
     ].includes(normalizedType);
   }, [selectedType]);
 
-  // Lógica de obrigatoriedade robusta para Dias e Qtd Escala
-  const isMandatoryForEscala = React.useMemo(() => {
+  // Lógica de obrigatoriedade robusta para Qtd Escala
+  const isQtdEscalaRequired = React.useMemo(() => {
     if (!selectedType) return false;
     const normalizedType = selectedType
       .toUpperCase()
@@ -270,6 +269,22 @@ export default function LancamentosPage() {
     return [
       "ESCALA GSE", 
       "ESCALA ESPECIAL"
+    ].includes(normalizedType);
+  }, [selectedType]);
+
+  // Lógica de obrigatoriedade robusta para Dias
+  const isDaysRequired = React.useMemo(() => {
+    if (!selectedType) return false;
+    const normalizedType = selectedType
+      .toUpperCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    
+    return [
+      "ESCALA GSE", 
+      "ESCALA ESPECIAL",
+      "TRE CREDITO",
+      "TRE DEBITO"
     ].includes(normalizedType);
   }, [selectedType]);
 
@@ -391,24 +406,24 @@ export default function LancamentosPage() {
             />
           </div>
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">QTD ESCALA {isMandatoryForEscala && '*'}</Label>
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">QTD ESCALA {isQtdEscalaRequired && '*'}</Label>
             <Input 
               name="qtdEscala" 
               type="number" 
               value={formQtdEscala} 
               onChange={(e) => setFormQtdEscala(e.target.value === "" ? "" : Number(e.target.value))} 
-              required={isMandatoryForEscala}
+              required={isQtdEscalaRequired}
               className="h-11 bg-background/50 border-muted text-center font-medium" 
             />
           </div>
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DIAS {isMandatoryForEscala && '*'}</Label>
+            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">DIAS {isDaysRequired && '*'}</Label>
             <Input 
               name="days" 
               type="number" 
               value={formDays} 
               onChange={(e) => setFormDays(e.target.value === "" ? "" : Number(e.target.value))} 
-              required={isMandatoryForEscala}
+              required={isDaysRequired}
               className="h-11 bg-background/50 border-muted text-center font-medium" 
             />
           </div>
