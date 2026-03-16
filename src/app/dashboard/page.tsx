@@ -78,7 +78,7 @@ export default function Dashboard() {
       const days = Number(l.days) || 0;
 
       if (type === "BANCO DE HORAS CREDITO") acc.bhCredit += minutes;
-      if (type === "BANCO DE HORAS DEBITO") acc.bhDebit += minutes;
+      if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") acc.bhDebit += minutes;
       if (type === "TRE CREDITO") acc.treCredit += days;
       if (type === "TRE DEBITO") acc.treDebit += days;
       
@@ -152,7 +152,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* NOVO CARD: Banco de Horas */}
+        {/* Card: Banco de Horas */}
         <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">BANCO DE HORAS (SALDO)</CardTitle>
@@ -169,13 +169,13 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITO</p>
-                <p className="text-[11px] font-bold text-red-600">{minutesToHHmm(operationStats.bhDebit)}H</p>
+                <p className="text-[11px] font-bold text-red-600">-{minutesToHHmm(operationStats.bhDebit)}H</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* NOVO CARD: TRE */}
+        {/* Card: TRE */}
         <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">TRE (SALDO DIAS)</CardTitle>
@@ -192,7 +192,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITO</p>
-                <p className="text-[11px] font-bold text-red-600">{operationStats.treDebit} DIAS</p>
+                <p className="text-[11px] font-bold text-red-600">-{operationStats.treDebit} DIAS</p>
               </div>
             </div>
           </CardContent>

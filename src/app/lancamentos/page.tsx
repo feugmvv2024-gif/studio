@@ -98,6 +98,8 @@ const applyHoursMask = (value: string) => {
   return `${hours}:${minutes}`;
 };
 
+const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
+
 export default function LancamentosPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
@@ -246,10 +248,7 @@ export default function LancamentosPage() {
   // Lógica de obrigatoriedade robusta para Horas
   const isHoursRequired = React.useMemo(() => {
     if (!selectedType) return false;
-    const normalizedType = selectedType
-      .toUpperCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+    const normalizedType = normalizeStr(selectedType);
     
     return [
       "BANCO DE HORAS CREDITO", 
@@ -261,10 +260,7 @@ export default function LancamentosPage() {
   // Lógica de obrigatoriedade robusta para Qtd Escala
   const isQtdEscalaRequired = React.useMemo(() => {
     if (!selectedType) return false;
-    const normalizedType = selectedType
-      .toUpperCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+    const normalizedType = normalizeStr(selectedType);
     
     return [
       "ESCALA GSE", 
@@ -275,10 +271,7 @@ export default function LancamentosPage() {
   // Lógica de obrigatoriedade robusta para Dias
   const isDaysRequired = React.useMemo(() => {
     if (!selectedType) return false;
-    const normalizedType = selectedType
-      .toUpperCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+    const normalizedType = normalizeStr(selectedType);
     
     return [
       "ESCALA GSE", 
@@ -550,31 +543,43 @@ export default function LancamentosPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLaunches.map((launch, index) => (
-                    <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
-                      <TableCell className="font-mono text-[9px] px-4 text-muted-foreground">{filteredLaunches.length - index}</TableCell>
-                      <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/') || "-"}</TableCell>
-                      <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
-                      <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[9px] uppercase font-bold border-blue-200 text-blue-700 bg-blue-50/50">{launch.type || "-"}</Badge></TableCell>
-                      <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || "-"}</TableCell>
-                      <TableCell className="text-[11px] font-bold text-center">{launch.days || "-"}</TableCell>
-                      <TableCell className="text-[11px] font-black text-blue-600 text-center">{launch.hours ? `${launch.hours}H` : "-"}</TableCell>
-                      <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/') || "-"}</TableCell>
-                      <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/') || "-"}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">{launch.observations || "-"}</TableCell>
-                      <TableCell className="text-right pr-4">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
-                            <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50 cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50 cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {filteredLaunches.map((launch, index) => {
+                    const isBhDebit = normalizeStr(launch.type) === "BANCO DE HORAS DEBITO" || normalizeStr(launch.type) === "FOLGA";
+                    const isTreDebit = normalizeStr(launch.type) === "TRE DEBITO";
+
+                    return (
+                      <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
+                        <TableCell className="font-mono text-[9px] px-4 text-muted-foreground">{filteredLaunches.length - index}</TableCell>
+                        <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/') || "-"}</TableCell>
+                        <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
+                        <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
+                        <TableCell><Badge variant="outline" className={cn(
+                          "text-[9px] uppercase font-bold border-blue-200",
+                          isBhDebit || isTreDebit ? "text-red-700 bg-red-50/50 border-red-200" : "text-blue-700 bg-blue-50/50 border-blue-200"
+                        )}>{launch.type || "-"}</Badge></TableCell>
+                        <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || "-"}</TableCell>
+                        <TableCell className={cn("text-[11px] font-bold text-center", isTreDebit && "text-red-600")}>
+                          {launch.days ? `${isTreDebit ? '-' : ''}${launch.days}` : "-"}
+                        </TableCell>
+                        <TableCell className={cn("text-[11px] font-black text-center", isBhDebit ? "text-red-600" : "text-blue-600")}>
+                          {launch.hours ? `${isBhDebit ? '-' : ''}${launch.hours}H` : "-"}
+                        </TableCell>
+                        <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/') || "-"}</TableCell>
+                        <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/') || "-"}</TableCell>
+                        <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">{launch.observations || "-"}</TableCell>
+                        <TableCell className="text-right pr-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
+                              <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50 cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50 cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
