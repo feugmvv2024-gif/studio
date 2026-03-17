@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -93,7 +92,6 @@ export default function Dashboard() {
           else targetStatus = "LICENÇA";
         }
 
-        // Só atualiza se o status for diferente e for uma transição válida
         const validTransitions = ["ATIVO", "FÉRIAS", "LICENÇA", "ATESTADO"];
         if (emp.status !== targetStatus && validTransitions.includes(emp.status)) {
           await new Promise(r => setTimeout(r, 100));
@@ -198,6 +196,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+        {/* 1. PESSOAL EFETIVO */}
         <Card className="card-shadow border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">PESSOAL EFETIVO</CardTitle>
@@ -209,6 +208,53 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
+        {/* 2. BANCO DE HORAS */}
+        <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-[10px] font-bold uppercase">BANCO DE HORAS</CardTitle>
+            <Timer className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-black text-blue-700">
+              {minutesToHHmm(operationStats.bhCredit - operationStats.bhDebit)}H
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-blue-100">
+              <div>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">CRÉDITO</p>
+                <p className="text-[11px] font-bold text-green-600">{minutesToHHmm(operationStats.bhCredit)}H</p>
+              </div>
+              <div>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITO</p>
+                <p className="text-[11px] font-bold text-red-600">-{minutesToHHmm(operationStats.bhDebit)}H</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 3. TRE (SALDO) */}
+        <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-[10px] font-bold uppercase">TRE (SALDO)</CardTitle>
+            <CalendarDays className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-black text-purple-700">
+              {operationStats.treCredit - operationStats.treDebit} DIAS
+            </div>
+            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-purple-100">
+              <div>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">CRÉDITO</p>
+                <p className="text-[11px] font-bold text-green-600">{operationStats.treCredit}D</p>
+              </div>
+              <div>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITO</p>
+                <p className="text-[11px] font-bold text-red-600">-{operationStats.treDebit}D</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 4. AUSENTES (HOJE) */}
         <Card className="card-shadow border-red-500/20 bg-red-50/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">AUSENTES (HOJE)</CardTitle>
@@ -233,50 +279,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">BANCO DE HORAS</CardTitle>
-            <Timer className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-black text-blue-700">
-              {minutesToHHmm(operationStats.bhCredit - operationStats.bhDebit)}H
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-blue-100">
-              <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">CRÉDITO</p>
-                <p className="text-[11px] font-bold text-green-600">{minutesToHHmm(operationStats.bhCredit)}H</p>
-              </div>
-              <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITO</p>
-                <p className="text-[11px] font-bold text-red-600">-{minutesToHHmm(operationStats.bhDebit)}H</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">TRE (SALDO)</CardTitle>
-            <CalendarDays className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-black text-purple-700">
-              {operationStats.treCredit - operationStats.treDebit} DIAS
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-purple-100">
-              <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">CRÉDITO</p>
-                <p className="text-[11px] font-bold text-green-600">{operationStats.treCredit}D</p>
-              </div>
-              <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITO</p>
-                <p className="text-[11px] font-bold text-red-600">-{operationStats.treDebit}D</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
+        {/* 5. AFASTADOS */}
         <Card className="card-shadow border-accent/20 bg-slate-50/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">AFASTADOS</CardTitle>
