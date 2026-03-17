@@ -73,7 +73,7 @@ import {
   serverTimestamp
 } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
@@ -211,7 +211,9 @@ export default function LancamentosPage() {
 
     setIsSubmitting(true);
     const formData = new FormData(e.currentTarget);
-    const data = {
+    const today = getSaoPauloDate();
+    
+    const launchData = {
       date: formData.get('date') as string,
       employeeId: selectedEmployeeId,
       employeeName: selectedEmployee.name || "N/A",
@@ -228,10 +230,21 @@ export default function LancamentosPage() {
       ...(isUpdate ? {} : { createdAt: serverTimestamp() })
     };
 
+    // Lógica de Automação de Status
+    const normalizedType = normalizeStr(launchData.type);
+    let targetStatus = "";
+    if (normalizedType.includes("FERIAS")) targetStatus = "FÉRIAS";
+    else if (normalizedType.includes("LICENCA") || normalizedType.includes("ATESTADO")) targetStatus = "LICENÇA";
+
     const docRef = isUpdate ? doc(firestore, 'launches', selectedLaunch.id) : null;
-    const action = isUpdate ? updateDoc(docRef!, data) : addDoc(collection(firestore, 'launches'), data);
+    const action = isUpdate ? updateDoc(docRef!, launchData) : addDoc(collection(firestore, 'launches'), launchData);
 
     action.then(() => {
+      // Atualizar status do servidor se o afastamento começar hoje ou estiver em vigor
+      if (targetStatus && launchData.startDate <= today && launchData.endDate >= today) {
+        updateDoc(doc(firestore, 'employees', selectedEmployeeId), { status: targetStatus });
+      }
+
       toast({ title: "SUCESSO!", description: isUpdate ? "LANÇAMENTO ATUALIZADO." : "LANÇAMENTO REALIZADO." });
       setIsAddOpen(false);
       setIsEditOpen(false);
@@ -240,45 +253,27 @@ export default function LancamentosPage() {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: isUpdate ? docRef!.path : 'launches',
         operation: isUpdate ? 'update' : 'create',
-        requestResourceData: data
+        requestResourceData: launchData
       }));
     }).finally(() => setIsSubmitting(false));
   }
 
-  // Lógica de obrigatoriedade robusta para Horas
   const isHoursRequired = React.useMemo(() => {
     if (!selectedType) return false;
     const normalizedType = normalizeStr(selectedType);
-    
-    return [
-      "BANCO DE HORAS CREDITO", 
-      "BANCO DE HORAS DEBITO", 
-      "FOLGA"
-    ].includes(normalizedType);
+    return ["BANCO DE HORAS CREDITO", "BANCO DE HORAS DEBITO", "FOLGA"].includes(normalizedType);
   }, [selectedType]);
 
-  // Lógica de obrigatoriedade robusta para Qtd Escala
   const isQtdEscalaRequired = React.useMemo(() => {
     if (!selectedType) return false;
     const normalizedType = normalizeStr(selectedType);
-    
-    return [
-      "ESCALA GSE", 
-      "ESCALA ESPECIAL"
-    ].includes(normalizedType);
+    return ["ESCALA GSE", "ESCALA ESPECIAL"].includes(normalizedType);
   }, [selectedType]);
 
-  // Lógica de obrigatoriedade robusta para Dias
   const isDaysRequired = React.useMemo(() => {
     if (!selectedType) return false;
     const normalizedType = normalizeStr(selectedType);
-    
-    return [
-      "ESCALA GSE", 
-      "ESCALA ESPECIAL",
-      "TRE CREDITO",
-      "TRE DEBITO"
-    ].includes(normalizedType);
+    return ["ESCALA GSE", "ESCALA ESPECIAL", "TRE CREDITO", "TRE DEBITO", "FERIAS", "LICENCA", "ATESTADO"].includes(normalizedType);
   }, [selectedType]);
 
   const renderFormFields = (isEdit: boolean) => (
@@ -288,7 +283,7 @@ export default function LancamentosPage() {
           <Info className="h-4 w-4 text-blue-500" />
         </div>
         <span className="text-blue-600 text-[10px] font-medium uppercase tracking-tight">
-          Um novo número de registro será gerado automaticamente ao salvar.
+          Lançamentos de Férias ou Licença atualizarão o status do servidor automaticamente conforme as datas.
         </span>
       </div>
 

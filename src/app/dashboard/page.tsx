@@ -9,7 +9,8 @@ import {
   FileText,
   Loader2,
   Timer,
-  CalendarDays
+  CalendarDays,
+  ShieldCheck
 } from "lucide-react"
 import {
   BarChart,
@@ -24,7 +25,8 @@ import {
   Pie
 } from "recharts"
 import { useFirestore, useCollection } from '@/firebase'
-import { collection, query, where } from 'firebase/firestore'
+import { collection, query, where, updateDoc, doc } from 'firebase/firestore'
+import { useToast } from "@/hooks/use-toast"
 
 // Utilitários de cálculo
 const hhmmToMinutes = (hhmm: string) => {
@@ -43,18 +45,70 @@ const minutesToHHmm = (totalMinutes: number) => {
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
+const getSaoPauloDate = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now).split('/').reverse().join('-');
+};
+
 export default function Dashboard() {
   const firestore = useFirestore();
+  const { toast } = useToast();
 
   const employeesRef = React.useMemo(() => collection(firestore, 'employees'), [firestore]);
-  const requestsRef = React.useMemo(() => collection(firestore, 'requests'), [firestore]);
   const pendingRequestsRef = React.useMemo(() => query(collection(firestore, 'requests'), where('status', '==', 'PENDENTE')), [firestore]);
   const launchesRef = React.useMemo(() => collection(firestore, 'launches'), [firestore]);
 
   const { data: employees, loading: loadingEmployees } = useCollection(employeesRef);
-  const { data: requests, loading: loadingRequests } = useCollection(requestsRef);
   const { data: pendingRequests } = useCollection(pendingRequestsRef);
   const { data: launches, loading: loadingLaunches } = useCollection(launchesRef);
+
+  // Automação de Reconciliação de Status
+  React.useEffect(() => {
+    if (!employees || !launches || loadingEmployees || loadingLaunches) return;
+
+    const today = getSaoPauloDate();
+    const syncStatus = async () => {
+      let syncCount = 0;
+
+      for (const emp of employees) {
+        // Encontrar o lançamento de afastamento mais recente/vigente
+        const activeLaunches = launches.filter(l => 
+          l.employeeId === emp.id && 
+          ["FERIAS", "LICENCA", "ATESTADO"].some(type => normalizeStr(l.type).includes(type))
+        );
+
+        const currentLaunch = activeLaunches.find(l => l.startDate <= today && l.endDate >= today);
+        const expiredLaunch = activeLaunches.find(l => l.endDate < today);
+
+        let targetStatus = "ATIVO";
+        if (currentLaunch) {
+          const type = normalizeStr(currentLaunch.type);
+          if (type.includes("FERIAS")) targetStatus = "FÉRIAS";
+          else targetStatus = "LICENÇA";
+        }
+
+        // Só atualiza se o status for diferente e for uma transição válida
+        // Evitamos mexer em status PENDENTE ou INATIVO manualmente aqui para segurança
+        if (emp.status !== targetStatus && (emp.status === "ATIVO" || emp.status === "FÉRIAS" || emp.status === "LICENÇA")) {
+          // Pequeno delay para evitar sobrecarga de rede
+          await new Promise(r => setTimeout(r, 100));
+          await updateDoc(doc(firestore, 'employees', emp.id), { status: targetStatus });
+          syncCount++;
+        }
+      }
+
+      if (syncCount > 0) {
+        toast({ title: "SINCRONIZAÇÃO OPERACIONAL", description: `${syncCount} STATUS ATUALIZADOS CONFORME ESCALA.` });
+      }
+    };
+
+    syncStatus();
+  }, [employees, launches, loadingEmployees, loadingLaunches, firestore, toast]);
 
   // Estatísticas Gerais
   const stats = React.useMemo(() => {
@@ -100,7 +154,7 @@ export default function Dashboard() {
     { name: "Pendente", total: stats.pending },
   ];
 
-  if (loadingEmployees || loadingRequests || loadingLaunches) {
+  if (loadingEmployees || loadingLaunches) {
     return (
       <div className="flex h-full items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -110,9 +164,15 @@ export default function Dashboard() {
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-10">
-      <div className="flex flex-col gap-2">
-        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase">VISÃO GERAL</h2>
-        <p className="text-muted-foreground text-sm sm:text-base uppercase text-[10px]">PAINEL ADMINISTRATIVO EM TEMPO REAL.</p>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col gap-2">
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase">VISÃO GERAL</h2>
+          <p className="text-muted-foreground text-sm sm:text-base uppercase text-[10px]">PAINEL ADMINISTRATIVO EM TEMPO REAL.</p>
+        </div>
+        <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-2 flex items-center gap-2">
+          <ShieldCheck className="h-4 w-4 text-green-600" />
+          <span className="text-[10px] font-bold text-green-700 uppercase">Sincronização de Status Ativa</span>
+        </div>
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
