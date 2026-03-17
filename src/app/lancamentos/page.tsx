@@ -148,7 +148,8 @@ export default function LancamentosPage() {
       setFormEndDate(selectedLaunch.endDate || "");
       setSelectedType(selectedLaunch.type || "");
     } else if (isAddOpen) {
-      resetForm();
+      // Quando abre o modal de adição, só reseta se for a primeira vez abrindo
+      // Mas o controle agora é feito no handleMutation para manter os dados
     }
   }, [selectedLaunch, isAddOpen, isEditOpen]);
 
@@ -203,6 +204,16 @@ export default function LancamentosPage() {
     setSelectedType("");
   };
 
+  const partialResetForm = () => {
+    // Limpa apenas informações do servidor para permitir entrada em lote
+    setSelectedEmployeeId("");
+    setSearchEmployeeTerm("");
+    // Foca no campo de busca para o próximo lançamento
+    setTimeout(() => {
+      servidorSearchInputRef.current?.focus();
+    }, 100);
+  };
+
   async function handleMutation(e: React.FormEvent<HTMLFormElement>, isUpdate: boolean) {
     e.preventDefault();
     if (!firestore || !selectedEmployee) {
@@ -248,9 +259,14 @@ export default function LancamentosPage() {
       }
 
       toast({ title: "SUCESSO!", description: isUpdate ? "LANÇAMENTO ATUALIZADO." : "LANÇAMENTO REALIZADO." });
-      setIsAddOpen(false);
-      setIsEditOpen(false);
-      resetForm();
+      
+      if (isUpdate) {
+        setIsEditOpen(false);
+        resetForm();
+      } else {
+        // Se for novo lançamento, mantém o modal aberto e limpa apenas o servidor
+        partialResetForm();
+      }
     }).catch(err => {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: isUpdate ? docRef!.path : 'launches',
