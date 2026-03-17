@@ -18,7 +18,8 @@ import {
   CheckCircle2,
   Clock,
   UserCheck,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -226,11 +227,8 @@ export default function EfetivoPage() {
       role: (formData.get('role') as string).toUpperCase(),
       unit: (formData.get('unit') as string).toUpperCase(),
       qra: (formData.get('qra') as string || "").toUpperCase(),
+      status: (formData.get('status') as string).toUpperCase(),
     };
-
-    if (selectedEmployee.status !== "PENDENTE") {
-      updates.status = (formData.get('status') as string).toUpperCase();
-    }
 
     const docRef = doc(firestore, 'employees', selectedEmployee.id);
     updateDoc(docRef, updates)
@@ -393,19 +391,27 @@ export default function EfetivoPage() {
             </div>
           </div>
           <div className="grid gap-1.5">
-            <Label htmlFor="status" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">STATUS</Label>
-            <Select name="status" defaultValue={isEdit ? selectedEmployee?.status : "PENDENTE"} disabled={!isEdit || selectedEmployee?.status === "PENDENTE"}>
-              <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50">
+            <Label htmlFor="status" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">STATUS OPERACIONAL</Label>
+            <Select name="status" defaultValue={isEdit ? selectedEmployee?.status : "PENDENTE"} disabled={!isEdit}>
+              <SelectTrigger className={cn(
+                "h-11 uppercase text-[11px] font-bold",
+                isEdit && "bg-amber-50 border-amber-200 text-amber-900"
+              )}>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PENDENTE" className="uppercase text-[11px]">PENDENTE</SelectItem>
-                <SelectItem value="ATIVO" className="uppercase text-[11px]">ATIVO</SelectItem>
-                <SelectItem value="FÉRIAS" className="uppercase text-[11px]">FÉRIAS</SelectItem>
-                <SelectItem value="LICENÇA" className="uppercase text-[11px]">LICENÇA</SelectItem>
-                <SelectItem value="INATIVO" className="uppercase text-[11px]">INATIVO</SelectItem>
+                <SelectItem value="PENDENTE" className="uppercase text-[11px] font-bold text-orange-600">PENDENTE (PAG. RH)</SelectItem>
+                <SelectItem value="ATIVO" className="uppercase text-[11px] font-bold text-green-600">ATIVO (EM SERVIÇO)</SelectItem>
+                <SelectItem value="FÉRIAS" className="uppercase text-[11px] font-bold text-blue-600">FÉRIAS</SelectItem>
+                <SelectItem value="LICENÇA" className="uppercase text-[11px] font-bold text-purple-600">LICENÇA</SelectItem>
+                <SelectItem value="INATIVO" className="uppercase text-[11px] font-bold text-slate-600">INATIVO</SelectItem>
               </SelectContent>
             </Select>
+            {isEdit && (
+              <p className="text-[9px] text-amber-600 font-bold uppercase flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" /> Alteração manual de status habilitada.
+              </p>
+            )}
           </div>
         </div>
 
