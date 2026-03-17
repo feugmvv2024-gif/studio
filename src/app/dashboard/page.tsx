@@ -158,6 +158,15 @@ export default function Dashboard() {
     }, { total: 0, folga: 0, abono: 0, falta: 0 });
   }, [launches]);
 
+  // Cálculo de Efetivo Disponível (Disponível = Total - Afastados - Ausentes Hoje - Pendentes)
+  const availableStats = React.useMemo(() => {
+    const totalAfastados = stats.leave + stats.vacation + stats.medical;
+    const totalAusentes = absentStats.total;
+    const totalPendentes = stats.pending;
+    const disponivel = stats.total - totalAfastados - totalAusentes - totalPendentes;
+    return { disponivel, total: stats.total };
+  }, [stats, absentStats]);
+
   const personnelStats = React.useMemo(() => [
     { name: "Ativos", value: stats.active, color: "hsl(var(--primary))" },
     { name: "Licença", value: stats.leave, color: "hsl(var(--accent))" },
@@ -196,15 +205,15 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-        {/* 1. PESSOAL EFETIVO */}
-        <Card className="card-shadow border-primary/20">
+        {/* 1. EFETIVO DISPONÍVEL (PRONTO) */}
+        <Card className="card-shadow border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">PESSOAL EFETIVO</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase">EFETIVO DISPONÍVEL</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.total}</div>
-            <p className="text-[9px] text-muted-foreground uppercase">SERVIDORES CADASTRADOS</p>
+            <div className="text-2xl font-black text-primary">{availableStats.disponivel}</div>
+            <p className="text-[9px] text-muted-foreground uppercase mt-1">TOTAL CADASTRADO: {stats.total}</p>
           </CardContent>
         </Card>
 
