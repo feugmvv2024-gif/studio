@@ -7,19 +7,22 @@ import {
   MoreHorizontal, 
   UserPlus, 
   Edit, 
-  Trash2,
-  Loader2,
-  Upload,
-  Trash,
-  Filter,
-  X,
-  RefreshCw,
-  Users,
-  CheckCircle2,
-  Clock,
-  UserCheck,
-  ShieldCheck,
-  AlertCircle
+  Trash2, 
+  Loader2, 
+  Upload, 
+  Trash, 
+  Filter, 
+  X, 
+  RefreshCw, 
+  Users, 
+  CheckCircle2, 
+  Clock, 
+  UserCheck, 
+  ShieldCheck, 
+  AlertCircle,
+  Plane,
+  FileText,
+  Stethoscope
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -139,11 +142,14 @@ export default function EfetivoPage() {
   const { data: units } = useCollection(unitsRef);
 
   const stats = React.useMemo(() => {
-    if (!employees) return { total: 0, active: 0, pending: 0 };
+    if (!employees) return { total: 0, active: 0, pending: 0, vacation: 0, leave: 0, medical: 0 };
     return {
       total: employees.length,
       active: employees.filter(e => e.status === "ATIVO").length,
-      pending: employees.filter(e => e.status === "PENDENTE").length
+      pending: employees.filter(e => e.status === "PENDENTE").length,
+      vacation: employees.filter(e => e.status === "FÉRIAS").length,
+      leave: employees.filter(e => e.status === "LICENÇA").length,
+      medical: employees.filter(e => e.status === "ATESTADO").length
     };
   }, [employees]);
 
@@ -527,7 +533,7 @@ export default function EfetivoPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
         <Card className="card-shadow border-primary/10 bg-primary/5 rounded-xl">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase text-primary">EFETIVO TOTAL</CardTitle>
@@ -556,6 +562,36 @@ export default function EfetivoPage() {
           <CardContent>
             <div className="text-2xl font-bold text-orange-600">{stats.pending}</div>
             <p className="text-[9px] text-muted-foreground uppercase">AGUARDANDO ATIVAÇÃO</p>
+          </CardContent>
+        </Card>
+        <Card className="card-shadow border-blue-500/10 bg-blue-50/50 rounded-xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-[10px] font-bold uppercase text-blue-600">FÉRIAS</CardTitle>
+            <Plane className="h-4 w-4 text-blue-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.vacation}</div>
+            <p className="text-[9px] text-muted-foreground uppercase">EM GOZO DE FÉRIAS</p>
+          </CardContent>
+        </Card>
+        <Card className="card-shadow border-purple-500/10 bg-purple-50/50 rounded-xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-[10px] font-bold uppercase text-purple-600">LICENÇA</CardTitle>
+            <FileText className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.leave}</div>
+            <p className="text-[9px] text-muted-foreground uppercase">LICENÇA ESPECIAL/OUTRAS</p>
+          </CardContent>
+        </Card>
+        <Card className="card-shadow border-red-500/10 bg-red-50/50 rounded-xl">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-[10px] font-bold uppercase text-red-600">ATESTADO</CardTitle>
+            <Stethoscope className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-600">{stats.medical}</div>
+            <p className="text-[9px] text-muted-foreground uppercase">AFASTAMENTO MÉDICO</p>
           </CardContent>
         </Card>
       </div>
