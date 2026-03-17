@@ -400,10 +400,11 @@ export default function EfetivoPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="PENDENTE" className="uppercase text-[11px] font-bold text-orange-600">PENDENTE (PAG. RH)</SelectItem>
+                <SelectItem value="PENDENTE" className="uppercase text-[11px] font-bold text-slate-500">PENDENTE (PAG. RH)</SelectItem>
                 <SelectItem value="ATIVO" className="uppercase text-[11px] font-bold text-green-600">ATIVO (EM SERVIÇO)</SelectItem>
                 <SelectItem value="FÉRIAS" className="uppercase text-[11px] font-bold text-blue-600">FÉRIAS</SelectItem>
                 <SelectItem value="LICENÇA" className="uppercase text-[11px] font-bold text-purple-600">LICENÇA</SelectItem>
+                <SelectItem value="ATESTADO" className="uppercase text-[11px] font-bold text-red-600">ATESTADO MÉDICO</SelectItem>
                 <SelectItem value="INATIVO" className="uppercase text-[11px] font-bold text-slate-600">INATIVO</SelectItem>
               </SelectContent>
             </Select>
@@ -686,7 +687,11 @@ export default function EfetivoPage() {
                       <TableCell>
                         <Badge variant="outline" className={cn(
                           "uppercase text-[8px] font-bold whitespace-nowrap",
-                          employee.status === "PENDENTE" ? "border-orange-200 text-orange-600 bg-orange-50/50" : "bg-green-600 text-white border-none"
+                          employee.status === "PENDENTE" ? "border-slate-200 text-slate-500 bg-slate-50" : 
+                          employee.status === "FÉRIAS" ? "bg-blue-600 text-white border-none" :
+                          employee.status === "LICENÇA" ? "bg-purple-600 text-white border-none" :
+                          employee.status === "ATESTADO" ? "bg-red-600 text-white border-none" :
+                          employee.status === "ATIVO" ? "bg-green-600 text-white border-none" : "bg-slate-400 text-white border-none"
                         )}>
                           {employee.status || "PENDENTE"}
                         </Badge>

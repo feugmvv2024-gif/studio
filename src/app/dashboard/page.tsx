@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -76,26 +77,24 @@ export default function Dashboard() {
       let syncCount = 0;
 
       for (const emp of employees) {
-        // Encontrar o lançamento de afastamento mais recente/vigente
         const activeLaunches = launches.filter(l => 
           l.employeeId === emp.id && 
           ["FERIAS", "LICENCA", "ATESTADO"].some(type => normalizeStr(l.type).includes(type))
         );
 
         const currentLaunch = activeLaunches.find(l => l.startDate <= today && l.endDate >= today);
-        const expiredLaunch = activeLaunches.find(l => l.endDate < today);
 
         let targetStatus = "ATIVO";
         if (currentLaunch) {
           const type = normalizeStr(currentLaunch.type);
           if (type.includes("FERIAS")) targetStatus = "FÉRIAS";
+          else if (type.includes("ATESTADO")) targetStatus = "ATESTADO";
           else targetStatus = "LICENÇA";
         }
 
         // Só atualiza se o status for diferente e for uma transição válida
-        // Evitamos mexer em status PENDENTE ou INATIVO manualmente aqui para segurança
-        if (emp.status !== targetStatus && (emp.status === "ATIVO" || emp.status === "FÉRIAS" || emp.status === "LICENÇA")) {
-          // Pequeno delay para evitar sobrecarga de rede
+        const validTransitions = ["ATIVO", "FÉRIAS", "LICENÇA", "ATESTADO"];
+        if (emp.status !== targetStatus && validTransitions.includes(emp.status)) {
           await new Promise(r => setTimeout(r, 100));
           await updateDoc(doc(firestore, 'employees', emp.id), { status: targetStatus });
           syncCount++;
@@ -112,13 +111,14 @@ export default function Dashboard() {
 
   // Estatísticas Gerais
   const stats = React.useMemo(() => {
-    if (!employees) return { total: 0, active: 0, pending: 0, leave: 0, vacation: 0 };
+    if (!employees) return { total: 0, active: 0, pending: 0, leave: 0, vacation: 0, medical: 0 };
     return {
       total: employees.length,
       active: employees.filter(e => e.status === "ATIVO").length,
       pending: employees.filter(e => e.status === "PENDENTE").length,
       leave: employees.filter(e => e.status === "LICENÇA").length,
       vacation: employees.filter(e => e.status === "FÉRIAS").length,
+      medical: employees.filter(e => e.status === "ATESTADO").length,
     };
   }, [employees]);
 
@@ -144,13 +144,15 @@ export default function Dashboard() {
     { name: "Ativos", value: stats.active, color: "hsl(var(--primary))" },
     { name: "Licença", value: stats.leave, color: "hsl(var(--accent))" },
     { name: "Férias", value: stats.vacation, color: "hsl(var(--chart-3))" },
-    { name: "Pendente", value: stats.pending, color: "hsl(var(--destructive))" },
+    { name: "Atestado", value: stats.medical, color: "hsl(var(--destructive))" },
+    { name: "Pendente", value: stats.pending, color: "#94a3b8" },
   ], [stats]);
 
   const chartData = [
     { name: "Ativos", total: stats.active },
     { name: "Licença", total: stats.leave },
     { name: "Férias", total: stats.vacation },
+    { name: "Atestado", total: stats.medical },
     { name: "Pendente", total: stats.pending },
   ];
 
@@ -176,7 +178,6 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
-        {/* Card Pessoal */}
         <Card className="card-shadow border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">PESSOAL EFETIVO</CardTitle>
@@ -188,7 +189,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Card Pedidos */}
         <Card className="card-shadow border-orange-500/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">PEDIDOS PENDENTES</CardTitle>
@@ -200,7 +200,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Card Ativos */}
         <Card className="card-shadow border-green-500/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">AGENTES ATIVOS</CardTitle>
@@ -212,7 +211,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Card: Banco de Horas */}
         <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">BANCO DE HORAS (SALDO)</CardTitle>
@@ -235,7 +233,6 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Card: TRE */}
         <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">TRE (SALDO DIAS)</CardTitle>
@@ -258,15 +255,27 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* Card Afastamentos */}
         <Card className="card-shadow border-accent/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">AFASTADOS</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase">AFASTADOS (DETALHE)</CardTitle>
             <FileText className="h-4 w-4 text-accent" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.leave + stats.vacation}</div>
-            <p className="text-[9px] text-muted-foreground uppercase">LICENÇA OU FÉRIAS</p>
+            <div className="text-2xl font-bold mb-2">{stats.leave + stats.vacation + stats.medical}</div>
+            <div className="grid grid-cols-3 gap-1 pt-2 border-t">
+              <div>
+                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FÉRIAS</p>
+                <p className="text-[11px] font-black text-blue-600">{stats.vacation}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">LICENÇA</p>
+                <p className="text-[11px] font-black text-purple-600">{stats.leave}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">ATESTADO</p>
+                <p className="text-[11px] font-black text-red-600">{stats.medical}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>

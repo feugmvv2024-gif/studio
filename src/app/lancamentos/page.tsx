@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -234,7 +235,8 @@ export default function LancamentosPage() {
     const normalizedType = normalizeStr(launchData.type);
     let targetStatus = "";
     if (normalizedType.includes("FERIAS")) targetStatus = "FÉRIAS";
-    else if (normalizedType.includes("LICENCA") || normalizedType.includes("ATESTADO")) targetStatus = "LICENÇA";
+    else if (normalizedType.includes("ATESTADO")) targetStatus = "ATESTADO";
+    else if (normalizedType.includes("LICENCA")) targetStatus = "LICENÇA";
 
     const docRef = isUpdate ? doc(firestore, 'launches', selectedLaunch.id) : null;
     const action = isUpdate ? updateDoc(docRef!, launchData) : addDoc(collection(firestore, 'launches'), launchData);
@@ -283,7 +285,7 @@ export default function LancamentosPage() {
           <Info className="h-4 w-4 text-blue-500" />
         </div>
         <span className="text-blue-600 text-[10px] font-medium uppercase tracking-tight">
-          Lançamentos de Férias ou Licença atualizarão o status do servidor automaticamente conforme as datas.
+          Lançamentos de Férias, Licença ou Atestado atualizarão o status do servidor automaticamente conforme as datas.
         </span>
       </div>
 
@@ -539,8 +541,13 @@ export default function LancamentosPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredLaunches.map((launch, index) => {
-                    const isBhDebit = normalizeStr(launch.type) === "BANCO DE HORAS DEBITO" || normalizeStr(launch.type) === "FOLGA";
-                    const isTreDebit = normalizeStr(launch.type) === "TRE DEBITO";
+                    const normType = normalizeStr(launch.type);
+                    const isBhDebit = normType === "BANCO DE HORAS DEBITO" || normType === "FOLGA";
+                    const isTreDebit = normType === "TRE DEBITO";
+                    
+                    const isVacation = normType.includes("FERIAS");
+                    const isMedical = normType.includes("ATESTADO");
+                    const isLeave = normType.includes("LICENCA");
 
                     return (
                       <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
@@ -548,10 +555,17 @@ export default function LancamentosPage() {
                         <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/') || "-"}</TableCell>
                         <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
                         <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
-                        <TableCell><Badge variant="outline" className={cn(
-                          "text-[9px] uppercase font-bold border-blue-200",
-                          isBhDebit || isTreDebit ? "text-red-700 bg-red-50/50 border-red-200" : "text-blue-700 bg-blue-50/50 border-blue-200"
-                        )}>{launch.type || "-"}</Badge></TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] uppercase font-bold",
+                            isVacation ? "bg-blue-600 text-white border-none" :
+                            isMedical ? "bg-red-600 text-white border-none" :
+                            isLeave ? "bg-purple-600 text-white border-none" :
+                            isBhDebit || isTreDebit ? "text-red-700 bg-red-50/50 border-red-200" : "text-blue-700 bg-blue-50/50 border-blue-200"
+                          )}>
+                            {launch.type || "-"}
+                          </Badge>
+                        </TableCell>
                         <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || "-"}</TableCell>
                         <TableCell className={cn("text-[11px] font-bold text-center", isTreDebit && "text-red-600")}>
                           {launch.days ? `${isTreDebit ? '-' : ''}${launch.days}` : "-"}
