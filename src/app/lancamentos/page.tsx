@@ -129,10 +129,12 @@ export default function LancamentosPage() {
 
   // Queries
   const launchesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'launches'), orderBy('createdAt', 'desc'), limit(100)) : null, [firestore]);
+  const totalLaunchesQuery = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
   const employeesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const launchTypesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'launchTypes'), orderBy('name', 'asc')) : null, [firestore]);
 
   const { data: launches, loading: loadingLaunches } = useCollection(launchesQuery)
+  const { data: totalLaunches } = useCollection(totalLaunchesQuery)
   const { data: employees } = useCollection(employeesQuery)
   const { data: launchTypes } = useCollection(launchTypesQuery)
 
@@ -147,9 +149,6 @@ export default function LancamentosPage() {
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
       setSelectedType(selectedLaunch.type || "");
-    } else if (isAddOpen) {
-      // Quando abre o modal de adição, só reseta se for a primeira vez abrindo
-      // Mas o controle agora é feito no handleMutation para manter os dados
     }
   }, [selectedLaunch, isAddOpen, isEditOpen]);
 
@@ -472,7 +471,12 @@ export default function LancamentosPage() {
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">LANÇAMENTOS</h2>
+          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">
+            LANÇAMENTOS
+            <Badge variant="secondary" className="ml-2 bg-blue-50 text-blue-600 border-blue-100 font-bold px-2 py-0.5 rounded-lg text-xs">
+              {totalLaunches?.length || 0}
+            </Badge>
+          </h2>
           <p className="text-muted-foreground uppercase text-[10px]">GESTOR DE BANCO DE HORAS E AFASTAMENTOS.</p>
         </div>
         <Dialog open={isAddOpen} onOpenChange={(open) => { setIsAddOpen(open); if (!open) resetForm(); }}>
@@ -567,7 +571,7 @@ export default function LancamentosPage() {
 
                     return (
                       <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
-                        <TableCell className="font-mono text-[9px] px-4 text-muted-foreground">{filteredLaunches.length - index}</TableCell>
+                        <TableCell className="font-mono text-[9px] px-4 text-muted-foreground">{totalLaunches.length - index}</TableCell>
                         <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/') || "-"}</TableCell>
                         <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
                         <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
