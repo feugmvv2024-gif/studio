@@ -11,7 +11,8 @@ import {
   Loader2,
   Timer,
   CalendarDays,
-  ShieldCheck
+  ShieldCheck,
+  UserMinus
 } from "lucide-react"
 import {
   BarChart,
@@ -140,6 +141,25 @@ export default function Dashboard() {
     }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0 });
   }, [launches]);
 
+  // Estatísticas de Ausentes (Hoje)
+  const absentStats = React.useMemo(() => {
+    if (!launches) return { total: 0, folga: 0, abono: 0, falta: 0 };
+    const today = getSaoPauloDate();
+    
+    return launches.reduce((acc, l) => {
+      const type = normalizeStr(l.type);
+      const isActive = l.startDate <= today && l.endDate >= today;
+      
+      if (isActive) {
+        if (type.includes("FOLGA")) { acc.folga++; acc.total++; }
+        else if (type.includes("ABONO")) { acc.abono++; acc.total++; }
+        else if (type.includes("FALTA")) { acc.falta++; acc.total++; }
+      }
+      
+      return acc;
+    }, { total: 0, folga: 0, abono: 0, falta: 0 });
+  }, [launches]);
+
   const personnelStats = React.useMemo(() => [
     { name: "Ativos", value: stats.active, color: "hsl(var(--primary))" },
     { name: "Licença", value: stats.leave, color: "hsl(var(--accent))" },
@@ -177,7 +197,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
         <Card className="card-shadow border-primary/20">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">PESSOAL EFETIVO</CardTitle>
@@ -208,6 +228,30 @@ export default function Dashboard() {
           <CardContent>
             <div className="text-2xl font-bold">{stats.active}</div>
             <p className="text-[9px] text-muted-foreground uppercase">EM SERVIÇO ATIVO</p>
+          </CardContent>
+        </Card>
+
+        <Card className="card-shadow border-red-500/20 bg-red-50/5">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-[10px] font-bold uppercase">AUSENTES (HOJE)</CardTitle>
+            <UserMinus className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-red-700">{absentStats.total}</div>
+            <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-red-100">
+              <div>
+                <p className="text-[7px] font-bold text-muted-foreground uppercase">FOLGA</p>
+                <p className="text-[10px] font-black text-red-600">{absentStats.folga}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-bold text-muted-foreground uppercase">ABONO</p>
+                <p className="text-[10px] font-black text-orange-600">{absentStats.abono}</p>
+              </div>
+              <div>
+                <p className="text-[7px] font-bold text-muted-foreground uppercase">FALTA</p>
+                <p className="text-[10px] font-black text-red-900">{absentStats.falta}</p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -255,7 +299,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        <Card className="card-shadow border-accent/20">
+        <Card className="card-shadow border-accent/20 lg:col-span-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">AFASTADOS (DETALHE)</CardTitle>
             <FileText className="h-4 w-4 text-accent" />
