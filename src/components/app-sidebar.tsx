@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -10,6 +11,7 @@ import {
   Settings,
   FilePlus,
   BarChart3,
+  History,
 } from "lucide-react"
 
 import {
@@ -34,6 +36,7 @@ const navigation = [
   { name: "Efetivo", href: "/efetivo", icon: Users, admin: true },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3, admin: true },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
+  { name: "Meus Lançamentos", href: "/meus-lancamentos", icon: History },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
   { name: "Configuração", href: "/settings", icon: Settings, admin: true },
 ]
