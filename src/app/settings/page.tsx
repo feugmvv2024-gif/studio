@@ -15,7 +15,6 @@ import {
   X,
   History,
   Timer,
-  ShieldAlert,
   Edit2,
   Check
 } from "lucide-react"
@@ -55,7 +54,7 @@ const calculateDuration = (start: string, end: string) => {
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
   
-  if (isNaN(h1) || iisNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
+  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
   
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
@@ -73,7 +72,6 @@ const calculateDuration = (start: string, end: string) => {
 
 export default function SettingsPage() {
   const [newValue, setNewValue] = React.useState("")
-  const [newRoleLevel, setNewRoleLevel] = React.useState<string>("4")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   const [editingId, setEditingId] = React.useState<string | null>(null)
   
@@ -114,7 +112,6 @@ export default function SettingsPage() {
   function handleCancelEdit() {
     setEditingId(null)
     setNewValue("")
-    setNewRoleLevel("4")
     setPeriodData({ escalaId: "", startTime: "", endTime: "", duration: "" })
   }
 
@@ -129,9 +126,6 @@ export default function SettingsPage() {
       })
     } else {
       setNewValue(item.name)
-      if (category === 'roles') {
-        setNewRoleLevel(String(item.accessLevel))
-      }
     }
   }
 
@@ -148,18 +142,13 @@ export default function SettingsPage() {
     
     let payload: any = {};
     if (category === 'shiftPeriods') {
-      const escala = schedules.find((s: any) => s.id === periodData.escalaId);
+      const escala = (schedules as any[]).find((s: any) => s.id === periodData.escalaId);
       payload = {
         escalaId: periodData.escalaId,
         escalaName: escala?.name || "N/A",
         startTime: periodData.startTime,
         endTime: periodData.endTime,
         duration: periodData.duration
-      };
-    } else if (category === 'roles') {
-      payload = { 
-        name: newValue.toUpperCase().trim(),
-        accessLevel: Number(newRoleLevel)
       };
     } else {
       payload = { name: newValue.toUpperCase().trim() };
@@ -348,7 +337,6 @@ export default function SettingsPage() {
               editingId ? "bg-amber-50 border-amber-200" : "bg-transparent border-transparent"
             )}>
               <div className="flex-1 flex flex-col gap-1.5">
-                {category === 'roles' && <Label className="text-[9px] uppercase font-bold text-muted-foreground">Nome do Cargo</Label>}
                 <Input 
                   placeholder={placeholder} 
                   value={newValue}
@@ -357,24 +345,6 @@ export default function SettingsPage() {
                   className="uppercase font-semibold text-xs h-11 bg-background/50 focus:bg-background transition-all border-muted"
                 />
               </div>
-
-              {category === 'roles' && (
-                <div className="w-full sm:w-48 flex flex-col gap-1.5">
-                  <Label className="text-[9px] uppercase font-bold text-muted-foreground">Nível de Acesso</Label>
-                  <Select value={newRoleLevel} onValueChange={setNewRoleLevel}>
-                    <SelectTrigger className="h-11 uppercase text-xs font-bold bg-background/50">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="0" className="uppercase text-[10px] font-bold text-primary">NÍVEL 0 (ADMIN)</SelectItem>
-                      <SelectItem value="1" className="uppercase text-[10px] font-bold">NÍVEL 1 (ADM SUPERIOR)</SelectItem>
-                      <SelectItem value="2" className="uppercase text-[10px] font-bold">NÍVEL 2 (RH)</SelectItem>
-                      <SelectItem value="3" className="uppercase text-[10px] font-bold">NÍVEL 3 (SUP)</SelectItem>
-                      <SelectItem value="4" className="uppercase text-[10px] font-bold">NÍVEL 4 (OP)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              )}
 
               <div className="flex flex-col gap-1.5 justify-end">
                 <Button 
@@ -409,12 +379,6 @@ export default function SettingsPage() {
                     )}>
                       <div className="flex flex-col gap-0.5">
                         <span className="font-bold text-xs uppercase tracking-tight text-slate-700">{item.name}</span>
-                        {category === 'roles' && (
-                          <div className="flex items-center gap-1.5">
-                            <ShieldAlert className="h-3 w-3 text-orange-500" />
-                            <span className="text-[9px] uppercase font-black text-muted-foreground">NÍVEL DE ACESSO: {item.accessLevel}</span>
-                          </div>
-                        )}
                       </div>
                       <div className="flex items-center gap-1">
                         <Button 
@@ -499,7 +463,7 @@ export default function SettingsPage() {
           </TabsContent>
 
           <TabsContent value="roles">
-            {renderCategoryContent('roles', 'Gerenciar Cargos', 'DEFINIÇÕES DE CARGOS E NÍVEIS DE ACESSO.', roles || [], loadingRoles, 'EX: INSPETOR, AGENTE, COORDENADOR...')}
+            {renderCategoryContent('roles', 'Gerenciar Cargos', 'DEFINIÇÕES DE CARGOS NA UNIDADE.', roles || [], loadingRoles, 'EX: INSPETOR, AGENTE, COORDENADOR...')}
           </TabsContent>
 
           <TabsContent value="units">
