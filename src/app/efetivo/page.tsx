@@ -73,7 +73,7 @@ import {
 } from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/checkbox"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Select,
   SelectContent,
