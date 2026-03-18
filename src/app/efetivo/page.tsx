@@ -73,7 +73,7 @@ import {
 } from "@/components/ui/popover"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
-import { Checkbox } from "@/components/ui/checkbox"
+import { Checkbox } from "@/checkbox"
 import {
   Select,
   SelectContent,
@@ -125,9 +125,16 @@ export default function EfetivoPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
+  // Query para a tabela (limitada a 100)
   const employeesRef = React.useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'employees'), orderBy('qra', 'asc'), limit(100));
+  }, [firestore]);
+
+  // Query para estatísticas (sem limite)
+  const allEmployeesRef = React.useMemo(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'employees');
   }, [firestore]);
 
   const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
@@ -136,22 +143,24 @@ export default function EfetivoPage() {
   const unitsRef = React.useMemo(() => firestore ? query(collection(firestore, 'units'), orderBy('name', 'asc')) : null, [firestore]);
 
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
+  const { data: allEmployees } = useCollection(allEmployeesRef);
   const { data: schedules } = useCollection(schedulesRef);
   const { data: shifts } = useCollection(shiftsRef);
   const { data: roles } = useCollection(rolesRef);
   const { data: units } = useCollection(unitsRef);
 
+  // Estatísticas baseadas no total geral (allEmployees)
   const stats = React.useMemo(() => {
-    if (!employees) return { total: 0, active: 0, pending: 0, vacation: 0, leave: 0, medical: 0 };
+    if (!allEmployees) return { total: 0, active: 0, pending: 0, vacation: 0, leave: 0, medical: 0 };
     return {
-      total: employees.length,
-      active: employees.filter(e => e.status === "ATIVO").length,
-      pending: employees.filter(e => e.status === "PENDENTE").length,
-      vacation: employees.filter(e => e.status === "FÉRIAS").length,
-      leave: employees.filter(e => e.status === "LICENÇA").length,
-      medical: employees.filter(e => e.status === "ATESTADO").length
+      total: allEmployees.length,
+      active: allEmployees.filter(e => e.status === "ATIVO").length,
+      pending: allEmployees.filter(e => e.status === "PENDENTE").length,
+      vacation: allEmployees.filter(e => e.status === "FÉRIAS").length,
+      leave: allEmployees.filter(e => e.status === "LICENÇA").length,
+      medical: allEmployees.filter(e => e.status === "ATESTADO").length
     };
-  }, [employees]);
+  }, [allEmployees]);
 
   React.useEffect(() => {
     if (isAddOpen) {
@@ -430,7 +439,7 @@ export default function EfetivoPage() {
                 <SelectValue placeholder="SELECIONE..." />
               </SelectTrigger>
               <SelectContent>
-                {units.map((u: any) => <SelectItem key={u.id} value={u.name} className="uppercase text-[11px]">{u.name}</SelectItem>)}
+                {units?.map((u: any) => <SelectItem key={u.id} value={u.name} className="uppercase text-[11px]">{u.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -441,7 +450,7 @@ export default function EfetivoPage() {
                 <SelectValue placeholder="SELECIONE..." />
               </SelectTrigger>
               <SelectContent>
-                {schedules.map((s: any) => <SelectItem key={s.id} value={s.name} className="uppercase text-[11px]">{s.name}</SelectItem>)}
+                {schedules?.map((s: any) => <SelectItem key={s.id} value={s.name} className="uppercase text-[11px]">{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -455,7 +464,7 @@ export default function EfetivoPage() {
                 <SelectValue placeholder="SELECIONE..." />
               </SelectTrigger>
               <SelectContent>
-                {shifts.map((s: any) => <SelectItem key={s.id} value={s.name} className="uppercase text-[11px]">{s.name}</SelectItem>)}
+                {shifts?.map((s: any) => <SelectItem key={s.id} value={s.name} className="uppercase text-[11px]">{s.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
@@ -466,7 +475,7 @@ export default function EfetivoPage() {
                 <SelectValue placeholder="SELECIONE..." />
               </SelectTrigger>
               <SelectContent>
-                {roles.map((r: any) => <SelectItem key={r.id} value={r.name} className="uppercase text-[11px]">{r.name}</SelectItem>)}
+                {roles?.map((r: any) => <SelectItem key={r.id} value={r.name} className="uppercase text-[11px]">{r.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
