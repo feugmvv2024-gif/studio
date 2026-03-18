@@ -55,7 +55,7 @@ const calculateDuration = (start: string, end: string) => {
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
   
-  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
+  if (isNaN(h1) || iisNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
   
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
@@ -366,7 +366,8 @@ export default function SettingsPage() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="1" className="uppercase text-[10px] font-bold">NÍVEL 1 (ADM)</SelectItem>
+                      <SelectItem value="0" className="uppercase text-[10px] font-bold text-primary">NÍVEL 0 (ADMIN)</SelectItem>
+                      <SelectItem value="1" className="uppercase text-[10px] font-bold">NÍVEL 1 (ADM SUPERIOR)</SelectItem>
                       <SelectItem value="2" className="uppercase text-[10px] font-bold">NÍVEL 2 (RH)</SelectItem>
                       <SelectItem value="3" className="uppercase text-[10px] font-bold">NÍVEL 3 (SUP)</SelectItem>
                       <SelectItem value="4" className="uppercase text-[10px] font-bold">NÍVEL 4 (OP)</SelectItem>

@@ -90,7 +90,7 @@
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
-        "accessLevel": { "type": "number", "description": "Nível de acesso (1-4)." }
+        "accessLevel": { "type": "number", "description": "Nível de acesso (0-4)." }
       },
       "required": ["name", "accessLevel"]
     },
