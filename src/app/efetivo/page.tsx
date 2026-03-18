@@ -22,7 +22,8 @@ import {
   AlertCircle,
   Plane,
   FileText,
-  Stethoscope
+  Stethoscope,
+  ChevronDown
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -111,6 +112,7 @@ export default function EfetivoPage() {
   const [loadingImport, setLoadingImport] = React.useState(false)
   const [generatedCode, setGeneratedCode] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
+  const [limitCount, setLimitCount] = React.useState(100)
   
   const [filters, setFilters] = React.useState({
     qra: "",
@@ -125,11 +127,11 @@ export default function EfetivoPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
-  // Query para a tabela (limitada a 100)
+  // Query para a tabela (com limite dinâmico)
   const employeesRef = React.useMemo(() => {
     if (!firestore) return null;
-    return query(collection(firestore, 'employees'), orderBy('qra', 'asc'), limit(100));
-  }, [firestore]);
+    return query(collection(firestore, 'employees'), orderBy('qra', 'asc'), limit(limitCount));
+  }, [firestore, limitCount]);
 
   // Query para estatísticas (sem limite)
   const allEmployeesRef = React.useMemo(() => {
@@ -698,64 +700,80 @@ export default function EfetivoPage() {
           {loadingCollection ? (
             <div className="flex h-32 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted/20">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="w-[40px] px-4"><Checkbox checked={filteredEmployees.length > 0 && selectedIds.length === filteredEmployees.length} onCheckedChange={toggleSelectAll} /></TableHead>
-                    <TableHead className="w-[50px] font-bold uppercase text-[9px] px-2">Nº</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">QRAs</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">SERVIDOR</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">MATRÍCULA</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">ESCALA</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">TURNO</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">CARGO</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">SETOR</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">CÓD. VALIDAÇÃO</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">STATUS</TableHead>
-                    <TableHead className="text-right font-bold uppercase text-[9px] min-w-[80px] pr-4">AÇÕES</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredEmployees.map((employee, index) => (
-                    <TableRow key={employee.id} className="hover:bg-blue-50/30 transition-colors">
-                      <TableCell className="px-4"><Checkbox checked={selectedIds.includes(employee.id)} onCheckedChange={() => toggleSelect(employee.id)} /></TableCell>
-                      <TableCell className="font-mono text-[9px] text-muted-foreground px-2">{index + 1}</TableCell>
-                      <TableCell className="font-bold text-[11px] uppercase text-slate-800">{employee.qra}</TableCell>
-                      <TableCell className="font-bold text-[11px] uppercase whitespace-nowrap">{employee.name}</TableCell>
-                      <TableCell className="font-mono text-[10px] uppercase whitespace-nowrap text-muted-foreground">{employee.matricula}</TableCell>
-                      <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.escala}</TableCell>
-                      <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.turno}</TableCell>
-                      <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.role}</TableCell>
-                      <TableCell><Badge variant="secondary" className="uppercase text-[8px] whitespace-nowrap font-bold bg-muted/50">{employee.unit}</Badge></TableCell>
-                      <TableCell className="text-[10px] uppercase font-mono font-bold text-primary">{employee.validationCode || "---"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className={cn(
-                          "uppercase text-[8px] font-bold whitespace-nowrap",
-                          employee.status === "PENDENTE" ? "border-slate-200 text-slate-500 bg-slate-50" : 
-                          employee.status === "FÉRIAS" ? "bg-blue-600 text-white border-none" :
-                          employee.status === "LICENÇA" ? "bg-purple-600 text-white border-none" :
-                          employee.status === "ATESTADO" ? "bg-red-600 text-white border-none" :
-                          employee.status === "ATIVO" ? "bg-green-600 text-white border-none" : "bg-slate-400 text-white border-none"
-                        )}>
-                          {employee.status || "PENDENTE"}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right pr-4">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
-                            <DropdownMenuItem onSelect={() => { setSelectedEmployee(employee); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50 cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onSelect={() => { setEmployeeToDelete(employee.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50 cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/20">
+                    <TableRow className="hover:bg-transparent">
+                      <TableHead className="w-[40px] px-4"><Checkbox checked={filteredEmployees.length > 0 && selectedIds.length === filteredEmployees.length} onCheckedChange={toggleSelectAll} /></TableHead>
+                      <TableHead className="w-[50px] font-bold uppercase text-[9px] px-2">Nº</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">QRAs</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">SERVIDOR</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">MATRÍCULA</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">ESCALA</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">TURNO</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">CARGO</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">SETOR</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">CÓD. VALIDAÇÃO</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">STATUS</TableHead>
+                      <TableHead className="text-right font-bold uppercase text-[9px] min-w-[80px] pr-4">AÇÕES</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredEmployees.map((employee, index) => (
+                      <TableRow key={employee.id} className="hover:bg-blue-50/30 transition-colors">
+                        <TableCell className="px-4"><Checkbox checked={selectedIds.includes(employee.id)} onCheckedChange={() => toggleSelect(employee.id)} /></TableCell>
+                        <TableCell className="font-mono text-[9px] text-muted-foreground px-2">{index + 1}</TableCell>
+                        <TableCell className="font-bold text-[11px] uppercase text-slate-800">{employee.qra}</TableCell>
+                        <TableCell className="font-bold text-[11px] uppercase whitespace-nowrap">{employee.name}</TableCell>
+                        <TableCell className="font-mono text-[10px] uppercase whitespace-nowrap text-muted-foreground">{employee.matricula}</TableCell>
+                        <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.escala}</TableCell>
+                        <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.turno}</TableCell>
+                        <TableCell className="text-[10px] uppercase whitespace-nowrap font-medium">{employee.role}</TableCell>
+                        <TableCell><Badge variant="secondary" className="uppercase text-[8px] whitespace-nowrap font-bold bg-muted/50">{employee.unit}</Badge></TableCell>
+                        <TableCell className="text-[10px] uppercase font-mono font-bold text-primary">{employee.validationCode || "---"}</TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            "uppercase text-[8px] font-bold whitespace-nowrap",
+                            employee.status === "PENDENTE" ? "border-slate-200 text-slate-500 bg-slate-50" : 
+                            employee.status === "FÉRIAS" ? "bg-blue-600 text-white border-none" :
+                            employee.status === "LICENÇA" ? "bg-purple-600 text-white border-none" :
+                            employee.status === "ATESTADO" ? "bg-red-600 text-white border-none" :
+                            employee.status === "ATIVO" ? "bg-green-600 text-white border-none" : "bg-slate-400 text-white border-none"
+                          )}>
+                            {employee.status || "PENDENTE"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right pr-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
+                              <DropdownMenuItem onSelect={() => { setSelectedEmployee(employee); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50 cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onSelect={() => { setEmployeeToDelete(employee.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50 cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {stats.total > employees.length && (
+                <div className="p-4 border-t flex justify-center bg-muted/5">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="gap-2 uppercase font-bold text-[10px] h-8 border-primary/20 hover:bg-primary/5 text-primary"
+                    onClick={() => setLimitCount(prev => prev + 100)}
+                  >
+                    <ChevronDown className="h-4 w-4" />
+                    CARREGAR MAIS (+100)
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
