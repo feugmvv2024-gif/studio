@@ -10,7 +10,10 @@ import {
   Plus,
   Trash2,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  User,
+  Timer,
+  ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -38,14 +41,14 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { useFirestore, useCollection, useUser } from '@/firebase';
+import { useFirestore, useCollection, useAuth } from '@/firebase';
 import { collection, addDoc, query, orderBy, where, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils"
 
 export default function RequestsPage() {
   const firestore = useFirestore();
-  const { user } = useUser();
+  const { user, employeeData, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("new");
@@ -60,6 +63,7 @@ export default function RequestsPage() {
   const [newVacationStart, setNewVacationStart] = React.useState("");
   const [newVacationEnd, setNewVacationEnd] = React.useState("");
 
+  // Consulta de solicitações do usuário
   const requestsRef = React.useMemo(() => {
     if (!firestore || !user) return null;
     return query(
@@ -69,7 +73,17 @@ export default function RequestsPage() {
     );
   }, [firestore, user]);
 
+  // Consulta de períodos de escala para buscar o horário
+  const shiftPeriodsRef = React.useMemo(() => firestore ? collection(firestore, 'shiftPeriods') : null, [firestore]);
+
   const { data: myRequests, loading: loadingRequests } = useCollection(requestsRef);
+  const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
+
+  // Busca o período correspondente à escala do servidor
+  const myShiftPeriod = React.useMemo(() => {
+    if (!employeeData?.escala || !shiftPeriods) return null;
+    return shiftPeriods.find(p => p.escalaName === employeeData.escala);
+  }, [employeeData?.escala, shiftPeriods]);
 
   const addDateRow = () => setMultiDates([...multiDates, ""]);
   const removeDateRow = (index: number) => {
@@ -111,7 +125,7 @@ export default function RequestsPage() {
 
     const newRequest = {
       employeeId: user.uid,
-      employeeName: (user.displayName || "USUÁRIO NRH").toUpperCase(),
+      employeeName: (employeeData?.name || user.displayName || "USUÁRIO NRH").toUpperCase(),
       type: requestType,
       date: finalDate,
       description: description,
@@ -150,6 +164,14 @@ export default function RequestsPage() {
   const isMultiDateType = ["FOLGA", "ABONO TRE"].includes(requestType);
   const isReprogrammingType = requestType === "REPROGRAMAÇÃO DE FÉRIAS";
 
+  if (authLoading) {
+    return (
+      <div className="flex h-full items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col gap-2">
@@ -173,6 +195,31 @@ export default function RequestsPage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pt-8">
+                
+                {/* Cabeçalho de Identificação Funcional */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/20 border rounded-xl mb-6">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                      <User className="h-3 w-3" /> SERVIDOR SOLICITANTE
+                    </Label>
+                    <p className="text-sm font-black uppercase text-slate-900 leading-tight">{employeeData?.name || "CARREGANDO..."}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">MATRÍCULA: {employeeData?.matricula || "---"}</p>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                      <Timer className="h-3 w-3" /> ESCALA E HORÁRIO
+                    </Label>
+                    <p className="text-sm font-black uppercase text-primary leading-tight">{employeeData?.escala || "NÃO DEFINIDA"}</p>
+                    {myShiftPeriod ? (
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        {myShiftPeriod.startTime} ÀS {myShiftPeriod.endTime} ({myShiftPeriod.duration}H)
+                      </p>
+                    ) : (
+                      <p className="text-[10px] font-bold text-destructive uppercase italic tracking-tight">HORÁRIO NÃO CONFIGURADO NO RH</p>
+                    )}
+                  </div>
+                </div>
+
                 <div className="grid gap-6 sm:grid-cols-2">
                   <div className="grid gap-2">
                     <Label htmlFor="requestType" className="text-[10px] font-bold uppercase text-muted-foreground">TIPO DE SOLICITAÇÃO</Label>
