@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { FirebaseApp } from 'firebase/app';
-import { Firestore, doc, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
+import { Firestore, onSnapshot, collection, query, where, getDocs } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged, signOut } from 'firebase/auth';
 
 interface FirebaseContextProps {
@@ -29,19 +29,27 @@ export const FirebaseProvider: React.FC<{
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let unsubscribeDoc: (() => void) | undefined;
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (currentUser) => {
       setUser(currentUser);
       
+      // Limpa listener anterior se existir
+      if (unsubscribeDoc) {
+        unsubscribeDoc();
+        unsubscribeDoc = undefined;
+      }
+
       if (currentUser) {
-        // Quando o usuário logar, buscamos os dados dele no Firestore pelo UID ou Email
-        // O ideal é buscar por UID para maior segurança
+        setLoading(true);
         const q = query(collection(firestore, 'employees'), where('uid', '==', currentUser.uid));
         
-        const unsubscribeDoc = onSnapshot(q, (snapshot) => {
+        unsubscribeDoc = onSnapshot(q, (snapshot) => {
           if (!snapshot.empty) {
             setEmployeeData({ id: snapshot.docs[0].id, ...snapshot.docs[0].data() });
+            setLoading(false);
           } else {
-            // Se não achar por UID, tenta por email (caso de transição)
+            // Tenta busca por email caso o UID ainda não esteja propagado
             const qEmail = query(collection(firestore, 'employees'), where('email', '==', currentUser.email?.toUpperCase()));
             getDocs(qEmail).then(snapEmail => {
               if (!snapEmail.empty) {
@@ -49,19 +57,25 @@ export const FirebaseProvider: React.FC<{
               } else {
                 setEmployeeData(null);
               }
+              setLoading(false);
+            }).catch(() => {
+              setLoading(false);
             });
           }
+        }, (error) => {
+          console.error("Erro no listener de employeeData:", error);
           setLoading(false);
         });
-
-        return () => unsubscribeDoc();
       } else {
         setEmployeeData(null);
         setLoading(false);
       }
     });
 
-    return () => unsubscribeAuth();
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+    };
   }, [auth, firestore]);
 
   const logout = async () => {
