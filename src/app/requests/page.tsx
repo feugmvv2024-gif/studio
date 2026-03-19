@@ -6,7 +6,11 @@ import {
   Clock, 
   CheckCircle2, 
   Loader2,
-  Send
+  Send,
+  Plus,
+  Trash2,
+  Calendar,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -37,6 +41,7 @@ import { Badge } from "@/components/ui/badge"
 import { useFirestore, useCollection, useUser } from '@/firebase';
 import { collection, addDoc, query, orderBy, where, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils"
 
 export default function RequestsPage() {
   const firestore = useFirestore();
@@ -44,6 +49,12 @@ export default function RequestsPage() {
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("new");
+  
+  // Estados do formulário dinâmico
+  const [requestType, setRequestType] = React.useState<string>("");
+  const [multiDates, setMultiDates] = React.useState<string[]>([""]);
+  const [currentVacationDate, setCurrentVacationDate] = React.useState("");
+  const [newVacationDate, setNewVacationDate] = React.useState("");
 
   const requestsRef = React.useMemo(() => {
     if (!firestore || !user) return null;
@@ -56,6 +67,17 @@ export default function RequestsPage() {
 
   const { data: myRequests, loading: loadingRequests } = useCollection(requestsRef);
 
+  const addDateRow = () => setMultiDates([...multiDates, ""]);
+  const removeDateRow = (index: number) => {
+    const newDates = multiDates.filter((_, i) => i !== index);
+    setMultiDates(newDates.length ? newDates : [""]);
+  };
+  const updateDate = (index: number, val: string) => {
+    const newDates = [...multiDates];
+    newDates[index] = val;
+    setMultiDates(newDates);
+  };
+
   async function handleSendRequest(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!firestore || !user) {
@@ -65,17 +87,27 @@ export default function RequestsPage() {
 
     setLoading(true);
     const formData = new FormData(e.currentTarget);
-    const type = (formData.get('type') as string).toUpperCase();
-    const date = formData.get('date') as string;
-    const description = (formData.get('description') as string).toUpperCase();
+    const description = (formData.get('description') as string || "").toUpperCase();
+    
+    let finalDate = "";
+    let extraDetails = "";
+
+    // Lógica de processamento por tipo
+    if (requestType === "FOLGA" || requestType === "ABONO TRE") {
+      finalDate = multiDates.filter(d => d).map(d => d.split('-').reverse().join('/')).join(", ");
+    } else if (requestType === "REPROGRAMAÇÃO DE FÉRIAS") {
+      finalDate = `DE: ${currentVacationDate.split('-').reverse().join('/')} PARA: ${newVacationDate.split('-').reverse().join('/')}`;
+    } else {
+      finalDate = (formData.get('date') as string || "").split('-').reverse().join('/');
+    }
 
     const newRequest = {
       employeeId: user.uid,
       employeeName: (user.displayName || "USUÁRIO NRH").toUpperCase(),
-      type,
-      date,
-      description,
-      status: "PENDENTE",
+      type: requestType,
+      date: finalDate,
+      description: description,
+      status: "Pendente",
       createdAt: serverTimestamp()
     };
 
@@ -83,10 +115,10 @@ export default function RequestsPage() {
       await addDoc(collection(firestore, 'requests'), newRequest);
       toast({
         title: "SOLICITAÇÃO ENVIADA!",
-        description: "SEU PEDIDO ESTÁ EM ANÁLISE PELA ADMINISTRAÇÃO.",
+        description: "SEU PEDIDO FOI REGISTRADO COM SUCESSO.",
       });
       setActiveTab("history");
-      (e.target as HTMLFormElement).reset();
+      resetForm();
     } catch (error) {
       toast({
         variant: "destructive",
@@ -98,71 +130,133 @@ export default function RequestsPage() {
     }
   }
 
-  const getTypeLabel = (type: string) => {
-    switch(type.toLowerCase()) {
-      case 'vacation': return 'FÉRIAS';
-      case 'leave': return 'FOLGA / ABONO';
-      case 'exchange': return 'PERMUTA DE SERVIÇO';
-      default: return 'OUTROS';
-    }
+  const resetForm = () => {
+    setRequestType("");
+    setMultiDates([""]);
+    setCurrentVacationDate("");
+    setNewVacationDate("");
   };
 
+  const isMultiDateType = ["FOLGA", "ABONO TRE"].includes(requestType);
+  const isReprogrammingType = requestType === "REPROGRAMAÇÃO DE FÉRIAS";
+
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col gap-2">
-        <h2 className="text-3xl font-bold tracking-tight">SOLICITAÇÕES OPERACIONAIS</h2>
-        <p className="text-muted-foreground">ENVIE PEDIDOS DE FÉRIAS, FOLGAS OU PERMUTAS DE SERVIÇO.</p>
+        <h2 className="text-3xl font-bold tracking-tight uppercase text-primary">SOLICITAÇÕES OPERACIONAIS</h2>
+        <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">CENTRAL DE REQUERIMENTOS AO NÚCLEO DE RH.</p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[400px]">
-          <TabsTrigger value="new">NOVA SOLICITAÇÃO</TabsTrigger>
-          <TabsTrigger value="history">MINHAS SOLICITAÇÕES</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 lg:w-[400px] h-11 bg-muted/50 p-1 rounded-xl">
+          <TabsTrigger value="new" className="rounded-lg uppercase text-[10px] font-bold">NOVA SOLICITAÇÃO</TabsTrigger>
+          <TabsTrigger value="history" className="rounded-lg uppercase text-[10px] font-bold">HISTÓRICO</TabsTrigger>
         </TabsList>
+
         <TabsContent value="new" className="mt-6 space-y-6">
-          <Card className="card-shadow">
+          <Card className="card-shadow border-none rounded-2xl overflow-hidden">
             <form onSubmit={handleSendRequest}>
-              <CardHeader>
-                <CardTitle>FORMULÁRIO DE PEDIDO</CardTitle>
-                <CardDescription>
-                  SELECIONE O TIPO DE SOLICITAÇÃO E FORNEÇA OS DETALHES NECESSÁRIOS.
+              <CardHeader className="bg-primary/5 border-b">
+                <CardTitle className="text-lg uppercase font-bold">Formulário de Requerimento</CardTitle>
+                <CardDescription className="text-[10px] uppercase font-bold text-muted-foreground">
+                  Preencha os campos abaixo conforme a sua necessidade.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
+              <CardContent className="space-y-6 pt-8">
+                <div className="grid gap-6 sm:grid-cols-2">
                   <div className="grid gap-2">
-                    <Label htmlFor="requestType">TIPO DE SOLICITAÇÃO</Label>
-                    <Select name="type" required>
-                      <SelectTrigger id="requestType">
+                    <Label htmlFor="requestType" className="text-[10px] font-bold uppercase text-muted-foreground">TIPO DE SOLICITAÇÃO</Label>
+                    <Select value={requestType} onValueChange={setRequestType} required>
+                      <SelectTrigger id="requestType" className="h-11 uppercase text-[11px] font-bold">
                         <SelectValue placeholder="SELECIONE..." />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="vacation">FÉRIAS</SelectItem>
-                        <SelectItem value="leave">FOLGA / ABONO</SelectItem>
-                        <SelectItem value="exchange">PERMUTA DE SERVIÇO</SelectItem>
-                        <SelectItem value="other">OUTROS</SelectItem>
+                        <SelectItem value="FOLGA" className="uppercase text-[11px]">FOLGA</SelectItem>
+                        <SelectItem value="ABONO DE ANIVERSÁRIO" className="uppercase text-[11px]">ABONO DE ANIVERSÁRIO</SelectItem>
+                        <SelectItem value="ABONO TRE" className="uppercase text-[11px]">ABONO TRE</SelectItem>
+                        <SelectItem value="REPROGRAMAÇÃO DE FÉRIAS" className="uppercase text-[11px]">REPROGRAMAÇÃO DE FÉRIAS</SelectItem>
+                        <SelectItem value="ESCALA ESPECIAL" className="uppercase text-[11px]">ESCALA ESPECIAL</SelectItem>
+                        <SelectItem value="TROCA DE SERVIÇO" className="uppercase text-[11px]">TROCA DE SERVIÇO</SelectItem>
+                        <SelectItem value="PERMUTA" className="uppercase text-[11px]">PERMUTA</SelectItem>
+                        <SelectItem value="OUTROS" className="uppercase text-[11px]">OUTROS</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="date">DATA PREVISTA</Label>
-                    <Input id="date" name="date" type="date" required />
-                  </div>
+
+                  {!isMultiDateType && !isReprogrammingType && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="date" className="text-[10px] font-bold uppercase text-muted-foreground">DATA PREVISTA</Label>
+                      <Input id="date" name="date" type="date" required className="h-11" />
+                    </div>
+                  )}
                 </div>
+
+                {/* Campos dinâmicos para Múltiplas Datas */}
+                {isMultiDateType && (
+                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATAS SOLICITADAS ({multiDates.length})</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addDateRow} className="h-8 text-[10px] font-bold uppercase gap-2">
+                        <Plus className="h-3 w-3" /> ADICIONAR DATA
+                      </Button>
+                    </div>
+                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 md:grid-cols-3">
+                      {multiDates.map((date, index) => (
+                        <div key={index} className="flex gap-2">
+                          <Input 
+                            type="date" 
+                            value={date} 
+                            onChange={(e) => updateDate(index, e.target.value)}
+                            required
+                            className="h-11 font-medium" 
+                          />
+                          {multiDates.length > 1 && (
+                            <Button type="button" variant="ghost" size="icon" onClick={() => removeDateRow(index)} className="h-11 w-11 text-destructive shrink-0">
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos dinâmicos para Reprogramação de Férias */}
+                {isReprogrammingType && (
+                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-3">
+                      <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-amber-700 font-bold uppercase leading-tight">
+                        Informe o período que já estava agendado e a nova data desejada para a fruição das férias.
+                      </p>
+                    </div>
+                    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
+                      <div className="grid gap-2">
+                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATA ATUALMENTE AGENDADA</Label>
+                        <Input type="date" value={currentVacationDate} onChange={(e) => setCurrentVacationDate(e.target.value)} required className="h-11" />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">NOVA DATA DESEJADA</Label>
+                        <Input type="date" value={newVacationDate} onChange={(e) => setNewVacationDate(e.target.value)} required className="h-11 border-blue-200 bg-blue-50/30" />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid gap-2">
-                  <Label htmlFor="description">JUSTIFICATIVA / DETALHES</Label>
+                  <Label htmlFor="description" className="text-[10px] font-bold uppercase text-muted-foreground">JUSTIFICATIVA / DETALHES ADICIONAIS</Label>
                   <Textarea 
                     id="description" 
                     name="description"
                     placeholder="DESCREVA DETALHADAMENTE O SEU PEDIDO..." 
-                    className="min-h-[120px] uppercase"
+                    className="min-h-[120px] uppercase text-xs p-4 rounded-xl resize-none"
                     required
                   />
                 </div>
               </CardContent>
-              <CardFooter className="flex justify-end gap-2 border-t pt-6">
-                <Button variant="outline" type="reset">LIMPAR</Button>
-                <Button type="submit" disabled={loading}>
+              <CardFooter className="flex flex-col sm:flex-row justify-end gap-3 border-t p-6 bg-muted/5">
+                <Button variant="outline" type="button" onClick={resetForm} className="w-full sm:w-auto uppercase font-bold text-[10px] h-11 px-8 rounded-xl">LIMPAR</Button>
+                <Button type="submit" disabled={loading || !requestType} className="w-full sm:w-auto uppercase font-bold text-[10px] h-11 px-8 rounded-xl shadow-lg shadow-primary/20">
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                   ENVIAR SOLICITAÇÃO
                 </Button>
@@ -176,40 +270,49 @@ export default function RequestsPage() {
             <div className="flex h-32 items-center justify-center">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : myRequests?.length === 0 ? (
-            <Card className="border-dashed">
-              <CardContent className="flex flex-col items-center justify-center p-12 text-center">
-                <p className="text-muted-foreground">VOCÊ AINDA NÃO ENVIOU NENHUMA SOLICITAÇÃO.</p>
-              </CardContent>
-            </Card>
+          ) : !myRequests || myRequests.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 text-center border-2 border-dashed rounded-3xl bg-slate-50/50">
+              <Calendar className="h-12 w-12 text-muted/30 mb-4" />
+              <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">Você ainda não enviou nenhuma solicitação.</p>
+            </div>
           ) : (
-            myRequests?.map((req) => (
-              <Card key={req.id} className="card-shadow">
-                <CardContent className="flex items-center justify-between p-6">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-3 rounded-full ${req.status === 'APROVADO' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {req.status === 'APROVADO' ? <CheckCircle2 className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-bold uppercase">{getTypeLabel(req.type)}</span>
-                        <Badge variant="outline" className="font-mono text-[10px] uppercase">REF: {req.id.slice(0, 5)}</Badge>
+            <div className="space-y-4">
+              {myRequests.map((req) => (
+                <Card key={req.id} className="card-shadow border-none rounded-2xl overflow-hidden hover:bg-slate-50 transition-colors">
+                  <CardContent className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-6 gap-4">
+                    <div className="flex items-start gap-4">
+                      <div className={cn(
+                        "p-3 rounded-2xl shrink-0",
+                        req.status === 'Aprovado' ? 'bg-green-100 text-green-700' : 
+                        req.status === 'Negado' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
+                      )}>
+                        {req.status === 'Aprovado' ? <CheckCircle2 className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
                       </div>
-                      <p className="text-sm text-muted-foreground line-clamp-1 uppercase">{req.description}</p>
-                      <p className="text-xs text-muted-foreground mt-1">DATA SOLICITADA: {req.date}</p>
+                      <div className="space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-black uppercase text-sm tracking-tight text-slate-900">{req.type}</span>
+                          <Badge variant="outline" className="font-mono text-[9px] uppercase font-bold tracking-tighter bg-white">ID: {req.id.slice(0, 5)}</Badge>
+                        </div>
+                        <p className="text-[10px] font-bold text-primary uppercase tracking-tight">{req.date}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1 uppercase font-medium mt-1">{req.description}</p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <Badge className={req.status === 'APROVADO' ? 'bg-green-600' : 'bg-yellow-500'}>
-                      {req.status}
-                    </Badge>
-                    <div className="mt-2">
-                      <Button variant="ghost" size="sm">VER DETALHES</Button>
+                    <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
+                      <Badge className={cn(
+                        "uppercase text-[10px] font-black px-3 py-1 rounded-lg border-none",
+                        req.status === 'Aprovado' ? 'bg-green-600' : 
+                        req.status === 'Negado' ? 'bg-red-600' : 'bg-amber-500'
+                      )}>
+                        {req.status}
+                      </Badge>
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase">
+                        {req.createdAt?.toDate ? new Intl.DateTimeFormat('pt-BR').format(req.createdAt.toDate()) : '---'}
+                      </span>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
           )}
         </TabsContent>
       </Tabs>
