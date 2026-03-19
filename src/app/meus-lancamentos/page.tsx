@@ -6,11 +6,26 @@ import {
   History, 
   Timer, 
   CalendarDays, 
-  Loader2 
+  Loader2,
+  Search,
+  ArrowUpRight,
+  ArrowDownRight,
+  Info
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
-import { collection, query, where } from 'firebase/firestore'
+import { collection, query, where, orderBy } from 'firebase/firestore'
+import { cn } from "@/lib/utils"
 
 // Utilitários de cálculo
 const hhmmToMinutes = (hhmm: string) => {
@@ -29,16 +44,23 @@ const minutesToHHmm = (totalMinutes: number) => {
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
+const formatDate = (dateStr: string) => {
+  if (!dateStr) return "-";
+  return dateStr.split('-').reverse().join('/');
+};
+
 export default function MeusLancamentosPage() {
   const { employeeData, loading: loadingAuth } = useAuth();
   const firestore = useFirestore();
+  const [searchTerm, setSearchTerm] = React.useState("");
 
-  // Busca apenas os lançamentos do servidor logado
+  // Busca apenas os lançamentos do servidor logado, ordenados pelo mais recente
   const myLaunchesRef = React.useMemo(() => {
     if (!firestore || !employeeData?.id) return null;
     return query(
       collection(firestore, 'launches'), 
-      where('employeeId', '==', employeeData.id)
+      where('employeeId', '==', employeeData.id),
+      orderBy('createdAt', 'desc')
     );
   }, [firestore, employeeData?.id]);
 
@@ -62,6 +84,16 @@ export default function MeusLancamentosPage() {
     }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0 });
   }, [myLaunches]);
 
+  const filteredLaunches = React.useMemo(() => {
+    if (!myLaunches) return [];
+    const term = searchTerm.toLowerCase();
+    return myLaunches.filter(l => 
+      l.type?.toLowerCase().includes(term) ||
+      l.launchNumber?.toString().includes(term) ||
+      l.observations?.toLowerCase().includes(term)
+    );
+  }, [myLaunches, searchTerm]);
+
   if (loadingAuth || loadingLaunches) {
     return (
       <div className="flex h-full items-center justify-center min-h-[400px]">
@@ -71,7 +103,7 @@ export default function MeusLancamentosPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
@@ -98,11 +130,17 @@ export default function MeusLancamentosPage() {
             <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-blue-100">
               <div>
                 <p className="text-[8px] font-bold text-muted-foreground uppercase">TOTAL CRÉDITOS</p>
-                <p className="text-xs font-bold text-green-600">{minutesToHHmm(myStats.bhCredit)}H</p>
+                <div className="flex items-center gap-1">
+                  <ArrowUpRight className="h-3 w-3 text-green-600" />
+                  <p className="text-xs font-bold text-green-600">{minutesToHHmm(myStats.bhCredit)}H</p>
+                </div>
               </div>
               <div>
                 <p className="text-[8px] font-bold text-muted-foreground uppercase">TOTAL DÉBITOS</p>
-                <p className="text-xs font-bold text-red-600">-{minutesToHHmm(myStats.bhDebit)}H</p>
+                <div className="flex items-center gap-1">
+                  <ArrowDownRight className="h-3 w-3 text-red-600" />
+                  <p className="text-xs font-bold text-red-600">-{minutesToHHmm(myStats.bhDebit)}H</p>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -121,23 +159,125 @@ export default function MeusLancamentosPage() {
             <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-purple-100">
               <div>
                 <p className="text-[8px] font-bold text-muted-foreground uppercase">TOTAL CRÉDITOS</p>
-                <p className="text-xs font-bold text-green-600">{myStats.treCredit}D</p>
+                <div className="flex items-center gap-1">
+                  <ArrowUpRight className="h-3 w-3 text-green-600" />
+                  <p className="text-xs font-bold text-green-600">{myStats.treCredit}D</p>
+                </div>
               </div>
               <div>
                 <p className="text-[8px] font-bold text-muted-foreground uppercase">TOTAL DÉBITOS</p>
-                <p className="text-xs font-bold text-red-600">-{myStats.treDebit}D</p>
+                <div className="flex items-center gap-1">
+                  <ArrowDownRight className="h-3 w-3 text-red-600" />
+                  <p className="text-xs font-bold text-red-600">-{myStats.treDebit}D</p>
+                </div>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <div className="flex flex-col items-center justify-center min-h-[300px] border-2 border-dashed border-muted/50 rounded-2xl bg-slate-50/30">
-        <History className="h-12 w-12 text-muted/30 mb-4" />
-        <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest">HISTÓRICO EM DESENVOLVIMENTO</p>
-        <p className="text-[10px] text-muted-foreground/60 uppercase mt-2 text-center max-w-xs">
-          EM BREVE VOCÊ PODERÁ VER A LISTAGEM DETALHADA DE CADA REGISTRO QUE COMPÕE SEU SALDO.
-        </p>
+      <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
+        <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/5 border-b">
+          <div className="space-y-1">
+            <CardTitle className="text-lg font-bold uppercase">Extrato Detalhado</CardTitle>
+            <CardDescription className="text-[9px] uppercase font-bold text-muted-foreground">
+              Histórico oficial de registros lançados pelo RH.
+            </CardDescription>
+          </div>
+          <div className="relative w-full sm:w-64">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="BUSCAR POR Nº OU TIPO..." 
+              className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" 
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader className="bg-muted/20">
+                <TableRow className="hover:bg-transparent border-b">
+                  <TableHead className="w-[60px] font-bold uppercase text-[9px] px-4">Nº</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">DATA</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">TIPO</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] text-center">QTD ESCALAS</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] text-center">DIAS</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] text-center">HORAS</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">PERÍODO (INÍCIO - FIM)</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">OBSERVAÇÕES</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredLaunches.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={8} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic">
+                      Nenhum registro encontrado para a sua busca.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredLaunches.map((launch) => {
+                    const normType = normalizeStr(launch.type);
+                    const isBhDebit = normType === "BANCO DE HORAS DEBITO" || normType === "FOLGA";
+                    const isTreDebit = normType === "TRE DEBITO";
+                    
+                    const isVacation = normType.includes("FERIAS");
+                    const isMedical = normType.includes("ATESTADO");
+                    const isLeave = normType.includes("LICENCA");
+
+                    return (
+                      <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
+                        <TableCell className="font-mono font-bold text-[10px] px-4 text-primary">
+                          {launch.launchNumber || "-"}
+                        </TableCell>
+                        <TableCell className="text-[11px] whitespace-nowrap font-medium">
+                          {formatDate(launch.date)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={cn(
+                            "text-[9px] uppercase font-bold",
+                            isVacation ? "bg-blue-600 text-white border-none" :
+                            isMedical ? "bg-red-600 text-white border-none" :
+                            isLeave ? "bg-purple-600 text-white border-none" :
+                            isBhDebit || isTreDebit ? "text-red-700 bg-red-50/50 border-red-200" : "text-blue-700 bg-blue-50/50 border-blue-200"
+                          )}>
+                            {launch.type || "-"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || "-"}</TableCell>
+                        <TableCell className={cn("text-[11px] font-bold text-center", isTreDebit && "text-red-600")}>
+                          {launch.days ? `${isTreDebit ? '-' : ''}${launch.days}` : "-"}
+                        </TableCell>
+                        <TableCell className={cn("text-[11px] font-black text-center", isBhDebit ? "text-red-600" : "text-blue-600")}>
+                          {launch.hours ? `${isBhDebit ? '-' : ''}${launch.hours}H` : "-"}
+                        </TableCell>
+                        <TableCell className="text-[10px] whitespace-nowrap font-medium">
+                          {launch.startDate ? `${formatDate(launch.startDate)} À ${formatDate(launch.endDate)}` : "-"}
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">
+                          {launch.observations || "-"}
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-4 shadow-sm animate-in slide-in-from-bottom-4 duration-700">
+        <div className="bg-white p-2 rounded-lg border shadow-sm shrink-0">
+          <Info className="h-5 w-5 text-blue-500" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-[11px] font-black uppercase tracking-tight text-slate-900">Nota de Conferência</p>
+          <p className="text-[10px] text-muted-foreground uppercase leading-relaxed font-medium">
+            Os dados apresentados acima são extraídos diretamente do sistema oficial de RH. Caso identifique alguma divergência em seu saldo de horas ou períodos de férias, entre em contato com a administração da Unidade para regularização.
+          </p>
+        </div>
       </div>
     </div>
   )
