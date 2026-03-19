@@ -9,10 +9,9 @@ import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  requiredLevel?: number;
 }
 
-export function ProtectedRoute({ children, requiredLevel }: ProtectedRouteProps) {
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const { user, employeeData, loading, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -59,25 +58,8 @@ export function ProtectedRoute({ children, requiredLevel }: ProtectedRouteProps)
     );
   }
 
-  // Verificação de Nível de Acesso
-  if (requiredLevel !== undefined && employeeData && Number(employeeData.accessLevel) > requiredLevel) {
-     return (
-      <div className="flex h-full flex-col items-center justify-center p-6 text-center gap-6 min-h-[400px]">
-        <div className="bg-amber-100 p-4 rounded-full">
-          <ShieldAlert className="h-10 w-10 text-amber-600" />
-        </div>
-        <div className="space-y-1">
-          <h2 className="text-lg font-bold uppercase text-amber-800">RESTRITO</h2>
-          <p className="text-muted-foreground text-[10px] uppercase font-bold tracking-widest">
-            SEU NÍVEL DE ACESSO NÃO PERMITE VISUALIZAR ESTE MÓDULO.
-          </p>
-        </div>
-        <Button onClick={() => router.push('/dashboard')} variant="secondary" className="uppercase font-bold text-[10px] h-9">
-          VOLTAR AO PAINEL
-        </Button>
-      </div>
-    );
-  }
+  // A verificação de nível de acesso (RBAC) foi removida.
+  // Todos os usuários vinculados têm acesso aos filhos.
 
   return <>{children}</>;
 }

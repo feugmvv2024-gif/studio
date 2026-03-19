@@ -7,7 +7,7 @@ import { useAuth } from "@/firebase"
 import { Loader2 } from "lucide-react"
 
 export default function Home() {
-  const { user, loading, employeeData } = useAuth();
+  const { user, loading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -15,16 +15,11 @@ export default function Home() {
       if (!user) {
         router.push("/login");
       } else {
-        // Redireciona com base no nível de acesso
-        const level = Number(employeeData?.accessLevel || 4);
-        if (level >= 4) {
-          router.push("/requests");
-        } else {
-          router.push("/dashboard");
-        }
+        // Redireciona todos os usuários logados para o dashboard, sem verificação de nível
+        router.push("/dashboard");
       }
     }
-  }, [user, loading, employeeData, router]);
+  }, [user, loading, router]);
 
   return (
     <div className="flex h-screen w-screen items-center justify-center">
