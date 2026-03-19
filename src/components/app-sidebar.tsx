@@ -29,34 +29,31 @@ import {
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { useAuth } from "@/firebase"
 
 const navigation = [
-  { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Lançamentos", href: "/lancamentos", icon: FilePlus, admin: true },
-  { name: "Efetivo", href: "/efetivo", icon: Users, admin: true },
-  { name: "Relatórios", href: "/relatorios", icon: BarChart3, admin: true },
-  { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
-  { name: "Meus Lançamentos", href: "/meus-lancamentos", icon: History },
-  { name: "Meu Perfil", href: "/profile", icon: UserCircle },
-  { name: "Configuração", href: "/settings", icon: Settings, admin: true },
+  { name: "Painel", href: "/dashboard", icon: LayoutDashboard, minLevel: 3 },
+  { name: "Lançamentos", href: "/lancamentos", icon: FilePlus, minLevel: 2 },
+  { name: "Efetivo", href: "/efetivo", icon: Users, minLevel: 3 },
+  { name: "Relatórios", href: "/relatorios", icon: BarChart3, minLevel: 1 },
+  { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList, minLevel: 4 },
+  { name: "Meus Lançamentos", href: "/meus-lancamentos", icon: History, minLevel: 4 },
+  { name: "Meu Perfil", href: "/profile", icon: UserCircle, minLevel: 4 },
+  { name: "Configuração", href: "/settings", icon: Settings, minLevel: 0 },
 ]
 
 export function AppSidebar() {
   const pathname = usePathname()
   const { isMobile } = useSidebar()
-  const isAdmin = true // Mocked for UI development
+  const { employeeData, logout, loading } = useAuth()
   
-  // Status da conexão: 'connected' (green), 'stable' (orange), 'disconnected' (red)
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'stable' | 'disconnected'>('stable')
 
   React.useEffect(() => {
-    // Simulando uma verificação de conexão com o Firebase
-    const timer = setTimeout(() => {
-      setConnectionStatus('connected')
-    }, 2000)
-    
-    return () => clearTimeout(timer)
-  }, [])
+    if (!loading) setConnectionStatus('connected')
+  }, [loading])
+
+  const userAccessLevel = employeeData ? Number(employeeData.accessLevel || 4) : 4;
 
   const getStatusColor = () => {
     switch (connectionStatus) {
@@ -104,7 +101,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {navigation
-                .filter(item => !item.admin || isAdmin)
+                .filter(item => userAccessLevel <= item.minLevel)
                 .map((item) => (
                   <SidebarMenuItem key={item.name}>
                     <SidebarMenuButton
@@ -127,7 +124,10 @@ export function AppSidebar() {
       <SidebarFooter className="border-t p-4">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton className="w-full justify-start text-destructive hover:bg-destructive/10">
+            <SidebarMenuButton 
+              onClick={() => logout()}
+              className="w-full justify-start text-destructive hover:bg-destructive/10"
+            >
               <LogOut className="h-4 w-4" />
               <span className="group-data-[collapsible=icon]:hidden">Sair do Sistema</span>
             </SidebarMenuButton>

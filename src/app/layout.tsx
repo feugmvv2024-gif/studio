@@ -1,3 +1,4 @@
+
 'use client';
 
 import './globals.css';
@@ -6,6 +7,8 @@ import { AppSidebar } from "@/components/app-sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider, initializeFirebase } from '@/firebase';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { usePathname } from 'next/navigation';
 
 const { firebaseApp, firestore, auth } = initializeFirebase();
 
@@ -14,6 +17,9 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pathname = usePathname();
+  const isLoginPage = pathname === '/login';
+
   return (
     <html lang="pt-BR">
       <head>
@@ -23,24 +29,32 @@ export default function RootLayout({
       </head>
       <body className="font-body antialiased bg-background">
         <FirebaseClientProvider firebaseApp={firebaseApp} firestore={firestore} auth={auth}>
-          <SidebarProvider>
-            <div className="flex min-h-screen w-full">
-              <AppSidebar />
-              <SidebarInset className="flex flex-col">
-                <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-4 backdrop-blur sm:px-6">
-                  <SidebarTrigger className="-ml-1" />
-                  <div className="ml-4 flex-1">
-                     <h1 className="font-headline text-lg font-semibold text-primary">Gestão de RH</h1>
-                  </div>
-                </header>
-                <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-                  {children}
-                </main>
-              </SidebarInset>
-            </div>
-            <Toaster />
-            <FirebaseErrorListener />
-          </SidebarProvider>
+          {isLoginPage ? (
+            <main className="min-h-screen">
+              {children}
+            </main>
+          ) : (
+            <ProtectedRoute>
+              <SidebarProvider>
+                <div className="flex min-h-screen w-full">
+                  <AppSidebar />
+                  <SidebarInset className="flex flex-col">
+                    <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-4 backdrop-blur sm:px-6">
+                      <SidebarTrigger className="-ml-1" />
+                      <div className="ml-4 flex-1">
+                        <h1 className="font-headline text-lg font-semibold text-primary">Gestão de RH</h1>
+                      </div>
+                    </header>
+                    <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                      {children}
+                    </main>
+                  </SidebarInset>
+                </div>
+              </SidebarProvider>
+            </ProtectedRoute>
+          )}
+          <Toaster />
+          <FirebaseErrorListener />
         </FirebaseClientProvider>
       </body>
     </html>
