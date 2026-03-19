@@ -184,10 +184,10 @@ export default function EfetivoPage() {
 
       const matchesQra = !filters.qra || emp.qra?.toLowerCase().includes(filters.qra.toLowerCase());
       const matchesName = !filters.name || emp.name?.toLowerCase().includes(filters.name.toLowerCase());
-      const matchesEscala = !filters.escala || emp.escala?.toLowerCase().includes(filters.escala.toLowerCase());
-      const matchesTurno = !filters.turno || emp.turno?.toLowerCase().includes(filters.turno.toLowerCase());
-      const matchesRole = !filters.role || emp.role?.toLowerCase().includes(filters.role.toLowerCase());
-      const matchesUnit = !filters.unit || emp.unit?.toLowerCase().includes(filters.unit.toLowerCase());
+      const matchesEscala = !filters.escala || emp.escala === filters.escala;
+      const matchesTurno = !filters.turno || emp.turno === filters.turno;
+      const matchesRole = !filters.role || emp.role === filters.role;
+      const matchesUnit = !filters.unit || emp.unit === filters.unit;
 
       return matchesSearch && matchesQra && matchesName && matchesEscala && matchesTurno && matchesRole && matchesUnit;
     });
@@ -685,12 +685,62 @@ export default function EfetivoPage() {
                   <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}><X className="h-4 w-4" /></Button>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">QRA</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.qra} onChange={(e) => setFilters({...filters, qra: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">NOME</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.name} onChange={(e) => setFilters({...filters, name: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">ESCALA</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.escala} onChange={(e) => setFilters({...filters, escala: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">TURNO</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.turno} onChange={(e) => setFilters({...filters, turno: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">CARGO</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.role} onChange={(e) => setFilters({...filters, role: e.target.value})} /></div>
-                  <div className="grid gap-1.5"><Label className="text-[9px] uppercase font-bold text-muted-foreground">SETOR</Label><Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.unit} onChange={(e) => setFilters({...filters, unit: e.target.value})} /></div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[9px] uppercase font-bold text-muted-foreground">QRA</Label>
+                    <Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.qra} onChange={(e) => setFilters({...filters, qra: e.target.value})} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[9px] uppercase font-bold text-muted-foreground">NOME</Label>
+                    <Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.name} onChange={(e) => setFilters({...filters, name: e.target.value})} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[9px] uppercase font-bold text-muted-foreground">ESCALA</Label>
+                    <Select value={filters.escala} onValueChange={(v) => setFilters({...filters, escala: v === "ALL" ? "" : v})}>
+                      <SelectTrigger className="h-8 text-[10px] uppercase bg-muted/30 border-none">
+                        <SelectValue placeholder="TODOS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL" className="uppercase text-[10px]">TODOS</SelectItem>
+                        {schedules?.map((s: any) => <SelectItem key={s.id} value={s.name} className="uppercase text-[10px]">{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[9px] uppercase font-bold text-muted-foreground">TURNO</Label>
+                    <Select value={filters.turno} onValueChange={(v) => setFilters({...filters, turno: v === "ALL" ? "" : v})}>
+                      <SelectTrigger className="h-8 text-[10px] uppercase bg-muted/30 border-none">
+                        <SelectValue placeholder="TODOS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL" className="uppercase text-[10px]">TODOS</SelectItem>
+                        {shifts?.map((s: any) => <SelectItem key={s.id} value={s.name} className="uppercase text-[10px]">{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[9px] uppercase font-bold text-muted-foreground">CARGO</Label>
+                    <Select value={filters.role} onValueChange={(v) => setFilters({...filters, role: v === "ALL" ? "" : v})}>
+                      <SelectTrigger className="h-8 text-[10px] uppercase bg-muted/30 border-none">
+                        <SelectValue placeholder="TODOS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL" className="uppercase text-[10px]">TODOS</SelectItem>
+                        {roles?.map((r: any) => <SelectItem key={r.id} value={r.name} className="uppercase text-[10px]">{r.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[9px] uppercase font-bold text-muted-foreground">SETOR</Label>
+                    <Select value={filters.unit} onValueChange={(v) => setFilters({...filters, unit: v === "ALL" ? "" : v})}>
+                      <SelectTrigger className="h-8 text-[10px] uppercase bg-muted/30 border-none">
+                        <SelectValue placeholder="TODOS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL" className="uppercase text-[10px]">TODOS</SelectItem>
+                        {units?.map((u: any) => <SelectItem key={u.id} value={u.name} className="uppercase text-[10px]">{u.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
             </PopoverContent>
