@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -37,8 +36,8 @@ const navigation = [
   { name: "Lançamentos", href: "/lancamentos", icon: FilePlus },
   { name: "Efetivo", href: "/efetivo", icon: Users },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
-  { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
   { name: "Meus Lançamentos", href: "/meus-lancamentos", icon: History },
+  { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
   { name: "Configuração", href: "/settings", icon: Settings },
 ]
