@@ -63,6 +63,10 @@ export default function RequestsPage() {
   const [newVacationStart, setNewVacationStart] = React.useState("");
   const [newVacationEnd, setNewVacationEnd] = React.useState("");
 
+  // Estados para Abono de Aniversário
+  const [birthdayDate, setBirthdayDate] = React.useState("");
+  const [abonoDate, setAbonoDate] = React.useState("");
+
   // Consulta de solicitações do usuário
   const requestsRef = React.useMemo(() => {
     if (!firestore || !user) return null;
@@ -119,6 +123,8 @@ export default function RequestsPage() {
       finalDate = multiDates.filter(d => d).map(d => formatDateBR(d)).join(", ");
     } else if (requestType === "REPROGRAMAÇÃO DE FÉRIAS") {
       finalDate = `AGENDADO: ${formatDateBR(currentVacationStart)} À ${formatDateBR(currentVacationEnd)} | REPROGRAMAR PARA: ${formatDateBR(newVacationStart)} À ${formatDateBR(newVacationEnd)}`;
+    } else if (requestType === "ABONO DE ANIVERSÁRIO") {
+      finalDate = `ANIVERSÁRIO: ${formatDateBR(birthdayDate)} | SOLICITADO PARA: ${formatDateBR(abonoDate)}`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -159,10 +165,13 @@ export default function RequestsPage() {
     setCurrentVacationEnd("");
     setNewVacationStart("");
     setNewVacationEnd("");
+    setBirthdayDate("");
+    setAbonoDate("");
   };
 
   const isMultiDateType = ["FOLGA", "ABONO TRE"].includes(requestType);
   const isReprogrammingType = requestType === "REPROGRAMAÇÃO DE FÉRIAS";
+  const isBirthdayType = requestType === "ABONO DE ANIVERSÁRIO";
 
   if (authLoading) {
     return (
@@ -242,7 +251,7 @@ export default function RequestsPage() {
                     </Select>
                   </div>
 
-                  {!isMultiDateType && !isReprogrammingType && (
+                  {!isMultiDateType && !isReprogrammingType && !isBirthdayType && (
                     <div className="grid gap-2">
                       <Label htmlFor="date" className="text-[10px] font-bold uppercase text-muted-foreground">DATA PREVISTA</Label>
                       <Input id="date" name="date" type="date" required className="h-11" />
@@ -276,6 +285,41 @@ export default function RequestsPage() {
                           )}
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos dinâmicos para Abono de Aniversário */}
+                {isBirthdayType && (
+                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-3">
+                      <Calendar className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-blue-700 font-bold uppercase leading-tight">
+                        Informe sua data de nascimento para validação do abono e o dia em que deseja usufruir da folga.
+                      </p>
+                    </div>
+                    <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA DE NASCIMENTO</Label>
+                        <Input 
+                          type="date" 
+                          value={birthdayDate} 
+                          onChange={(e) => setBirthdayDate(e.target.value)} 
+                          required 
+                          className="h-11" 
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA DA FOLGA (ABONO)</Label>
+                        <Input 
+                          type="date" 
+                          value={abonoDate} 
+                          onChange={(e) => setAbonoDate(e.target.value)} 
+                          required 
+                          min={birthdayDate}
+                          className="h-11 border-blue-200 bg-blue-50/20" 
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
