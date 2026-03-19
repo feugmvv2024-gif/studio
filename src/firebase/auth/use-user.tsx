@@ -1,20 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { User, onAuthStateChanged } from 'firebase/auth';
 import { useAuth } from '../provider';
 
+/**
+ * Hook customizado para acessar o usuário autenticado.
+ * Utiliza o contexto global definido no FirebaseProvider.
+ */
 export function useUser() {
-  const auth = useAuth();
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    return onAuthStateChanged(auth, (user) => {
-      setUser(user);
-      setLoading(false);
-    });
-  }, [auth]);
-
+  const { user, loading } = useAuth();
   return { user, loading };
 }
