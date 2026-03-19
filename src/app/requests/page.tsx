@@ -295,12 +295,12 @@ export default function RequestsPage() {
                     <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-3">
                       <Calendar className="h-5 w-5 text-blue-600 shrink-0 mt-0.5" />
                       <p className="text-[10px] text-blue-700 font-bold uppercase leading-tight">
-                        Informe sua data de nascimento para validação do abono e o dia em que deseja usufruir da folga.
+                        Informe sua data de aniversário para validação do abono e o dia em que deseja usufruir da folga.
                       </p>
                     </div>
                     <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
                       <div className="grid gap-1.5">
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA DE NASCIMENTO</Label>
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA DE ANIVERSÁRIO</Label>
                         <Input 
                           type="date" 
                           value={birthdayDate} 
