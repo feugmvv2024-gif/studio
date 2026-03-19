@@ -209,7 +209,9 @@ export default function RequestsPage() {
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
                       <Timer className="h-3 w-3" /> ESCALA E HORÁRIO
                     </Label>
-                    <p className="text-sm font-black uppercase text-primary leading-tight">{employeeData?.escala || "NÃO DEFINIDA"}</p>
+                    <p className="text-sm font-black uppercase text-primary leading-tight">
+                      {employeeData?.escala || "NÃO DEFINIDA"} {employeeData?.turno ? `- ${employeeData.turno}` : ""}
+                    </p>
                     {myShiftPeriod ? (
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                         {myShiftPeriod.startTime} ÀS {myShiftPeriod.endTime} ({myShiftPeriod.duration}H)
