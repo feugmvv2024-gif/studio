@@ -12,6 +12,7 @@ import {
   FilePlus,
   BarChart3,
   History,
+  ShieldCheck,
 } from "lucide-react"
 
 import {
@@ -44,7 +45,7 @@ const navigation = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { logout, loading } = useAuth()
+  const { logout, loading, employeeData } = useAuth()
   
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'stable' | 'disconnected'>('stable')
 
@@ -116,8 +117,18 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t p-4 space-y-2">
         <SidebarMenu>
+          {employeeData && (
+            <SidebarMenuItem className="group-data-[collapsible=icon]:hidden">
+              <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary/70" />
+                <span className="text-[10px] font-black uppercase tracking-wider truncate">
+                  {employeeData.role} : {employeeData.qra}
+                </span>
+              </div>
+            </SidebarMenuItem>
+          )}
           <SidebarMenuItem>
             <SidebarMenuButton 
               onClick={() => logout()}
