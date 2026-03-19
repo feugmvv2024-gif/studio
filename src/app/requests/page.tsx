@@ -53,8 +53,12 @@ export default function RequestsPage() {
   // Estados do formulário dinâmico
   const [requestType, setRequestType] = React.useState<string>("");
   const [multiDates, setMultiDates] = React.useState<string[]>([""]);
-  const [currentVacationDate, setCurrentVacationDate] = React.useState("");
-  const [newVacationDate, setNewVacationDate] = React.useState("");
+  
+  // Estados para Reprogramação de Férias (Intervalos)
+  const [currentVacationStart, setCurrentVacationStart] = React.useState("");
+  const [currentVacationEnd, setCurrentVacationEnd] = React.useState("");
+  const [newVacationStart, setNewVacationStart] = React.useState("");
+  const [newVacationEnd, setNewVacationEnd] = React.useState("");
 
   const requestsRef = React.useMemo(() => {
     if (!firestore || !user) return null;
@@ -78,6 +82,11 @@ export default function RequestsPage() {
     setMultiDates(newDates);
   };
 
+  const formatDateBR = (dateStr: string) => {
+    if (!dateStr) return "";
+    return dateStr.split('-').reverse().join('/');
+  };
+
   async function handleSendRequest(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!firestore || !user) {
@@ -90,15 +99,14 @@ export default function RequestsPage() {
     const description = (formData.get('description') as string || "").toUpperCase();
     
     let finalDate = "";
-    let extraDetails = "";
 
     // Lógica de processamento por tipo
     if (requestType === "FOLGA" || requestType === "ABONO TRE") {
-      finalDate = multiDates.filter(d => d).map(d => d.split('-').reverse().join('/')).join(", ");
+      finalDate = multiDates.filter(d => d).map(d => formatDateBR(d)).join(", ");
     } else if (requestType === "REPROGRAMAÇÃO DE FÉRIAS") {
-      finalDate = `DE: ${currentVacationDate.split('-').reverse().join('/')} PARA: ${newVacationDate.split('-').reverse().join('/')}`;
+      finalDate = `AGENDADO: ${formatDateBR(currentVacationStart)} À ${formatDateBR(currentVacationEnd)} | REPROGRAMAR PARA: ${formatDateBR(newVacationStart)} À ${formatDateBR(newVacationEnd)}`;
     } else {
-      finalDate = (formData.get('date') as string || "").split('-').reverse().join('/');
+      finalDate = formatDateBR(formData.get('date') as string || "");
     }
 
     const newRequest = {
@@ -133,8 +141,10 @@ export default function RequestsPage() {
   const resetForm = () => {
     setRequestType("");
     setMultiDates([""]);
-    setCurrentVacationDate("");
-    setNewVacationDate("");
+    setCurrentVacationStart("");
+    setCurrentVacationEnd("");
+    setNewVacationStart("");
+    setNewVacationEnd("");
   };
 
   const isMultiDateType = ["FOLGA", "ABONO TRE"].includes(requestType);
@@ -191,7 +201,7 @@ export default function RequestsPage() {
                   )}
                 </div>
 
-                {/* Campos dinâmicos para Múltiplas Datas */}
+                {/* Campos dinâmicos para Múltiplas Datas (Folga e TRE) */}
                 {isMultiDateType && (
                   <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center justify-between">
@@ -221,23 +231,41 @@ export default function RequestsPage() {
                   </div>
                 )}
 
-                {/* Campos dinâmicos para Reprogramação de Férias */}
+                {/* Campos dinâmicos para Reprogramação de Férias (Intervalos) */}
                 {isReprogrammingType && (
-                  <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
+                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-3">
                       <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                       <p className="text-[10px] text-amber-700 font-bold uppercase leading-tight">
-                        Informe o período que já estava agendado e a nova data desejada para a fruição das férias.
+                        Informe os períodos de início e fim que já estavam agendados e os novos períodos desejados.
                       </p>
                     </div>
-                    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2">
-                      <div className="grid gap-2">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATA ATUALMENTE AGENDADA</Label>
-                        <Input type="date" value={currentVacationDate} onChange={(e) => setCurrentVacationDate(e.target.value)} required className="h-11" />
+                    
+                    <div className="space-y-4">
+                      <Label className="text-[10px] font-black uppercase text-primary tracking-widest block border-b pb-1">PERÍODO ATUALMENTE AGENDADO</Label>
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                        <div className="grid gap-1.5">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA INÍCIO ATUAL</Label>
+                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-11" />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA FIM ATUAL</Label>
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-11" />
+                        </div>
                       </div>
-                      <div className="grid gap-2">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">NOVA DATA DESEJADA</Label>
-                        <Input type="date" value={newVacationDate} onChange={(e) => setNewVacationDate(e.target.value)} required className="h-11 border-blue-200 bg-blue-50/30" />
+                    </div>
+
+                    <div className="space-y-4 pt-2">
+                      <Label className="text-[10px] font-black uppercase text-blue-600 tracking-widest block border-b pb-1 border-blue-100">NOVO PERÍODO DESEJADO</Label>
+                      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+                        <div className="grid gap-1.5">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">NOVA DATA INÍCIO</Label>
+                          <Input type="date" value={newVacationStart} onChange={(e) => setNewVacationStart(e.target.value)} required className="h-11 border-blue-200 bg-blue-50/20" />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">NOVA DATA FIM</Label>
+                          <Input type="date" value={newVacationEnd} onChange={(e) => setNewVacationEnd(e.target.value)} required className="h-11 border-blue-200 bg-blue-50/20" />
+                        </div>
                       </div>
                     </div>
                   </div>
