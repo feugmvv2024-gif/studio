@@ -30,6 +30,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "launchNumber": { "type": "number", "description": "Número sequencial único do lançamento." },
         "date": { "type": "string", "format": "date", "description": "Data do lançamento (BRT)." },
         "employeeId": { "type": "string" },
         "employeeName": { "type": "string" },

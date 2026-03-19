@@ -71,7 +71,8 @@ import {
   orderBy, 
   updateDoc, 
   limit, 
-  serverTimestamp
+  serverTimestamp,
+  getDocs
 } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -148,9 +149,9 @@ export default function LancamentosPage() {
       setFormQtdEscala(selectedLaunch.qtdEscala ?? "");
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
-      setSelectedType(selectedLaunch.type || "");
+      setSelectedType(selectedType || selectedLaunch.type || "");
     }
-  }, [selectedLaunch, isAddOpen, isEditOpen]);
+  }, [selectedLaunch]);
 
   // Cálculo Automático de Data Fim
   React.useEffect(() => {
@@ -172,7 +173,8 @@ export default function LancamentosPage() {
     return launches.filter(l => 
       l.employeeName?.toLowerCase().includes(term) || 
       l.employeeQra?.toLowerCase().includes(term) ||
-      l.type?.toLowerCase().includes(term)
+      l.type?.toLowerCase().includes(term) ||
+      l.launchNumber?.toString().includes(term)
     );
   }, [launches, searchTerm]);
 
@@ -204,10 +206,8 @@ export default function LancamentosPage() {
   };
 
   const partialResetForm = () => {
-    // Limpa apenas informações do servidor para permitir entrada em lote
     setSelectedEmployeeId("");
     setSearchEmployeeTerm("");
-    // Foca no campo de busca para o próximo lançamento
     setTimeout(() => {
       servidorSearchInputRef.current?.focus();
     }, 100);
@@ -224,7 +224,7 @@ export default function LancamentosPage() {
     const formData = new FormData(e.currentTarget);
     const today = getSaoPauloDate();
     
-    const launchData = {
+    const launchData: any = {
       date: formData.get('date') as string,
       employeeId: selectedEmployeeId,
       employeeName: selectedEmployee.name || "N/A",
@@ -241,38 +241,54 @@ export default function LancamentosPage() {
       ...(isUpdate ? {} : { createdAt: serverTimestamp() })
     };
 
-    // Lógica de Automação de Status
-    const normalizedType = normalizeStr(launchData.type);
-    let targetStatus = "";
-    if (normalizedType.includes("FERIAS")) targetStatus = "FÉRIAS";
-    else if (normalizedType.includes("ATESTADO")) targetStatus = "ATESTADO";
-    else if (normalizedType.includes("LICENCA")) targetStatus = "LICENÇA";
+    try {
+      if (!isUpdate) {
+        // Lógica de Número de Lançamento Único (Protocolo)
+        const q = query(collection(firestore, 'launches'), orderBy('launchNumber', 'desc'), limit(1));
+        const querySnapshot = await getDocs(q);
+        let nextNumber = 1;
+        if (!querySnapshot.empty) {
+          const lastLaunch = querySnapshot.docs[0].data();
+          nextNumber = (lastLaunch.launchNumber || 0) + 1;
+        }
+        launchData.launchNumber = nextNumber;
+      }
 
-    const docRef = isUpdate ? doc(firestore, 'launches', selectedLaunch.id) : null;
-    const action = isUpdate ? updateDoc(docRef!, launchData) : addDoc(collection(firestore, 'launches'), launchData);
+      const normalizedType = normalizeStr(launchData.type);
+      let targetStatus = "";
+      if (normalizedType.includes("FERIAS")) targetStatus = "FÉRIAS";
+      else if (normalizedType.includes("ATESTADO")) targetStatus = "ATESTADO";
+      else if (normalizedType.includes("LICENCA")) targetStatus = "LICENÇA";
 
-    action.then(() => {
-      // Atualizar status do servidor se o afastamento começar hoje ou estiver em vigor
+      const docRef = isUpdate ? doc(firestore, 'launches', selectedLaunch.id) : null;
+      const action = isUpdate ? updateDoc(docRef!, launchData) : addDoc(collection(firestore, 'launches'), launchData);
+
+      await action;
+
       if (targetStatus && launchData.startDate <= today && launchData.endDate >= today) {
         updateDoc(doc(firestore, 'employees', selectedEmployeeId), { status: targetStatus });
       }
 
-      toast({ title: "SUCESSO!", description: isUpdate ? "LANÇAMENTO ATUALIZADO." : "LANÇAMENTO REALIZADO." });
+      toast({ 
+        title: "SUCESSO!", 
+        description: isUpdate ? "LANÇAMENTO ATUALIZADO." : `LANÇAMENTO Nº ${launchData.launchNumber} REALIZADO.` 
+      });
       
       if (isUpdate) {
         setIsEditOpen(false);
         resetForm();
       } else {
-        // Se for novo lançamento, mantém o modal aberto e limpa apenas o servidor
         partialResetForm();
       }
-    }).catch(err => {
+    } catch (err: any) {
       errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: isUpdate ? docRef!.path : 'launches',
+        path: isUpdate ? `launches/${selectedLaunch.id}` : 'launches',
         operation: isUpdate ? 'update' : 'create',
         requestResourceData: launchData
       }));
-    }).finally(() => setIsSubmitting(false));
+    } finally {
+      setIsSubmitting(false);
+    }
   }
 
   const isHoursRequired = React.useMemo(() => {
@@ -534,7 +550,7 @@ export default function LancamentosPage() {
         <CardHeader className="p-4 border-b bg-muted/5">
           <div className="relative max-w-md">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="BUSCAR POR SERVIDOR OU TIPO..." className="pl-8 uppercase h-9 text-[10px] border-muted/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Input placeholder="BUSCAR POR SERVIDOR, TIPO OU Nº..." className="pl-8 uppercase h-9 text-[10px] border-muted/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -560,7 +576,7 @@ export default function LancamentosPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredLaunches.map((launch, index) => {
+                  {filteredLaunches.map((launch) => {
                     const normType = normalizeStr(launch.type);
                     const isBhDebit = normType === "BANCO DE HORAS DEBITO" || normType === "FOLGA";
                     const isTreDebit = normType === "TRE DEBITO";
@@ -571,7 +587,9 @@ export default function LancamentosPage() {
 
                     return (
                       <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
-                        <TableCell className="font-mono text-[9px] px-4 text-muted-foreground">{totalLaunches.length - index}</TableCell>
+                        <TableCell className="font-mono font-bold text-[10px] px-4 text-primary">
+                          {launch.launchNumber || "-"}
+                        </TableCell>
                         <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/') || "-"}</TableCell>
                         <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
                         <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
@@ -625,7 +643,7 @@ export default function LancamentosPage() {
                   <div className="bg-blue-50 p-1.5 rounded-lg">
                     <Edit className="h-5 w-5 text-blue-600" />
                   </div>
-                  <DialogTitle className="uppercase text-lg font-bold tracking-tight">Editar Lançamento</DialogTitle>
+                  <DialogTitle className="uppercase text-lg font-bold tracking-tight">Editar Lançamento Nº {selectedLaunch.launchNumber}</DialogTitle>
                 </div>
                 <DialogClose className="rounded-full h-8 w-8 flex items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
                   <X className="h-4 w-4" />
