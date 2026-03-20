@@ -16,7 +16,9 @@ import {
   ShieldCheck,
   RefreshCw,
   ArrowRightLeft,
-  Users
+  Users,
+  Search,
+  Check
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -79,6 +81,9 @@ export default function RequestsPage() {
   const [permutaOutDate, setPermutaOutDate] = React.useState("");
   const [permutaInDate, setPermutaInDate] = React.useState("");
   const [permutaPartnerId, setPermutaPartnerId] = React.useState("");
+  const [searchPartnerTerm, setSearchPartnerTerm] = React.useState("");
+  const [showPartnerSuggestions, setShowPartnerSuggestions] = React.useState(false);
+  const partnerInputRef = React.useRef<HTMLInputElement>(null);
 
   // Consulta de solicitações do usuário
   const requestsRef = React.useMemo(() => {
@@ -121,6 +126,19 @@ export default function RequestsPage() {
     if (!employeeData?.escala || !shiftPeriods) return null;
     return shiftPeriods.find(p => p.escalaName === employeeData.escala);
   }, [employeeData?.escala, shiftPeriods]);
+
+  // Filtro de parceiros para a busca inteligente
+  const filteredPartners = React.useMemo(() => {
+    if (!allEmployees || !searchPartnerTerm) return [];
+    const term = searchPartnerTerm.toLowerCase();
+    return allEmployees.filter(emp => 
+      emp.uid !== user?.uid && (
+        emp.name?.toLowerCase().includes(term) || 
+        emp.qra?.toLowerCase().includes(term) ||
+        emp.matricula?.toLowerCase().includes(term)
+      )
+    ).slice(0, 5);
+  }, [allEmployees, searchPartnerTerm, user?.uid]);
 
   // Dados do parceiro de permuta selecionado
   const permutaPartner = React.useMemo(() => {
@@ -224,6 +242,7 @@ export default function RequestsPage() {
     setPermutaOutDate("");
     setPermutaInDate("");
     setPermutaPartnerId("");
+    setSearchPartnerTerm("");
   };
 
   const isMultiDateType = ["FOLGA", "ABONO TRE", "ESCALA ESPECIAL"].includes(requestType);
@@ -518,20 +537,58 @@ export default function RequestsPage() {
                     </div>
 
                     <div className="grid gap-4 p-4 border rounded-xl bg-blue-50/10 border-blue-100">
-                      <div className="grid gap-1.5">
+                      <div className="grid gap-1.5 relative">
                         <Label className="text-[9px] font-bold uppercase text-muted-foreground">PARCEIRO DA PERMUTA</Label>
-                        <Select value={permutaPartnerId} onValueChange={setPermutaPartnerId} required>
-                          <SelectTrigger className="h-11 border-blue-200 uppercase text-[10px]">
-                            <SelectValue placeholder="SELECIONE O SERVIDOR..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {allEmployees?.filter(e => e.uid !== user.uid).map((emp) => (
-                              <SelectItem key={emp.id} value={emp.id} className="uppercase text-[10px]">
-                                {emp.name} ({emp.escala} - {emp.turno})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <div className="relative">
+                          <Input 
+                            ref={partnerInputRef}
+                            placeholder="BUSCAR POR QRA OU NOME COMPLETO..."
+                            value={searchPartnerTerm}
+                            onChange={(e) => {
+                              const val = e.target.value.toUpperCase();
+                              setSearchPartnerTerm(val);
+                              setShowPartnerSuggestions(true);
+                              if (!val) setPermutaPartnerId("");
+                            }}
+                            onFocus={() => setShowPartnerSuggestions(true)}
+                            className="h-11 border-blue-200 uppercase text-[10px] pr-10"
+                          />
+                          {permutaPartnerId && (
+                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                              <Check className="h-4 w-4 text-green-600" />
+                            </div>
+                          )}
+                        </div>
+
+                        {showPartnerSuggestions && searchPartnerTerm && (
+                          <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border border-border rounded-lg shadow-2xl max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-200">
+                            {filteredPartners.length > 0 ? (
+                              filteredPartners.map(p => (
+                                <button
+                                  key={p.id}
+                                  type="button"
+                                  onClick={() => {
+                                    setPermutaPartnerId(p.id);
+                                    setSearchPartnerTerm(`${p.name} (${p.qra})`);
+                                    setShowPartnerSuggestions(false);
+                                  }}
+                                  className="w-full px-4 py-3 text-left hover:bg-blue-50/50 flex flex-col border-b last:border-0 transition-colors"
+                                >
+                                  <span className="text-[11px] font-bold text-foreground uppercase">{p.name}</span>
+                                  <span className="text-[9px] text-muted-foreground uppercase mt-0.5">QRA: {p.qra} • {p.escala} - {p.turno}</span>
+                                </button>
+                              ))
+                            ) : (
+                              <div className="px-4 py-3 text-[10px] text-muted-foreground italic uppercase text-center">
+                                NENHUM SERVIDOR ENCONTRADO
+                              </div>
+                            )}
+                          </div>
+                        )}
+                        {showPartnerSuggestions && (
+                          <div className="fixed inset-0 z-[55]" onClick={() => setShowPartnerSuggestions(false)} />
+                        )}
+                        
                         {permutaPartner && (
                           <div className="mt-2 flex items-center gap-2">
                              <Timer className="h-3 w-3 text-blue-600" />
