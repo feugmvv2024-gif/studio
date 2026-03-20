@@ -224,10 +224,10 @@ export default function LancamentosPage() {
     const formData = new FormData(e.currentTarget);
     const today = getSaoPauloDate();
     
-    // Captura e formatação da observação com o QRA do administrador logado
+    // Captura e formatação da observação com o QRA do administrador logado e os dois pontos solicitados
     const rawObservations = (formData.get('observations') as string || "").toUpperCase().trim();
     const adminQra = (employeeData?.qra || "SISTEMA").toUpperCase();
-    const finalObservations = `${adminQra} ${rawObservations}`;
+    const finalObservations = `${adminQra}: ${rawObservations}`;
     
     const launchData: any = {
       date: formData.get('date') as string,
@@ -480,7 +480,7 @@ export default function LancamentosPage() {
           <Textarea 
             name="observations" 
             placeholder="OBSERVAÇÕES ADICIONAIS..."
-            defaultValue={isEdit ? (selectedLaunch?.observations?.replace(new RegExp(`^${selectedLaunch?.adminQra || '[^ ]+'} `), '') || "") : ""} 
+            defaultValue={isEdit ? (selectedLaunch?.observations?.replace(/^[^:]+:\s*/, '') || "") : ""} 
             className="uppercase text-xs min-h-[100px] bg-background/50 border-muted rounded-xl p-3 resize-none" 
           />
         </div>
@@ -515,7 +515,7 @@ export default function LancamentosPage() {
                 </div>
                 <DialogClose className="rounded-full h-8 w-8 flex items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
                   <X className="h-4 w-4" />
-                </DialogClose>
+                </div>
               </DialogHeader>
               <ScrollArea className="flex-1 p-4 sm:p-6 overflow-visible">
                 {renderFormFields(false)}
