@@ -124,7 +124,7 @@ export default function RequestsPage() {
 
   const { data: myLaunches } = useCollection(myLaunchesRef);
 
-  // Cálculo de Saldo Atual
+  // Cálculo de Saldo Atual (Total no Banco)
   const myBalanceMinutes = React.useMemo(() => {
     if (!myLaunches) return 0;
     return myLaunches.reduce((acc, l) => {
@@ -160,11 +160,18 @@ export default function RequestsPage() {
     return hhmmToMinutes(myShiftPeriod.duration);
   }, [myShiftPeriod]);
 
-  // Validação de saldo para o botão
+  // Simulação de Saldo Restante (Saldo Atual - (Número de Datas * Duração da Escala))
+  const simulatedRemainingMinutes = React.useMemo(() => {
+    if (requestType !== "FOLGA") return myBalanceMinutes;
+    const dateCount = multiDates.filter(d => d).length || 1; // Mínimo de 1 para simulação inicial
+    return myBalanceMinutes - (dateCount * requiredMinutesForFolga);
+  }, [requestType, myBalanceMinutes, multiDates, requiredMinutesForFolga]);
+
+  // Validação de saldo para o botão (Baseado na simulação)
   const hasInsufficientBalance = React.useMemo(() => {
     if (requestType !== "FOLGA") return false;
-    return myBalanceMinutes < requiredMinutesForFolga;
-  }, [requestType, myBalanceMinutes, requiredMinutesForFolga]);
+    return simulatedRemainingMinutes < 0;
+  }, [requestType, simulatedRemainingMinutes]);
 
   // Combinações de Escala e Turno para o Select
   const shiftCombinations = React.useMemo(() => {
@@ -418,15 +425,17 @@ export default function RequestsPage() {
 
                   {requestType === "FOLGA" && (
                     <div className="grid gap-2 animate-in slide-in-from-left-2 duration-300">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">BANCO DE HORAS ATUAL</Label>
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">PREVISÃO DE SALDO (SIMULADO)</Label>
                       <div className={cn(
-                        "h-11 flex items-center px-4 rounded-xl border-2 font-black uppercase text-[11px]",
+                        "h-11 flex flex-col justify-center px-4 rounded-xl border-2 font-black uppercase",
                         hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"
                       )}>
-                        {minutesToHHmm(myBalanceMinutes)}H DISPONÍVEIS
-                        {hasInsufficientBalance && <AlertCircle className="ml-auto h-4 w-4" />}
-                        {!hasInsufficientBalance && <CheckCircle2 className="ml-auto h-4 w-4" />}
+                        <div className="flex items-center w-full">
+                          <span className="text-[11px]">{minutesToHHmm(simulatedRemainingMinutes)}H DISPONÍVEIS</span>
+                          {hasInsufficientBalance ? <AlertCircle className="ml-auto h-4 w-4" /> : <CheckCircle2 className="ml-auto h-4 w-4" />}
+                        </div>
                       </div>
+                      <p className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter">Saldo previsto após o usufruto das datas selecionadas.</p>
                     </div>
                   )}
 
@@ -468,10 +477,11 @@ export default function RequestsPage() {
                       <div className="bg-red-100 border border-red-200 p-4 rounded-xl flex items-start gap-3 mt-4 animate-bounce">
                         <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
                         <div className="space-y-1">
-                          <p className="text-[11px] font-black uppercase text-red-900 tracking-tight">Saldo Insuficiente para Folga</p>
+                          <p className="text-[11px] font-black uppercase text-red-900 tracking-tight">Simulação Negativa</p>
                           <p className="text-[10px] text-red-700 font-bold uppercase leading-tight">
-                            Sua escala atual é de {myShiftPeriod?.duration}H. Seu saldo atual é de {minutesToHHmm(myBalanceMinutes)}H. 
-                            Você precisa de pelo menos {myShiftPeriod?.duration}H positivas para realizar este pedido.
+                            Consumo total: {multiDates.filter(d => d).length * (myShiftPeriod?.duration ? hhmmToMinutes(myShiftPeriod.duration) / 60 : 0)} horas. 
+                            Saldo atual: {minutesToHHmm(myBalanceMinutes)}H. 
+                            Você não possui horas suficientes para cobrir todas as datas selecionadas.
                           </p>
                         </div>
                       </div>
@@ -844,7 +854,7 @@ export default function RequestsPage() {
                   )}
                 >
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                  {hasInsufficientBalance ? `SALDO INSUFICIENTE (MÍN. ${myShiftPeriod?.duration}H)` : "ENVIAR SOLICITAÇÃO"}
+                  {hasInsufficientBalance ? `SALDO INSUFICIENTE (PREVISÃO NEGATIVA)` : "ENVIAR SOLICITAÇÃO"}
                 </Button>
               </CardFooter>
             </form>
