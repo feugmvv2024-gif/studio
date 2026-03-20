@@ -119,7 +119,7 @@ export default function RequestsPage() {
     let finalDate = "";
 
     // Lógica de processamento por tipo
-    if (requestType === "FOLGA" || requestType === "ABONO TRE") {
+    if (requestType === "FOLGA" || requestType === "ABONO TRE" || requestType === "ESCALA ESPECIAL") {
       finalDate = multiDates.filter(d => d).map(d => formatDateBR(d)).join(", ");
     } else if (requestType === "REPROGRAMAÇÃO DE FÉRIAS") {
       finalDate = `AGENDADO: ${formatDateBR(currentVacationStart)} À ${formatDateBR(currentVacationEnd)} | REPROGRAMAR PARA: ${formatDateBR(newVacationStart)} À ${formatDateBR(newVacationEnd)}`;
@@ -169,7 +169,7 @@ export default function RequestsPage() {
     setAbonoDate("");
   };
 
-  const isMultiDateType = ["FOLGA", "ABONO TRE"].includes(requestType);
+  const isMultiDateType = ["FOLGA", "ABONO TRE", "ESCALA ESPECIAL"].includes(requestType);
   const isReprogrammingType = requestType === "REPROGRAMAÇÃO DE FÉRIAS";
   const isBirthdayType = requestType === "ABONO DE ANIVERSÁRIO";
 
@@ -259,7 +259,7 @@ export default function RequestsPage() {
                   )}
                 </div>
 
-                {/* Campos dinâmicos para Múltiplas Datas (Folga e TRE) */}
+                {/* Campos dinâmicos para Múltiplas Datas (Folga, TRE, Escala Especial) */}
                 {isMultiDateType && (
                   <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center justify-between">
