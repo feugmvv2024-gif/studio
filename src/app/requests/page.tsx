@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -12,7 +13,9 @@ import {
   AlertCircle,
   User,
   Timer,
-  ShieldCheck
+  ShieldCheck,
+  RefreshCw,
+  ArrowRightLeft
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -65,6 +68,11 @@ export default function RequestsPage() {
   // Estados para Abono de Aniversário
   const [birthdayDate, setBirthdayDate] = React.useState("");
   const [abonoDate, setAbonoDate] = React.useState("");
+
+  // Estados para Troca de Escala
+  const [swapOutDate, setSwapOutDate] = React.useState("");
+  const [swapInDate, setSwapInDate] = React.useState("");
+  const [swapInShift, setSwapInShift] = React.useState("");
 
   // Consulta de solicitações do usuário
   const requestsRef = React.useMemo(() => {
@@ -124,6 +132,9 @@ export default function RequestsPage() {
       finalDate = `AGENDADO: ${formatDateBR(currentVacationStart)} À ${formatDateBR(currentVacationEnd)} | REPROGRAMAR PARA: ${formatDateBR(newVacationStart)} À ${formatDateBR(newVacationEnd)}`;
     } else if (requestType === "ABONO DE ANIVERSÁRIO") {
       finalDate = `ANIVERSÁRIO: ${formatDateBR(birthdayDate)} | SOLICITADO PARA: ${formatDateBR(abonoDate)}`;
+    } else if (requestType === "TROCA DE ESCALA") {
+      const myInfo = `${employeeData?.escala || "N/A"}-${employeeData?.turno || "N/A"}`;
+      finalDate = `SAI DO DIA: ${formatDateBR(swapOutDate)} (ESC: ${myInfo}) | ENTRA NO DIA: ${formatDateBR(swapInDate)} (ESC: ${swapInShift.toUpperCase()})`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -166,11 +177,15 @@ export default function RequestsPage() {
     setNewVacationEnd("");
     setBirthdayDate("");
     setAbonoDate("");
+    setSwapOutDate("");
+    setSwapInDate("");
+    setSwapInShift("");
   };
 
   const isMultiDateType = ["FOLGA", "ABONO TRE", "ESCALA ESPECIAL"].includes(requestType);
   const isReprogrammingType = requestType === "REPROGRAMAÇÃO DE FÉRIAS";
   const isBirthdayType = requestType === "ABONO DE ANIVERSÁRIO";
+  const isSwapType = requestType === "TROCA DE ESCALA";
 
   if (authLoading) {
     return (
@@ -250,7 +265,7 @@ export default function RequestsPage() {
                     </Select>
                   </div>
 
-                  {!isMultiDateType && !isReprogrammingType && !isBirthdayType && (
+                  {!isMultiDateType && !isReprogrammingType && !isBirthdayType && !isSwapType && (
                     <div className="grid gap-2">
                       <Label htmlFor="date" className="text-[10px] font-bold uppercase text-muted-foreground">DATA PREVISTA</Label>
                       <Input id="date" name="date" type="date" required className="h-11" />
@@ -358,6 +373,62 @@ export default function RequestsPage() {
                           <Label className="text-[9px] font-bold uppercase text-muted-foreground">NOVA DATA FIM</Label>
                           <Input type="date" value={newVacationEnd} onChange={(e) => setNewVacationEnd(e.target.value)} required className="h-11 border-blue-200 bg-blue-50/20" />
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos dinâmicos para Troca de Escala */}
+                {isSwapType && (
+                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-start gap-3">
+                      <ArrowRightLeft className="h-5 w-5 text-slate-600 shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-slate-700 font-bold uppercase leading-tight">
+                        Informe a data do seu serviço original e a data do serviço que você está assumindo.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2 p-4 border rounded-xl bg-muted/5">
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA DO SERVIÇO A TROCAR (SAÍDA)</Label>
+                        <Input 
+                          type="date" 
+                          value={swapOutDate} 
+                          onChange={(e) => setSwapOutDate(e.target.value)} 
+                          required 
+                          className="h-11" 
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">MINHA ESCALA/TURNO</Label>
+                        <Input 
+                          value={`${employeeData?.escala || "N/A"} - ${employeeData?.turno || "N/A"}`} 
+                          readOnly 
+                          className="h-11 bg-muted/30 font-bold uppercase text-[10px] cursor-not-allowed" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2 p-4 border rounded-xl bg-blue-50/10 border-blue-100">
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA QUE IRÁ TRABALHAR (ENTRADA)</Label>
+                        <Input 
+                          type="date" 
+                          value={swapInDate} 
+                          onChange={(e) => setSwapInDate(e.target.value)} 
+                          required 
+                          className="h-11 border-blue-200" 
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">ESCALA/TURNO DO SERVIÇO (DESTINO)</Label>
+                        <Input 
+                          placeholder="EX: RTO - BRAVO" 
+                          value={swapInShift} 
+                          onChange={(e) => setSwapInShift(e.target.value.toUpperCase())} 
+                          required 
+                          className="h-11 border-blue-200 uppercase text-[10px]" 
+                        />
                       </div>
                     </div>
                   </div>
