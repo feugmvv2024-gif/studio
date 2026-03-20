@@ -15,7 +15,8 @@ import {
   Timer,
   ShieldCheck,
   RefreshCw,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Users
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -74,6 +75,11 @@ export default function RequestsPage() {
   const [swapInDate, setSwapInDate] = React.useState("");
   const [swapInShift, setSwapInShift] = React.useState("");
 
+  // Estados para Permuta
+  const [permutaOutDate, setPermutaOutDate] = React.useState("");
+  const [permutaInDate, setPermutaInDate] = React.useState("");
+  const [permutaPartnerId, setPermutaPartnerId] = React.useState("");
+
   // Consulta de solicitações do usuário
   const requestsRef = React.useMemo(() => {
     if (!firestore || !user) return null;
@@ -89,11 +95,14 @@ export default function RequestsPage() {
   // Consultas de Escalas e Turnos para popular o Select de destino
   const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shifts'), orderBy('name', 'asc')) : null, [firestore]);
+  // Consulta de funcionários para Permuta
+  const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
 
   const { data: myRequests, loading: loadingRequests } = useCollection(requestsRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
   const { data: allSchedules } = useCollection(schedulesRef);
   const { data: allShifts } = useCollection(shiftsRef);
+  const { data: allEmployees } = useCollection(employeesRef);
 
   // Combinações de Escala e Turno para o Select
   const shiftCombinations = React.useMemo(() => {
@@ -112,6 +121,17 @@ export default function RequestsPage() {
     if (!employeeData?.escala || !shiftPeriods) return null;
     return shiftPeriods.find(p => p.escalaName === employeeData.escala);
   }, [employeeData?.escala, shiftPeriods]);
+
+  // Dados do parceiro de permuta selecionado
+  const permutaPartner = React.useMemo(() => {
+    if (!permutaPartnerId || !allEmployees) return null;
+    return allEmployees.find(e => e.id === permutaPartnerId);
+  }, [permutaPartnerId, allEmployees]);
+
+  const partnerShiftPeriod = React.useMemo(() => {
+    if (!permutaPartner?.escala || !shiftPeriods) return null;
+    return shiftPeriods.find(p => p.escalaName === permutaPartner.escala);
+  }, [permutaPartner?.escala, shiftPeriods]);
 
   const addDateRow = () => setMultiDates([...multiDates, ""]);
   const removeDateRow = (index: number) => {
@@ -152,6 +172,10 @@ export default function RequestsPage() {
     } else if (requestType === "TROCA DE ESCALA") {
       const myInfo = `${employeeData?.escala || "N/A"} - ${employeeData?.turno || "N/A"}`;
       finalDate = `SAI DO DIA: ${formatDateBR(swapOutDate)} (ESC: ${myInfo}) | ENTRA NO DIA: ${formatDateBR(swapInDate)} (ESC: ${swapInShift.toUpperCase()})`;
+    } else if (requestType === "PERMUTA") {
+      const myInfo = `${employeeData?.escala || "N/A"} - ${employeeData?.turno || "N/A"}`;
+      const partnerInfo = `${permutaPartner?.name} (${permutaPartner?.escala} - ${permutaPartner?.turno})`;
+      finalDate = `PERMUTA COM: ${partnerInfo.toUpperCase()} | EU SAI EM: ${formatDateBR(permutaOutDate)} (ESC: ${myInfo}) | EU ENTRO EM: ${formatDateBR(permutaInDate)} (ESC PARCEIRO)`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -197,12 +221,16 @@ export default function RequestsPage() {
     setSwapOutDate("");
     setSwapInDate("");
     setSwapInShift("");
+    setPermutaOutDate("");
+    setPermutaInDate("");
+    setPermutaPartnerId("");
   };
 
   const isMultiDateType = ["FOLGA", "ABONO TRE", "ESCALA ESPECIAL"].includes(requestType);
   const isReprogrammingType = requestType === "REPROGRAMAÇÃO DE FÉRIAS";
   const isBirthdayType = requestType === "ABONO DE ANIVERSÁRIO";
   const isSwapType = requestType === "TROCA DE ESCALA";
+  const isPermutaType = requestType === "PERMUTA";
 
   if (authLoading) {
     return (
@@ -282,7 +310,7 @@ export default function RequestsPage() {
                     </Select>
                   </div>
 
-                  {!isMultiDateType && !isReprogrammingType && !isBirthdayType && !isSwapType && (
+                  {!isMultiDateType && !isReprogrammingType && !isBirthdayType && !isSwapType && !isPermutaType && (
                     <div className="grid gap-2">
                       <Label htmlFor="date" className="text-[10px] font-bold uppercase text-muted-foreground">DATA PREVISTA</Label>
                       <Input id="date" name="date" type="date" required className="h-11" />
@@ -451,6 +479,86 @@ export default function RequestsPage() {
                             ))}
                           </SelectContent>
                         </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Campos dinâmicos para Permuta */}
+                {isPermutaType && (
+                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                    <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-start gap-3">
+                      <ArrowRightLeft className="h-5 w-5 text-slate-600 shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-slate-700 font-bold uppercase leading-tight">
+                        Informe as datas da troca. O sistema espelhará automaticamente os períodos para o parceiro selecionado.
+                      </p>
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2 p-4 border rounded-xl bg-muted/5">
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA QUE EU IRIA TRABALHAR (MINHA SAÍDA)</Label>
+                        <Input 
+                          type="date" 
+                          value={permutaOutDate} 
+                          onChange={(e) => setPermutaOutDate(e.target.value)} 
+                          required 
+                          className="h-11" 
+                        />
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA QUE PASSAREI A TRABALHAR (MINHA ENTRADA)</Label>
+                        <Input 
+                          type="date" 
+                          value={permutaInDate} 
+                          onChange={(e) => setPermutaInDate(e.target.value)} 
+                          required 
+                          className="h-11" 
+                        />
+                      </div>
+                    </div>
+
+                    <div className="grid gap-4 p-4 border rounded-xl bg-blue-50/10 border-blue-100">
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">PARCEIRO DA PERMUTA</Label>
+                        <Select value={permutaPartnerId} onValueChange={setPermutaPartnerId} required>
+                          <SelectTrigger className="h-11 border-blue-200 uppercase text-[10px]">
+                            <SelectValue placeholder="SELECIONE O SERVIDOR..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {allEmployees?.filter(e => e.uid !== user.uid).map((emp) => (
+                              <SelectItem key={emp.id} value={emp.id} className="uppercase text-[10px]">
+                                {emp.name} ({emp.escala} - {emp.turno})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        {permutaPartner && (
+                          <div className="mt-2 flex items-center gap-2">
+                             <Timer className="h-3 w-3 text-blue-600" />
+                             <span className="text-[10px] font-bold text-blue-700 uppercase">
+                               HORÁRIO DO PARCEIRO: {partnerShiftPeriod ? `${partnerShiftPeriod.startTime} ÀS ${partnerShiftPeriod.endTime} (${partnerShiftPeriod.duration}H)` : "NÃO CONFIGURADO"}
+                             </span>
+                          </div>
+                        )}
+                      </div>
+                      
+                      <div className="grid gap-4 sm:grid-cols-2 mt-2">
+                        <div className="grid gap-1.5">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">PARCEIRO TRABALHA NO DIA (ENTRADA)</Label>
+                          <Input 
+                            value={formatDateBR(permutaOutDate)} 
+                            readOnly 
+                            className="h-11 bg-blue-100/30 font-bold uppercase text-[10px] cursor-not-allowed" 
+                          />
+                        </div>
+                        <div className="grid gap-1.5">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">PARCEIRO SAI DO DIA (SAÍDA)</Label>
+                          <Input 
+                            value={formatDateBR(permutaInDate)} 
+                            readOnly 
+                            className="h-11 bg-blue-100/30 font-bold uppercase text-[10px] cursor-not-allowed" 
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
