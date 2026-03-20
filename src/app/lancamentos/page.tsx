@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -61,7 +60,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { useFirestore, useCollection } from '@/firebase'
+import { useFirestore, useCollection, useAuth } from '@/firebase'
 import { 
   collection, 
   addDoc, 
@@ -126,6 +125,7 @@ export default function LancamentosPage() {
   const servidorSearchInputRef = React.useRef<HTMLInputElement>(null)
 
   const firestore = useFirestore()
+  const { employeeData } = useAuth()
   const { toast } = useToast()
 
   // Queries
@@ -149,7 +149,7 @@ export default function LancamentosPage() {
       setFormQtdEscala(selectedLaunch.qtdEscala ?? "");
       setFormStartDate(selectedLaunch.startDate || "");
       setFormEndDate(selectedLaunch.endDate || "");
-      setSelectedType(selectedType || selectedLaunch.type || "");
+      setSelectedType(selectedLaunch.type || "");
     }
   }, [selectedLaunch]);
 
@@ -224,6 +224,11 @@ export default function LancamentosPage() {
     const formData = new FormData(e.currentTarget);
     const today = getSaoPauloDate();
     
+    // Captura e formatação da observação com o QRA do administrador logado
+    const rawObservations = (formData.get('observations') as string || "").toUpperCase().trim();
+    const adminQra = (employeeData?.qra || "SISTEMA").toUpperCase();
+    const finalObservations = `${adminQra} ${rawObservations}`;
+    
     const launchData: any = {
       date: formData.get('date') as string,
       employeeId: selectedEmployeeId,
@@ -237,7 +242,7 @@ export default function LancamentosPage() {
       hours: hoursInput,
       startDate: formStartDate,
       endDate: formEndDate,
-      observations: (formData.get('observations') as string || "").toUpperCase(),
+      observations: finalObservations,
       ...(isUpdate ? {} : { createdAt: serverTimestamp() })
     };
 
@@ -475,7 +480,7 @@ export default function LancamentosPage() {
           <Textarea 
             name="observations" 
             placeholder="OBSERVAÇÕES ADICIONAIS..."
-            defaultValue={isEdit ? selectedLaunch?.observations : ""} 
+            defaultValue={isEdit ? (selectedLaunch?.observations?.replace(new RegExp(`^${selectedLaunch?.adminQra || '[^ ]+'} `), '') || "") : ""} 
             className="uppercase text-xs min-h-[100px] bg-background/50 border-muted rounded-xl p-3 resize-none" 
           />
         </div>
