@@ -224,7 +224,7 @@ export default function LancamentosPage() {
     const formData = new FormData(e.currentTarget);
     const today = getSaoPauloDate();
     
-    // Captura e formatação da observação com o QRA do administrador logado e os dois pontos solicitados
+    // Captura e formatação da observação com o QRA do administrador logado e os dois pontos
     const rawObservations = (formData.get('observations') as string || "").toUpperCase().trim();
     const adminQra = (employeeData?.qra || "SISTEMA").toUpperCase();
     const finalObservations = `${adminQra}: ${rawObservations}`;
@@ -248,7 +248,6 @@ export default function LancamentosPage() {
 
     try {
       if (!isUpdate) {
-        // Lógica de Número de Lançamento Único (Protocolo)
         const q = query(collection(firestore, 'launches'), orderBy('launchNumber', 'desc'), limit(1));
         const querySnapshot = await getDocs(q);
         let nextNumber = 1;
@@ -515,7 +514,7 @@ export default function LancamentosPage() {
                 </div>
                 <DialogClose className="rounded-full h-8 w-8 flex items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors">
                   <X className="h-4 w-4" />
-                </div>
+                </DialogClose>
               </DialogHeader>
               <ScrollArea className="flex-1 p-4 sm:p-6 overflow-visible">
                 {renderFormFields(false)}
