@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -244,7 +243,7 @@ export default function RequestsPage() {
                         <SelectItem value="ABONO TRE" className="uppercase text-[11px]">ABONO TRE</SelectItem>
                         <SelectItem value="REPROGRAMAÇÃO DE FÉRIAS" className="uppercase text-[11px]">REPROGRAMAÇÃO DE FÉRIAS</SelectItem>
                         <SelectItem value="ESCALA ESPECIAL" className="uppercase text-[11px]">ESCALA ESPECIAL</SelectItem>
-                        <SelectItem value="TROCA DE SERVIÇO" className="uppercase text-[11px]">TROCA DE SERVIÇO</SelectItem>
+                        <SelectItem value="TROCA DE ESCALA" className="uppercase text-[11px]">TROCA DE ESCALA</SelectItem>
                         <SelectItem value="PERMUTA" className="uppercase text-[11px]">PERMUTA</SelectItem>
                         <SelectItem value="OUTROS" className="uppercase text-[11px]">OUTROS</SelectItem>
                       </SelectContent>
