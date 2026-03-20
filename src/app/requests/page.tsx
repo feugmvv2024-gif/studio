@@ -18,7 +18,8 @@ import {
   ArrowRightLeft,
   Users,
   Search,
-  Check
+  Check,
+  Info
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -50,6 +51,21 @@ import { useFirestore, useCollection, useAuth } from '@/firebase';
 import { collection, addDoc, query, orderBy, where, serverTimestamp } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils"
+
+// Utilitários de cálculo de horas
+const hhmmToMinutes = (hhmm: string) => {
+  if (!hhmm || !hhmm.includes(':')) return 0;
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h * 60) + (m || 0);
+};
+
+const minutesToHHmm = (totalMinutes: number) => {
+  const isNegative = totalMinutes < 0;
+  const absMinutes = Math.abs(totalMinutes);
+  const h = Math.floor(absMinutes / 60);
+  const m = absMinutes % 60;
+  return `${isNegative ? '-' : ''}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -100,6 +116,26 @@ export default function RequestsPage() {
     );
   }, [firestore, user]);
 
+  // Consultas para saldo e validações
+  const myLaunchesRef = React.useMemo(() => {
+    if (!firestore || !employeeData?.id) return null;
+    return query(collection(firestore, 'launches'), where('employeeId', '==', employeeData.id));
+  }, [firestore, employeeData?.id]);
+
+  const { data: myLaunches } = useCollection(myLaunchesRef);
+
+  // Cálculo de Saldo Atual
+  const myBalanceMinutes = React.useMemo(() => {
+    if (!myLaunches) return 0;
+    return myLaunches.reduce((acc, l) => {
+      const type = normalizeStr(l.type || "");
+      const minutes = hhmmToMinutes(l.hours || "00:00");
+      if (type === "BANCO DE HORAS CREDITO") return acc + minutes;
+      if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") return acc - minutes;
+      return acc;
+    }, 0);
+  }, [myLaunches]);
+
   // Consultas auxiliares
   const shiftPeriodsRef = React.useMemo(() => firestore ? collection(firestore, 'shiftPeriods') : null, [firestore]);
   const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
@@ -111,6 +147,24 @@ export default function RequestsPage() {
   const { data: allSchedules } = useCollection(schedulesRef);
   const { data: allShifts } = useCollection(shiftsRef);
   const { data: allEmployees } = useCollection(employeesRef);
+
+  // Identificação do período de escala do servidor
+  const myShiftPeriod = React.useMemo(() => {
+    if (!employeeData?.escala || !shiftPeriods) return null;
+    return shiftPeriods.find(p => p.escalaName === employeeData.escala);
+  }, [employeeData?.escala, shiftPeriods]);
+
+  // Minutos necessários para uma folga (com base na escala)
+  const requiredMinutesForFolga = React.useMemo(() => {
+    if (!myShiftPeriod?.duration) return 0;
+    return hhmmToMinutes(myShiftPeriod.duration);
+  }, [myShiftPeriod]);
+
+  // Validação de saldo para o botão
+  const hasInsufficientBalance = React.useMemo(() => {
+    if (requestType !== "FOLGA") return false;
+    return myBalanceMinutes < requiredMinutesForFolga;
+  }, [requestType, myBalanceMinutes, requiredMinutesForFolga]);
 
   // Combinações de Escala e Turno para o Select
   const shiftCombinations = React.useMemo(() => {
@@ -151,11 +205,6 @@ export default function RequestsPage() {
     return allEmployees.find(e => e.id === permutaPartnerId);
   }, [permutaPartnerId, allEmployees]);
 
-  const myShiftPeriod = React.useMemo(() => {
-    if (!employeeData?.escala || !shiftPeriods) return null;
-    return shiftPeriods.find(p => p.escalaName === employeeData.escala);
-  }, [employeeData?.escala, shiftPeriods]);
-
   const partnerShiftPeriod = React.useMemo(() => {
     if (!permutaPartner?.escala || !shiftPeriods) return null;
     return shiftPeriods.find(p => p.escalaName === permutaPartner.escala);
@@ -195,6 +244,11 @@ export default function RequestsPage() {
     e.preventDefault();
     if (!firestore || !user) {
       toast({ variant: "destructive", title: "ERRO", description: "USUÁRIO NÃO AUTENTICADO." });
+      return;
+    }
+
+    if (hasInsufficientBalance) {
+      toast({ variant: "destructive", title: "SALDO INSUFICIENTE", description: "VOCÊ NÃO POSSUI BANCO DE HORAS SUFICIENTE PARA SOLICITAR ESTA FOLGA." });
       return;
     }
 
@@ -362,7 +416,21 @@ export default function RequestsPage() {
                     </Select>
                   </div>
 
-                  {!isMultiDateType && !isReprogrammingType && !isBirthdayType && !isSwapType && !isPermutaType && (
+                  {requestType === "FOLGA" && (
+                    <div className="grid gap-2 animate-in slide-in-from-left-2 duration-300">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">BANCO DE HORAS ATUAL</Label>
+                      <div className={cn(
+                        "h-11 flex items-center px-4 rounded-xl border-2 font-black uppercase text-[11px]",
+                        hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"
+                      )}>
+                        {minutesToHHmm(myBalanceMinutes)}H DISPONÍVEIS
+                        {hasInsufficientBalance && <AlertCircle className="ml-auto h-4 w-4" />}
+                        {!hasInsufficientBalance && <CheckCircle2 className="ml-auto h-4 w-4" />}
+                      </div>
+                    </div>
+                  )}
+
+                  {!isMultiDateType && !isReprogrammingType && !isBirthdayType && !isSwapType && !isPermutaType && requestType !== "FOLGA" && (
                     <div className="grid gap-2">
                       <Label htmlFor="date" className="text-[10px] font-bold uppercase text-muted-foreground">DATA PREVISTA</Label>
                       <Input id="date" name="date" type="date" required className="h-11" />
@@ -370,7 +438,7 @@ export default function RequestsPage() {
                   )}
                 </div>
 
-                {isMultiDateType && (
+                {(isMultiDateType || requestType === "FOLGA") && (
                   <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center justify-between">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATAS SOLICITADAS ({multiDates.length})</Label>
@@ -396,6 +464,18 @@ export default function RequestsPage() {
                         </div>
                       ))}
                     </div>
+                    {requestType === "FOLGA" && hasInsufficientBalance && (
+                      <div className="bg-red-100 border border-red-200 p-4 rounded-xl flex items-start gap-3 mt-4 animate-bounce">
+                        <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
+                        <div className="space-y-1">
+                          <p className="text-[11px] font-black uppercase text-red-900 tracking-tight">Saldo Insuficiente para Folga</p>
+                          <p className="text-[10px] text-red-700 font-bold uppercase leading-tight">
+                            Sua escala atual é de {myShiftPeriod?.duration}H. Seu saldo atual é de {minutesToHHmm(myBalanceMinutes)}H. 
+                            Você precisa de pelo menos {myShiftPeriod?.duration}H positivas para realizar este pedido.
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -753,9 +833,18 @@ export default function RequestsPage() {
               </CardContent>
               <CardFooter className="flex flex-col sm:flex-row justify-end gap-3 border-t p-6 bg-muted/5">
                 <Button variant="outline" type="button" onClick={resetForm} className="w-full sm:w-auto uppercase font-bold text-[10px] h-11 px-8 rounded-xl">LIMPAR</Button>
-                <Button type="submit" disabled={loading || !requestType} className="w-full sm:w-auto uppercase font-bold text-[10px] h-11 px-8 rounded-xl shadow-lg shadow-primary/20">
+                <Button 
+                  type="submit" 
+                  disabled={loading || !requestType || hasInsufficientBalance} 
+                  variant={hasInsufficientBalance ? "destructive" : "default"}
+                  className={cn(
+                    "w-full sm:w-auto uppercase font-bold text-[10px] h-11 px-8 rounded-xl shadow-lg transition-all",
+                    !hasInsufficientBalance && "shadow-primary/20",
+                    hasInsufficientBalance && "shadow-destructive/20 active:scale-100"
+                  )}
+                >
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                  ENVIAR SOLICITAÇÃO
+                  {hasInsufficientBalance ? `SALDO INSUFICIENTE (MÍN. ${myShiftPeriod?.duration}H)` : "ENVIAR SOLICITAÇÃO"}
                 </Button>
               </CardFooter>
             </form>
