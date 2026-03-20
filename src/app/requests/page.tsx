@@ -100,7 +100,7 @@ export default function RequestsPage() {
     );
   }, [firestore, user]);
 
-  // Consulta de períodos de escala para buscar o horário
+  // Consultas auxiliares
   const shiftPeriodsRef = React.useMemo(() => firestore ? collection(firestore, 'shiftPeriods') : null, [firestore]);
   const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shifts'), orderBy('name', 'asc')) : null, [firestore]);
@@ -151,15 +151,15 @@ export default function RequestsPage() {
     return allEmployees.find(e => e.id === permutaPartnerId);
   }, [permutaPartnerId, allEmployees]);
 
-  const partnerShiftPeriod = React.useMemo(() => {
-    if (!permutaPartner?.escala || !shiftPeriods) return null;
-    return shiftPeriods.find(p => p.escalaName === permutaPartner.escala);
-  }, [permutaPartner?.escala, shiftPeriods]);
-
   const myShiftPeriod = React.useMemo(() => {
     if (!employeeData?.escala || !shiftPeriods) return null;
     return shiftPeriods.find(p => p.escalaName === employeeData.escala);
   }, [employeeData?.escala, shiftPeriods]);
+
+  const partnerShiftPeriod = React.useMemo(() => {
+    if (!permutaPartner?.escala || !shiftPeriods) return null;
+    return shiftPeriods.find(p => p.escalaName === permutaPartner.escala);
+  }, [permutaPartner?.escala, shiftPeriods]);
 
   const addDateRow = () => setMultiDates([...multiDates, ""]);
   const removeDateRow = (index: number) => {
@@ -178,10 +178,12 @@ export default function RequestsPage() {
     const newRows = chefiaRows.filter((_, i) => i !== index);
     setChefiaRows(newRows.length ? newRows : [{ id: "", term: "", show: false }]);
   };
-  const updateChefiaRow = (index: number, field: string, value: any) => {
-    const newRows = [...chefiaRows];
-    newRows[index] = { ...newRows[index], [field]: value };
-    setChefiaRows(newRows);
+  const updateChefiaRow = (index: number, updates: Partial<{id: string, term: string, show: boolean}>) => {
+    setChefiaRows(prev => {
+      const newRows = [...prev];
+      newRows[index] = { ...newRows[index], ...updates };
+      return newRows;
+    });
   };
 
   const formatDateBR = (dateStr: string) => {
@@ -196,9 +198,10 @@ export default function RequestsPage() {
       return;
     }
 
+    // Validação obrigatória: pelo menos uma chefia com ID selecionado
     const selectedChefias = chefiaRows.filter(r => r.id);
     if (selectedChefias.length === 0) {
-      toast({ variant: "destructive", title: "ERRO", description: "SELECIONE AO MENOS UMA CHEFIA IMEDIATA." });
+      toast({ variant: "destructive", title: "ATENÇÃO", description: "SELECIONE AO MENOS UMA CHEFIA IMEDIATA DA LISTA." });
       return;
     }
 
@@ -592,7 +595,8 @@ export default function RequestsPage() {
                                 <button
                                   key={p.id}
                                   type="button"
-                                  onClick={() => {
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
                                     setPermutaPartnerId(p.id);
                                     setSearchPartnerTerm(`${p.name} (${p.qra}) - ${p.escala} / ${p.turno}`);
                                     setShowPartnerSuggestions(false);
@@ -689,10 +693,12 @@ export default function RequestsPage() {
                               <Input 
                                 placeholder="BUSCAR CHEFIA POR QRA OU NOME..."
                                 value={row.term}
-                                onChange={(e) => updateChefiaRow(index, "term", e.target.value.toUpperCase())}
-                                onFocus={() => updateChefiaRow(index, "show", true)}
+                                onChange={(e) => {
+                                  const val = e.target.value.toUpperCase();
+                                  updateChefiaRow(index, { term: val, id: "" }); // Reseta o ID se o usuário digitar
+                                }}
+                                onFocus={() => updateChefiaRow(index, { show: true })}
                                 className="h-11 border-muted uppercase text-[10px] pr-10"
-                                required
                               />
                               {row.id && (
                                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -714,10 +720,13 @@ export default function RequestsPage() {
                                   <button
                                     key={c.id}
                                     type="button"
-                                    onClick={() => {
-                                      updateChefiaRow(index, "id", c.id);
-                                      updateChefiaRow(index, "term", `${c.name} (${c.qra}) - ${c.role}`);
-                                      updateChefiaRow(index, "show", false);
+                                    onMouseDown={(e) => {
+                                      e.preventDefault(); // Importante para não perder o foco e fechar antes de selecionar
+                                      updateChefiaRow(index, {
+                                        id: c.id,
+                                        term: `${c.name} (${c.qra}) - ${c.role}`,
+                                        show: false
+                                      });
                                     }}
                                     className="w-full px-4 py-3 text-left hover:bg-blue-50/50 flex flex-col border-b last:border-0 transition-colors"
                                   >
@@ -733,7 +742,7 @@ export default function RequestsPage() {
                             </div>
                           )}
                           {row.show && (
-                            <div className="fixed inset-0 z-[55]" onClick={() => updateChefiaRow(index, "show", false)} />
+                            <div className="fixed inset-0 z-[55]" onClick={() => updateChefiaRow(index, { show: false })} />
                           )}
                         </div>
                       );
