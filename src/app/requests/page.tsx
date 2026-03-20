@@ -51,6 +51,8 @@ import { collection, addDoc, query, orderBy, where, serverTimestamp } from 'fire
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils"
 
+const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
+
 export default function RequestsPage() {
   const firestore = useFirestore();
   const { user, employeeData, loading: authLoading } = useAuth();
@@ -85,6 +87,9 @@ export default function RequestsPage() {
   const [showPartnerSuggestions, setShowPartnerSuggestions] = React.useState(false);
   const partnerInputRef = React.useRef<HTMLInputElement>(null);
 
+  // Estados para Chefia Imediata (Múltiplos)
+  const [chefiaRows, setChefiaRows] = React.useState([{ id: "", term: "", show: false }]);
+
   // Consulta de solicitações do usuário
   const requestsRef = React.useMemo(() => {
     if (!firestore || !user) return null;
@@ -97,10 +102,8 @@ export default function RequestsPage() {
 
   // Consulta de períodos de escala para buscar o horário
   const shiftPeriodsRef = React.useMemo(() => firestore ? collection(firestore, 'shiftPeriods') : null, [firestore]);
-  // Consultas de Escalas e Turnos para popular o Select de destino
   const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shifts'), orderBy('name', 'asc')) : null, [firestore]);
-  // Consulta de funcionários para Permuta
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
 
   const { data: myRequests, loading: loadingRequests } = useCollection(requestsRef);
@@ -121,13 +124,16 @@ export default function RequestsPage() {
     return combos.sort();
   }, [allSchedules, allShifts]);
 
-  // Busca o período correspondente à escala do servidor
-  const myShiftPeriod = React.useMemo(() => {
-    if (!employeeData?.escala || !shiftPeriods) return null;
-    return shiftPeriods.find(p => p.escalaName === employeeData.escala);
-  }, [employeeData?.escala, shiftPeriods]);
+  // Filtro de comando para Chefia Imediata
+  const filteredChefias = React.useMemo(() => {
+    if (!allEmployees) return [];
+    const validRoles = ["INSPETOR GERAL", "INSPETOR", "SUBINSPETOR", "GESTOR DE RH"];
+    return allEmployees.filter(emp => 
+      validRoles.includes(normalizeStr(emp.role || ""))
+    );
+  }, [allEmployees]);
 
-  // Filtro de parceiros para a busca inteligente
+  // Parceiros para permuta
   const filteredPartners = React.useMemo(() => {
     if (!allEmployees || !searchPartnerTerm) return [];
     const term = searchPartnerTerm.toLowerCase();
@@ -140,7 +146,6 @@ export default function RequestsPage() {
     ).slice(0, 5);
   }, [allEmployees, searchPartnerTerm, user?.uid]);
 
-  // Dados do parceiro de permuta selecionado
   const permutaPartner = React.useMemo(() => {
     if (!permutaPartnerId || !allEmployees) return null;
     return allEmployees.find(e => e.id === permutaPartnerId);
@@ -151,6 +156,11 @@ export default function RequestsPage() {
     return shiftPeriods.find(p => p.escalaName === permutaPartner.escala);
   }, [permutaPartner?.escala, shiftPeriods]);
 
+  const myShiftPeriod = React.useMemo(() => {
+    if (!employeeData?.escala || !shiftPeriods) return null;
+    return shiftPeriods.find(p => p.escalaName === employeeData.escala);
+  }, [employeeData?.escala, shiftPeriods]);
+
   const addDateRow = () => setMultiDates([...multiDates, ""]);
   const removeDateRow = (index: number) => {
     const newDates = multiDates.filter((_, i) => i !== index);
@@ -160,6 +170,18 @@ export default function RequestsPage() {
     const newDates = [...multiDates];
     newDates[index] = val;
     setMultiDates(newDates);
+  };
+
+  // Funções para Chefia Imediata
+  const addChefiaRow = () => setChefiaRows([...chefiaRows, { id: "", term: "", show: false }]);
+  const removeChefiaRow = (index: number) => {
+    const newRows = chefiaRows.filter((_, i) => i !== index);
+    setChefiaRows(newRows.length ? newRows : [{ id: "", term: "", show: false }]);
+  };
+  const updateChefiaRow = (index: number, field: string, value: any) => {
+    const newRows = [...chefiaRows];
+    newRows[index] = { ...newRows[index], [field]: value };
+    setChefiaRows(newRows);
   };
 
   const formatDateBR = (dateStr: string) => {
@@ -174,13 +196,18 @@ export default function RequestsPage() {
       return;
     }
 
+    const selectedChefias = chefiaRows.filter(r => r.id);
+    if (selectedChefias.length === 0) {
+      toast({ variant: "destructive", title: "ERRO", description: "SELECIONE AO MENOS UMA CHEFIA IMEDIATA." });
+      return;
+    }
+
     setLoading(true);
     const formData = new FormData(e.currentTarget);
     const description = (formData.get('description') as string || "").toUpperCase();
     
     let finalDate = "";
 
-    // Lógica de processamento por tipo
     if (requestType === "FOLGA" || requestType === "ABONO TRE" || requestType === "ESCALA ESPECIAL") {
       finalDate = multiDates.filter(d => d).map(d => formatDateBR(d)).join(", ");
     } else if (requestType === "REPROGRAMAÇÃO DE FÉRIAS") {
@@ -198,6 +225,8 @@ export default function RequestsPage() {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
 
+    const chefiaNames = selectedChefias.map(c => c.term).join(" / ");
+
     const newRequest = {
       employeeId: user.uid,
       employeeName: (employeeData?.name || user.displayName || "USUÁRIO NRH").toUpperCase(),
@@ -205,6 +234,7 @@ export default function RequestsPage() {
       date: finalDate,
       description: description,
       status: "Pendente",
+      chefiaImediata: chefiaNames,
       createdAt: serverTimestamp()
     };
 
@@ -243,6 +273,7 @@ export default function RequestsPage() {
     setPermutaInDate("");
     setPermutaPartnerId("");
     setSearchPartnerTerm("");
+    setChefiaRows([{ id: "", term: "", show: false }]);
   };
 
   const isMultiDateType = ["FOLGA", "ABONO TRE", "ESCALA ESPECIAL"].includes(requestType);
@@ -283,7 +314,6 @@ export default function RequestsPage() {
               </CardHeader>
               <CardContent className="space-y-6 pt-8">
                 
-                {/* Cabeçalho de Identificação Funcional */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/20 border rounded-xl mb-6">
                   <div className="space-y-1">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
@@ -337,7 +367,6 @@ export default function RequestsPage() {
                   )}
                 </div>
 
-                {/* Campos dinâmicos para Múltiplas Datas (Folga, TRE, Escala Especial) */}
                 {isMultiDateType && (
                   <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="flex items-center justify-between">
@@ -367,7 +396,6 @@ export default function RequestsPage() {
                   </div>
                 )}
 
-                {/* Campos dinâmicos para Abono de Aniversário */}
                 {isBirthdayType && (
                   <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="bg-blue-50 border border-blue-100 p-3 rounded-xl flex items-start gap-3">
@@ -402,7 +430,6 @@ export default function RequestsPage() {
                   </div>
                 )}
 
-                {/* Campos dinâmicos para Reprogramação de Férias (Intervalos) */}
                 {isReprogrammingType && (
                   <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="bg-amber-50 border border-amber-200 p-3 rounded-xl flex items-start gap-3">
@@ -442,7 +469,6 @@ export default function RequestsPage() {
                   </div>
                 )}
 
-                {/* Campos dinâmicos para Troca de Escala */}
                 {isSwapType && (
                   <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-start gap-3">
@@ -503,7 +529,6 @@ export default function RequestsPage() {
                   </div>
                 )}
 
-                {/* Campos dinâmicos para Permuta */}
                 {isPermutaType && (
                   <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="bg-slate-50 border border-slate-200 p-3 rounded-xl flex items-start gap-3">
@@ -639,6 +664,83 @@ export default function RequestsPage() {
                     required
                   />
                 </div>
+
+                {/* Seção de Chefia Imediata (Múltiplos) */}
+                <div className="space-y-4 pt-4 border-t mt-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">CHEFIA IMEDIATA (CIÊNCIA)</Label>
+                    <Button type="button" variant="outline" size="sm" onClick={addChefiaRow} className="h-8 text-[10px] font-bold uppercase gap-2">
+                      <Plus className="h-3 w-3" /> ADICIONAR CHEFIA
+                    </Button>
+                  </div>
+                  <div className="space-y-3">
+                    {chefiaRows.map((row, index) => {
+                      const searchResults = filteredChefias.filter(c => 
+                        row.term && (
+                          c.name?.toLowerCase().includes(row.term.toLowerCase()) || 
+                          c.qra?.toLowerCase().includes(row.term.toLowerCase())
+                        )
+                      ).slice(0, 5);
+
+                      return (
+                        <div key={index} className="space-y-2 relative">
+                          <div className="flex gap-2">
+                            <div className="relative flex-1">
+                              <Input 
+                                placeholder="BUSCAR CHEFIA POR QRA OU NOME..."
+                                value={row.term}
+                                onChange={(e) => updateChefiaRow(index, "term", e.target.value.toUpperCase())}
+                                onFocus={() => updateChefiaRow(index, "show", true)}
+                                className="h-11 border-muted uppercase text-[10px] pr-10"
+                                required
+                              />
+                              {row.id && (
+                                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                                  <Check className="h-4 w-4 text-green-600" />
+                                </div>
+                              )}
+                            </div>
+                            {chefiaRows.length > 1 && (
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removeChefiaRow(index)} className="h-11 w-11 text-destructive shrink-0">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+
+                          {row.show && row.term && (
+                            <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border border-border rounded-lg shadow-2xl max-h-48 overflow-y-auto animate-in slide-in-from-top-2 duration-200">
+                              {searchResults.length > 0 ? (
+                                searchResults.map(c => (
+                                  <button
+                                    key={c.id}
+                                    type="button"
+                                    onClick={() => {
+                                      updateChefiaRow(index, "id", c.id);
+                                      updateChefiaRow(index, "term", `${c.name} (${c.qra}) - ${c.role}`);
+                                      updateChefiaRow(index, "show", false);
+                                    }}
+                                    className="w-full px-4 py-3 text-left hover:bg-blue-50/50 flex flex-col border-b last:border-0 transition-colors"
+                                  >
+                                    <span className="text-[11px] font-bold text-foreground uppercase">{c.name}</span>
+                                    <span className="text-[9px] text-muted-foreground uppercase mt-0.5">QRA: {c.qra} • CARGO: {c.role}</span>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="px-4 py-3 text-[10px] text-muted-foreground italic uppercase text-center">
+                                  NENHUMA CHEFIA ENCONTRADA
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          {row.show && (
+                            <div className="fixed inset-0 z-[55]" onClick={() => updateChefiaRow(index, "show", false)} />
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
               </CardContent>
               <CardFooter className="flex flex-col sm:flex-row justify-end gap-3 border-t p-6 bg-muted/5">
                 <Button variant="outline" type="button" onClick={resetForm} className="w-full sm:w-auto uppercase font-bold text-[10px] h-11 px-8 rounded-xl">LIMPAR</Button>
@@ -681,6 +783,12 @@ export default function RequestsPage() {
                         </div>
                         <p className="text-[10px] font-bold text-primary uppercase tracking-tight">{req.date}</p>
                         <p className="text-xs text-muted-foreground line-clamp-1 uppercase font-medium mt-1">{req.description}</p>
+                        {req.chefiaImediata && (
+                          <div className="flex items-center gap-1.5 mt-2">
+                            <ShieldCheck className="h-3 w-3 text-slate-400" />
+                            <span className="text-[9px] font-bold text-slate-500 uppercase">CHEFIA: {req.chefiaImediata}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-2 w-full sm:w-auto">
