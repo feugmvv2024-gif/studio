@@ -13,7 +13,9 @@ import {
   ShieldCheck,
   UserMinus,
   Plane,
-  Stethoscope
+  Stethoscope,
+  Info,
+  X
 } from "lucide-react"
 import {
   BarChart,
@@ -30,6 +32,24 @@ import {
 import { useFirestore, useCollection } from '@/firebase'
 import { collection, query, where, updateDoc, doc } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { cn } from "@/lib/utils"
 
 // Utilitários de cálculo
 const hhmmToMinutes = (hhmm: string) => {
@@ -61,6 +81,9 @@ const getSaoPauloDate = () => {
 export default function Dashboard() {
   const firestore = useFirestore();
   const { toast } = useToast();
+
+  const [isAbsentModalOpen, setIsAbsentModalOpen] = React.useState(false);
+  const [isAfastadosModalOpen, setIsAfastadosModalOpen] = React.useState(false);
 
   const employeesRef = React.useMemo(() => collection(firestore, 'employees'), [firestore]);
   const launchesRef = React.useMemo(() => collection(firestore, 'launches'), [firestore]);
@@ -121,6 +144,24 @@ export default function Dashboard() {
     };
   }, [employees]);
 
+  // Listas para os Modais
+  const absentList = React.useMemo(() => {
+    if (!launches) return [];
+    const today = getSaoPauloDate();
+    return launches.filter(l => {
+      const type = normalizeStr(l.type);
+      const isActive = l.startDate <= today && l.endDate >= today;
+      return isActive && (type.includes("FOLGA") || type.includes("ABONO") || type.includes("FALTA"));
+    }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
+  }, [launches]);
+
+  const afastadosList = React.useMemo(() => {
+    if (!employees) return [];
+    const statusAfastados = ["FÉRIAS", "LICENÇA", "ATESTADO"];
+    return employees.filter(e => statusAfastados.includes(e.status))
+      .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
+  }, [employees]);
+
   // Estatísticas de Banco de Horas e TRE
   const operationStats = React.useMemo(() => {
     if (!launches) return { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0 };
@@ -158,7 +199,7 @@ export default function Dashboard() {
     }, { total: 0, folga: 0, abono: 0, falta: 0 });
   }, [launches]);
 
-  // Cálculo de Efetivo Disponível (Disponível = Total - Afastados - Ausentes Hoje - Pendentes)
+  // Cálculo de Efetivo Disponível
   const availableStats = React.useMemo(() => {
     const totalAfastados = stats.leave + stats.vacation + stats.medical;
     const totalAusentes = absentStats.total;
@@ -191,6 +232,60 @@ export default function Dashboard() {
     );
   }
 
+  const renderModalTable = (data: any[], type: 'absent' | 'afastado') => (
+    <ScrollArea className="h-[400px] mt-4 rounded-xl border">
+      <Table>
+        <TableHeader className="bg-muted/30 sticky top-0 z-10">
+          <TableRow>
+            <TableHead className="font-bold uppercase text-[9px]">QRA / NOME</TableHead>
+            <TableHead className="font-bold uppercase text-[9px]">ESCALA / TURNO</TableHead>
+            <TableHead className="font-bold uppercase text-[9px]">SETOR</TableHead>
+            <TableHead className="font-bold uppercase text-[9px]">TIPO</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((item) => (
+            <TableRow key={item.id} className="hover:bg-muted/10">
+              <TableCell>
+                <div className="flex flex-col">
+                  <span className="font-black uppercase text-[11px] text-slate-900">{type === 'absent' ? item.employeeQra : item.qra}</span>
+                  <span className="text-[9px] uppercase text-muted-foreground">{type === 'absent' ? item.employeeName : item.name}</span>
+                </div>
+              </TableCell>
+              <TableCell className="text-[10px] uppercase font-bold text-slate-700">
+                {item.escala} / {item.turno}
+              </TableCell>
+              <TableCell>
+                <Badge variant="secondary" className="text-[8px] uppercase font-bold whitespace-nowrap bg-slate-100">
+                  {type === 'absent' ? (employees?.find(e => e.id === item.employeeId)?.unit || "N/A") : item.unit}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <Badge variant="outline" className={cn(
+                  "text-[8px] uppercase font-black whitespace-nowrap border-none",
+                  (normalizeStr(item.type || item.status).includes("FERIAS")) ? "bg-blue-600 text-white" :
+                  (normalizeStr(item.type || item.status).includes("LICENCA")) ? "bg-purple-600 text-white" :
+                  (normalizeStr(item.type || item.status).includes("ATESTADO")) ? "bg-red-600 text-white" :
+                  (normalizeStr(item.type || item.status).includes("FALTA")) ? "bg-red-900 text-white" :
+                  "bg-orange-500 text-white"
+                )}>
+                  {item.type || item.status}
+                </Badge>
+              </TableCell>
+            </TableRow>
+          ))}
+          {data.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={4} className="text-center py-10 uppercase text-[10px] font-bold text-muted-foreground italic">
+                NENHUM SERVIDOR NESTA CONDIÇÃO HOJE.
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </ScrollArea>
+  );
+
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-10">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -205,8 +300,7 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
-        {/* 1. EFETIVO DISPONÍVEL (PRONTO) */}
-        <Card className="card-shadow border-primary/20 bg-primary/5">
+        <Card className="card-shadow border-primary/20 bg-primary/5 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">EFETIVO DISPONÍVEL</CardTitle>
             <Users className="h-4 w-4 text-primary" />
@@ -217,8 +311,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* 2. BANCO DE HORAS */}
-        <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
+        <Card className="card-shadow border-blue-500/20 bg-blue-50/10 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">BANCO DE HORAS</CardTitle>
             <Timer className="h-4 w-4 text-blue-600" />
@@ -240,8 +333,7 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* 3. TRE (SALDO) */}
-        <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
+        <Card className="card-shadow border-purple-500/20 bg-purple-50/10 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">TRE (SALDO)</CardTitle>
             <CalendarDays className="h-4 w-4 text-purple-600" />
@@ -263,55 +355,97 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* 4. AUSENTES (HOJE) */}
-        <Card className="card-shadow border-red-500/20 bg-red-50/5">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">AUSENTES (HOJE)</CardTitle>
-            <UserMinus className="h-4 w-4 text-red-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-700">{absentStats.total}</div>
-            <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-red-100">
-              <div>
-                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FOLGA</p>
-                <p className="text-[10px] font-black text-red-600">{absentStats.folga}</p>
+        {/* CARD AUSENTES (INTERATIVO) */}
+        <Dialog open={isAbsentModalOpen} onOpenChange={setIsAbsentModalOpen}>
+          <DialogTrigger asChild>
+            <Card className="card-shadow border-red-500/20 bg-red-50/5 cursor-pointer hover:bg-red-50/20 transition-all active:scale-95 group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-[10px] font-bold uppercase group-hover:text-red-700 transition-colors">AUSENTES (HOJE)</CardTitle>
+                <UserMinus className="h-4 w-4 text-red-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-red-700">{absentStats.total}</div>
+                  <Badge variant="outline" className="text-[7px] uppercase font-bold border-red-200 text-red-700">CLIQUE PARA VER</Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-red-100">
+                  <div>
+                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FOLGA</p>
+                    <p className="text-[10px] font-black text-red-600">{absentStats.folga}</p>
+                  </div>
+                  <div>
+                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">ABONO</p>
+                    <p className="text-[10px] font-black text-orange-600">{absentStats.abono}</p>
+                  </div>
+                  <div>
+                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FALTA</p>
+                    <p className="text-[10px] font-black text-red-900">{absentStats.falta}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-2xl rounded-2xl border-none shadow-2xl p-6">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="bg-red-50 p-2 rounded-xl border border-red-100">
+                  <UserMinus className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <DialogTitle className="uppercase text-lg font-black tracking-tight">DETALHAMENTO: AUSENTES HOJE</DialogTitle>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">SERVIDORES COM LANÇAMENTO DE FOLGA, ABONO OU FALTA EM ATIVIDADE.</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">ABONO</p>
-                <p className="text-[10px] font-black text-orange-600">{absentStats.abono}</p>
-              </div>
-              <div>
-                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FALTA</p>
-                <p className="text-[10px] font-black text-red-900">{absentStats.falta}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </DialogHeader>
+            {renderModalTable(absentList, 'absent')}
+          </DialogContent>
+        </Dialog>
 
-        {/* 5. AFASTADOS */}
-        <Card className="card-shadow border-accent/20 bg-slate-50/50">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">AFASTADOS</CardTitle>
-            <FileText className="h-4 w-4 text-accent" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{stats.leave + stats.vacation + stats.medical}</div>
-            <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-slate-100">
-              <div>
-                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FÉRIAS</p>
-                <p className="text-[10px] font-black text-blue-600">{stats.vacation}</p>
+        {/* CARD AFASTADOS (INTERATIVO) */}
+        <Dialog open={isAfastadosModalOpen} onOpenChange={setIsAfastadosModalOpen}>
+          <DialogTrigger asChild>
+            <Card className="card-shadow border-accent/20 bg-slate-50/50 cursor-pointer hover:bg-slate-100/80 transition-all active:scale-95 group">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-[10px] font-bold uppercase group-hover:text-primary transition-colors">AFASTADOS</CardTitle>
+                <FileText className="h-4 w-4 text-accent" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold">{stats.leave + stats.vacation + stats.medical}</div>
+                  <Badge variant="outline" className="text-[7px] uppercase font-bold border-slate-300 text-slate-700">CLIQUE PARA VER</Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-slate-100">
+                  <div>
+                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FÉRIAS</p>
+                    <p className="text-[10px] font-black text-blue-600">{stats.vacation}</p>
+                  </div>
+                  <div>
+                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">LICENÇA</p>
+                    <p className="text-[10px] font-black text-purple-600">{stats.leave}</p>
+                  </div>
+                  <div>
+                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">ATESTADO</p>
+                    <p className="text-[10px] font-black text-red-600">{stats.medical}</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-2xl rounded-2xl border-none shadow-2xl p-6">
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="bg-blue-50 p-2 rounded-xl border border-blue-100">
+                  <FileText className="h-5 w-5 text-blue-600" />
+                </div>
+                <div>
+                  <DialogTitle className="uppercase text-lg font-black tracking-tight">DETALHAMENTO: SERVIDORES AFASTADOS</DialogTitle>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">SERVIDORES ATUALMENTE EM GOZO DE FÉRIAS, LICENÇA OU AFASTAMENTO MÉDICO.</p>
+                </div>
               </div>
-              <div>
-                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">LICENÇA</p>
-                <p className="text-[10px] font-black text-purple-600">{stats.leave}</p>
-              </div>
-              <div>
-                <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">ATESTADO</p>
-                <p className="text-[10px] font-black text-red-600">{stats.medical}</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </DialogHeader>
+            {renderModalTable(afastadosList, 'afastado')}
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 grid-cols-1 lg:grid-cols-7">
