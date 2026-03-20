@@ -569,7 +569,7 @@ export default function RequestsPage() {
                                   type="button"
                                   onClick={() => {
                                     setPermutaPartnerId(p.id);
-                                    setSearchPartnerTerm(`${p.name} (${p.qra})`);
+                                    setSearchPartnerTerm(`${p.name} (${p.qra}) - ${p.escala} / ${p.turno}`);
                                     setShowPartnerSuggestions(false);
                                   }}
                                   className="w-full px-4 py-3 text-left hover:bg-blue-50/50 flex flex-col border-b last:border-0 transition-colors"
@@ -590,11 +590,19 @@ export default function RequestsPage() {
                         )}
                         
                         {permutaPartner && (
-                          <div className="mt-2 flex items-center gap-2">
-                             <Timer className="h-3 w-3 text-blue-600" />
-                             <span className="text-[10px] font-bold text-blue-700 uppercase">
-                               HORÁRIO DO PARCEIRO: {partnerShiftPeriod ? `${partnerShiftPeriod.startTime} ÀS ${partnerShiftPeriod.endTime} (${partnerShiftPeriod.duration}H)` : "NÃO CONFIGURADO"}
-                             </span>
+                          <div className="mt-2 flex flex-col gap-1">
+                             <div className="flex items-center gap-2">
+                               <Timer className="h-3 w-3 text-blue-600" />
+                               <span className="text-[10px] font-bold text-blue-700 uppercase">
+                                 HORÁRIO DO PARCEIRO: {partnerShiftPeriod ? `${partnerShiftPeriod.startTime} ÀS ${partnerShiftPeriod.endTime} (${partnerShiftPeriod.duration}H)` : "NÃO CONFIGURADO"}
+                               </span>
+                             </div>
+                             <div className="flex items-center gap-2">
+                               <ShieldCheck className="h-3 w-3 text-primary/70" />
+                               <span className="text-[10px] font-bold text-slate-600 uppercase">
+                                 ESCALA: {permutaPartner.escala} | TURNO: {permutaPartner.turno}
+                               </span>
+                             </div>
                           </div>
                         )}
                       </div>
