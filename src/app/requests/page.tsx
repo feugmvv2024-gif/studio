@@ -123,18 +123,7 @@ export default function RequestsPage() {
   }, [firestore, employeeData?.id]);
 
   const { data: myLaunches } = useCollection(myLaunchesRef);
-
-  // Cálculo de Saldo Atual (Total no Banco)
-  const myBalanceMinutes = React.useMemo(() => {
-    if (!myLaunches) return 0;
-    return myLaunches.reduce((acc, l) => {
-      const type = normalizeStr(l.type || "");
-      const minutes = hhmmToMinutes(l.hours || "00:00");
-      if (type === "BANCO DE HORAS CREDITO") return acc + minutes;
-      if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") return acc - minutes;
-      return acc;
-    }, 0);
-  }, [myLaunches]);
+  const { data: myRequests, loading: loadingRequests } = useCollection(requestsRef);
 
   // Consultas auxiliares
   const shiftPeriodsRef = React.useMemo(() => firestore ? collection(firestore, 'shiftPeriods') : null, [firestore]);
@@ -142,7 +131,6 @@ export default function RequestsPage() {
   const shiftsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shifts'), orderBy('name', 'asc')) : null, [firestore]);
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
 
-  const { data: myRequests, loading: loadingRequests } = useCollection(requestsRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
   const { data: allSchedules } = useCollection(schedulesRef);
   const { data: allShifts } = useCollection(shiftsRef);
@@ -160,16 +148,45 @@ export default function RequestsPage() {
     return hhmmToMinutes(myShiftPeriod.duration);
   }, [myShiftPeriod]);
 
-  // Simulação de Saldo Restante (Saldo Atual - (Número de Datas * Duração da Escala))
+  // Cálculo de Horas Reservadas (Solicitações Pendentes de Folga)
+  const reservedMinutes = React.useMemo(() => {
+    if (!myRequests || !requiredMinutesForFolga) return 0;
+    
+    return myRequests
+      .filter(req => req.status === "Pendente" && req.type === "FOLGA")
+      .reduce((acc, req) => {
+        // Conta datas na string (ex: "10/10/2023, 11/10/2023")
+        const dateCount = req.date ? req.date.split(',').length : 0;
+        return acc + (dateCount * requiredMinutesForFolga);
+      }, 0);
+  }, [myRequests, requiredMinutesForFolga]);
+
+  // Cálculo de Saldo Líquido (Saldo do Banco - Reservadas)
+  const myBalanceMinutes = React.useMemo(() => {
+    if (!myLaunches) return 0;
+    const baseMinutes = myLaunches.reduce((acc, l) => {
+      const type = normalizeStr(l.type || "");
+      const minutes = hhmmToMinutes(l.hours || "00:00");
+      if (type === "BANCO DE HORAS CREDITO") return acc + minutes;
+      if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") return acc - minutes;
+      return acc;
+    }, 0);
+    
+    // Subtrai as horas já "comprometidas" em pedidos pendentes
+    return baseMinutes - reservedMinutes;
+  }, [myLaunches, reservedMinutes]);
+
+  // Simulação de Saldo Restante (Saldo Líquido - (Número de Datas * Duração da Escala))
   const simulatedRemainingMinutes = React.useMemo(() => {
     if (requestType !== "FOLGA") return myBalanceMinutes;
-    const dateCount = multiDates.filter(d => d).length || 1; // Mínimo de 1 para simulação inicial
+    const dateCount = multiDates.filter(d => d).length;
     return myBalanceMinutes - (dateCount * requiredMinutesForFolga);
   }, [requestType, myBalanceMinutes, multiDates, requiredMinutesForFolga]);
 
   // Validação de saldo para o botão (Baseado na simulação)
   const hasInsufficientBalance = React.useMemo(() => {
     if (requestType !== "FOLGA") return false;
+    // Se o saldo após a simulação das novas datas for menor que zero, bloqueia
     return simulatedRemainingMinutes < 0;
   }, [requestType, simulatedRemainingMinutes]);
 
@@ -425,7 +442,7 @@ export default function RequestsPage() {
 
                   {requestType === "FOLGA" && (
                     <div className="grid gap-2 animate-in slide-in-from-left-2 duration-300">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">PREVISÃO DE SALDO (SIMULADO)</Label>
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">SALDO REAL DISPONÍVEL</Label>
                       <div className={cn(
                         "h-11 flex flex-col justify-center px-4 rounded-xl border-2 font-black uppercase",
                         hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"
@@ -435,7 +452,14 @@ export default function RequestsPage() {
                           {hasInsufficientBalance ? <AlertCircle className="ml-auto h-4 w-4" /> : <CheckCircle2 className="ml-auto h-4 w-4" />}
                         </div>
                       </div>
-                      <p className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter">Saldo previsto após o usufruto das datas selecionadas.</p>
+                      <div className="flex items-center justify-between mt-1 px-1">
+                        <p className="text-[8px] text-muted-foreground uppercase font-bold tracking-tighter">Após novos débitos e reservas pendentes.</p>
+                        {reservedMinutes > 0 && (
+                          <Badge variant="outline" className="h-4 text-[7px] border-amber-200 text-amber-700 bg-amber-50 uppercase font-black">
+                            {minutesToHHmm(reservedMinutes)}H RESERVADAS
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -446,6 +470,15 @@ export default function RequestsPage() {
                     </div>
                   )}
                 </div>
+
+                {requestType === "FOLGA" && reservedMinutes > 0 && (
+                  <div className="bg-amber-50 border border-amber-100 p-3 rounded-xl flex items-start gap-3 animate-in fade-in duration-500">
+                    <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                    <p className="text-[9px] text-amber-800 font-bold uppercase leading-tight">
+                      Atenção: Seu saldo disponível considera {minutesToHHmm(reservedMinutes)}h que já estão reservadas para outras solicitações "Pendentes" em seu histórico.
+                    </p>
+                  </div>
+                )}
 
                 {(isMultiDateType || requestType === "FOLGA") && (
                   <div className="space-y-4 animate-in slide-in-from-top-2 duration-300">
@@ -477,11 +510,10 @@ export default function RequestsPage() {
                       <div className="bg-red-100 border border-red-200 p-4 rounded-xl flex items-start gap-3 mt-4 animate-bounce">
                         <AlertCircle className="h-5 w-5 text-red-600 shrink-0" />
                         <div className="space-y-1">
-                          <p className="text-[11px] font-black uppercase text-red-900 tracking-tight">Simulação Negativa</p>
+                          <p className="text-[11px] font-black uppercase text-red-900 tracking-tight">Saldo Insuficiente</p>
                           <p className="text-[10px] text-red-700 font-bold uppercase leading-tight">
                             Consumo total: {multiDates.filter(d => d).length * (myShiftPeriod?.duration ? hhmmToMinutes(myShiftPeriod.duration) / 60 : 0)} horas. 
-                            Saldo atual: {minutesToHHmm(myBalanceMinutes)}H. 
-                            Você não possui horas suficientes para cobrir todas as datas selecionadas.
+                            Seu saldo líquido disponível (após reservas e novos débitos) ficaria negativo em {minutesToHHmm(Math.abs(simulatedRemainingMinutes))}h.
                           </p>
                         </div>
                       </div>
@@ -854,7 +886,7 @@ export default function RequestsPage() {
                   )}
                 >
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                  {hasInsufficientBalance ? `SALDO INSUFICIENTE (PREVISÃO NEGATIVA)` : "ENVIAR SOLICITAÇÃO"}
+                  {hasInsufficientBalance ? `SALDO INSUFICIENTE (RESIDUO NEGATIVO)` : "ENVIAR SOLICITAÇÃO"}
                 </Button>
               </CardFooter>
             </form>
