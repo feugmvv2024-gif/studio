@@ -86,9 +86,26 @@ export default function RequestsPage() {
 
   // Consulta de períodos de escala para buscar o horário
   const shiftPeriodsRef = React.useMemo(() => firestore ? collection(firestore, 'shiftPeriods') : null, [firestore]);
+  // Consultas de Escalas e Turnos para popular o Select de destino
+  const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
+  const shiftsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shifts'), orderBy('name', 'asc')) : null, [firestore]);
 
   const { data: myRequests, loading: loadingRequests } = useCollection(requestsRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
+  const { data: allSchedules } = useCollection(schedulesRef);
+  const { data: allShifts } = useCollection(shiftsRef);
+
+  // Combinações de Escala e Turno para o Select
+  const shiftCombinations = React.useMemo(() => {
+    if (!allSchedules || !allShifts) return [];
+    const combos: string[] = [];
+    allSchedules.forEach(s => {
+      allShifts.forEach(sh => {
+        combos.push(`${s.name} - ${sh.name}`);
+      });
+    });
+    return combos.sort();
+  }, [allSchedules, allShifts]);
 
   // Busca o período correspondente à escala do servidor
   const myShiftPeriod = React.useMemo(() => {
@@ -133,7 +150,7 @@ export default function RequestsPage() {
     } else if (requestType === "ABONO DE ANIVERSÁRIO") {
       finalDate = `ANIVERSÁRIO: ${formatDateBR(birthdayDate)} | SOLICITADO PARA: ${formatDateBR(abonoDate)}`;
     } else if (requestType === "TROCA DE ESCALA") {
-      const myInfo = `${employeeData?.escala || "N/A"}-${employeeData?.turno || "N/A"}`;
+      const myInfo = `${employeeData?.escala || "N/A"} - ${employeeData?.turno || "N/A"}`;
       finalDate = `SAI DO DIA: ${formatDateBR(swapOutDate)} (ESC: ${myInfo}) | ENTRA NO DIA: ${formatDateBR(swapInDate)} (ESC: ${swapInShift.toUpperCase()})`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
@@ -422,13 +439,18 @@ export default function RequestsPage() {
                       </div>
                       <div className="grid gap-1.5">
                         <Label className="text-[9px] font-bold uppercase text-muted-foreground">ESCALA/TURNO DO SERVIÇO (DESTINO)</Label>
-                        <Input 
-                          placeholder="EX: RTO - BRAVO" 
-                          value={swapInShift} 
-                          onChange={(e) => setSwapInShift(e.target.value.toUpperCase())} 
-                          required 
-                          className="h-11 border-blue-200 uppercase text-[10px]" 
-                        />
+                        <Select value={swapInShift} onValueChange={setSwapInShift} required>
+                          <SelectTrigger className="h-11 border-blue-200 uppercase text-[10px]">
+                            <SelectValue placeholder="SELECIONE..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {shiftCombinations.map((combo) => (
+                              <SelectItem key={combo} value={combo} className="uppercase text-[10px]">
+                                {combo}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                   </div>
