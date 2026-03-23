@@ -71,7 +71,8 @@ import {
   updateDoc, 
   limit, 
   serverTimestamp,
-  getDocs
+  getDocs,
+  where
 } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -247,6 +248,42 @@ export default function LancamentosPage() {
     };
 
     try {
+      // VALIDAÇÃO DE SOBREPOSIÇÃO DE DATAS
+      if (launchData.startDate && launchData.endDate) {
+        const qOverlap = query(
+          collection(firestore, 'launches'),
+          where('employeeId', '==', selectedEmployeeId)
+        );
+        const overlapSnap = await getDocs(qOverlap);
+        
+        const hasOverlap = overlapSnap.docs.some(docSnap => {
+          if (isUpdate && docSnap.id === selectedLaunch.id) return false;
+          
+          const existing = docSnap.data();
+          if (!existing.startDate || !existing.endDate) return false;
+
+          // Tipos que impedem duplicidade (Afastamentos e Ausências)
+          const blockTypes = ["FERIAS", "LICENCA", "ATESTADO", "FOLGA", "ABONO"];
+          const normExistingType = normalizeStr(existing.type || "");
+          const normNewType = normalizeStr(launchData.type || "");
+
+          if (blockTypes.some(t => normExistingType.includes(t)) && blockTypes.some(t => normNewType.includes(t))) {
+             return (launchData.startDate <= existing.endDate && launchData.endDate >= existing.startDate);
+          }
+          return false;
+        });
+
+        if (hasOverlap) {
+          toast({ 
+            variant: "destructive", 
+            title: "CONFLITO DE DATAS", 
+            description: "O SERVIDOR JÁ POSSUI UM LANÇAMENTO ATIVO NESTE PERÍODO." 
+          });
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       if (!isUpdate) {
         const q = query(collection(firestore, 'launches'), orderBy('launchNumber', 'desc'), limit(1));
         const querySnapshot = await getDocs(q);
