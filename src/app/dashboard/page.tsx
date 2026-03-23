@@ -15,7 +15,8 @@ import {
   Plane,
   Stethoscope,
   Info,
-  X
+  X,
+  Calendar
 } from "lucide-react"
 import {
   BarChart,
@@ -76,6 +77,11 @@ const getSaoPauloDate = () => {
     month: '2-digit',
     day: '2-digit',
   }).format(now).split('/').reverse().join('-');
+};
+
+const formatDateBR = (dateStr: string) => {
+  if (!dateStr) return "---";
+  return dateStr.split('-').reverse().join('/');
 };
 
 export default function Dashboard() {
@@ -156,11 +162,24 @@ export default function Dashboard() {
   }, [launches]);
 
   const afastadosList = React.useMemo(() => {
-    if (!employees) return [];
+    if (!employees || !launches) return [];
+    const today = getSaoPauloDate();
     const statusAfastados = ["FÉRIAS", "LICENÇA", "ATESTADO"];
-    return employees.filter(e => statusAfastados.includes(e.status))
+    
+    return employees
+      .filter(e => statusAfastados.includes(e.status))
+      .map(e => {
+        // Encontra o lançamento ativo para este afastado
+        const activeLaunch = launches.find(l => 
+          l.employeeId === e.id && 
+          l.startDate <= today && 
+          l.endDate >= today &&
+          ["FERIAS", "LICENCA", "ATESTADO"].some(type => normalizeStr(l.type).includes(type))
+        );
+        return { ...e, endDate: activeLaunch?.endDate || null };
+      })
       .sort((a, b) => (a.name || "").localeCompare(b.name || ""));
-  }, [employees]);
+  }, [employees, launches]);
 
   // Estatísticas de Banco de Horas e TRE
   const operationStats = React.useMemo(() => {
@@ -241,6 +260,7 @@ export default function Dashboard() {
             <TableHead className="font-bold uppercase text-[9px]">ESCALA / TURNO</TableHead>
             <TableHead className="font-bold uppercase text-[9px]">SETOR</TableHead>
             <TableHead className="font-bold uppercase text-[9px]">TIPO</TableHead>
+            <TableHead className="font-bold uppercase text-[9px] text-center">DATA FIM</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -272,11 +292,19 @@ export default function Dashboard() {
                   {item.type || item.status}
                 </Badge>
               </TableCell>
+              <TableCell className="text-center">
+                <div className="flex flex-col items-center gap-1">
+                  <Calendar className="h-3 w-3 text-muted-foreground/50" />
+                  <span className="text-[10px] font-black font-mono text-slate-900">
+                    {formatDateBR(item.endDate)}
+                  </span>
+                </div>
+              </TableCell>
             </TableRow>
           ))}
           {data.length === 0 && (
             <TableRow>
-              <TableCell colSpan={4} className="text-center py-10 uppercase text-[10px] font-bold text-muted-foreground italic">
+              <TableCell colSpan={5} className="text-center py-10 uppercase text-[10px] font-bold text-muted-foreground italic">
                 NENHUM SERVIDOR NESTA CONDIÇÃO HOJE.
               </TableCell>
             </TableRow>
@@ -385,7 +413,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl rounded-2xl border-none shadow-2xl p-6">
+          <DialogContent className="sm:max-w-3xl rounded-2xl border-none shadow-2xl p-6">
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <div className="bg-red-50 p-2 rounded-xl border border-red-100">
@@ -431,7 +459,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-2xl rounded-2xl border-none shadow-2xl p-6">
+          <DialogContent className="sm:max-w-3xl rounded-2xl border-none shadow-2xl p-6">
             <DialogHeader>
               <div className="flex items-center gap-3">
                 <div className="bg-blue-50 p-2 rounded-xl border border-blue-100">
