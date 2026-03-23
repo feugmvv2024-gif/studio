@@ -10,7 +10,8 @@ import {
   Search,
   ArrowUpRight,
   ArrowDownRight,
-  Info
+  Info,
+  Briefcase
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { 
@@ -68,20 +69,25 @@ export default function MeusLancamentosPage() {
 
   // Cálculo de Saldos Individuais
   const myStats = React.useMemo(() => {
-    if (!myLaunches) return { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0 };
+    if (!myLaunches) return { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 };
     
     return myLaunches.reduce((acc, l) => {
       const type = normalizeStr(l.type);
       const minutes = hhmmToMinutes(l.hours || "00:00");
       const days = Number(l.days) || 0;
+      const qtdEscala = Number(l.qtdEscala) || 0;
 
       if (type === "BANCO DE HORAS CREDITO") acc.bhCredit += minutes;
       if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") acc.bhDebit += minutes;
       if (type === "TRE CREDITO") acc.treCredit += days;
       if (type === "TRE DEBITO") acc.treDebit += days;
       
+      // Contagem de Escalas Extras
+      if (type.includes("GSE")) acc.gseTotal += qtdEscala;
+      if (type.includes("ESPECIAL")) acc.especialTotal += qtdEscala;
+      
       return acc;
-    }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0 });
+    }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 });
   }, [myLaunches]);
 
   const filteredLaunches = React.useMemo(() => {
@@ -116,7 +122,7 @@ export default function MeusLancamentosPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
         {/* 1. BANCO DE HORAS INDIVIDUAL */}
         <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -170,6 +176,29 @@ export default function MeusLancamentosPage() {
                   <ArrowDownRight className="h-3 w-3 text-red-600" />
                   <p className="text-xs font-bold text-red-600">-{myStats.treDebit}D</p>
                 </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* 3. ESCALAS EXTRAS INDIVIDUAL */}
+        <Card className="card-shadow border-orange-500/20 bg-orange-50/10">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-[10px] font-bold uppercase">MINHAS ESCALAS EXTRAS</CardTitle>
+            <Briefcase className="h-4 w-4 text-orange-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-black text-orange-700">
+              {myStats.gseTotal + myStats.especialTotal} UNID.
+            </div>
+            <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-orange-100">
+              <div>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">ESCALA GSE</p>
+                <p className="text-xs font-bold text-orange-600">{myStats.gseTotal}</p>
+              </div>
+              <div>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">ESCALA ESPECIAL</p>
+                <p className="text-xs font-bold text-orange-600">{myStats.especialTotal}</p>
               </div>
             </div>
           </CardContent>
