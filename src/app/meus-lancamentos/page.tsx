@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -72,7 +71,7 @@ export default function MeusLancamentosPage() {
     if (!myLaunches) return { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 };
     
     return myLaunches.reduce((acc, l) => {
-      const type = normalizeStr(l.type);
+      const type = normalizeStr(l.type || "");
       const minutes = hhmmToMinutes(l.hours || "00:00");
       const days = Number(l.days) || 0;
       const qtdEscala = Number(l.qtdEscala) || 0;
@@ -108,6 +107,9 @@ export default function MeusLancamentosPage() {
     );
   }
 
+  const bhTotalMinutes = myStats.bhCredit - myStats.bhDebit;
+  const treTotalDays = myStats.treCredit - myStats.treDebit;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col gap-2">
@@ -130,8 +132,11 @@ export default function MeusLancamentosPage() {
             <Timer className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black text-blue-700">
-              {minutesToHHmm(myStats.bhCredit - myStats.bhDebit)}H
+            <div className={cn(
+              "text-3xl font-black",
+              bhTotalMinutes < 0 ? "text-red-600" : "text-blue-700"
+            )}>
+              {minutesToHHmm(bhTotalMinutes)}H
             </div>
             <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-blue-100">
               <div>
@@ -159,8 +164,11 @@ export default function MeusLancamentosPage() {
             <CalendarDays className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-black text-purple-700">
-              {myStats.treCredit - myStats.treDebit} DIAS
+            <div className={cn(
+              "text-3xl font-black",
+              treTotalDays < 0 ? "text-red-600" : "text-purple-700"
+            )}>
+              {treTotalDays} DIAS
             </div>
             <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-purple-100">
               <div>
@@ -247,7 +255,7 @@ export default function MeusLancamentosPage() {
                   </TableRow>
                 ) : (
                   filteredLaunches.map((launch) => {
-                    const normType = normalizeStr(launch.type);
+                    const normType = normalizeStr(launch.type || "");
                     const isBhDebit = normType === "BANCO DE HORAS DEBITO" || normType === "FOLGA";
                     const isTreDebit = normType === "TRE DEBITO";
                     
