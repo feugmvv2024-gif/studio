@@ -252,37 +252,37 @@ export default function Dashboard() {
   }
 
   const renderModalTable = (data: any[], type: 'absent' | 'afastado') => (
-    <ScrollArea className="h-[400px] mt-4 rounded-xl border">
+    <ScrollArea className="h-[550px] mt-4 rounded-xl border bg-background">
       <Table>
         <TableHeader className="bg-muted/30 sticky top-0 z-10">
           <TableRow>
-            <TableHead className="font-bold uppercase text-[9px]">QRA / NOME</TableHead>
-            <TableHead className="font-bold uppercase text-[9px]">ESCALA / TURNO</TableHead>
-            <TableHead className="font-bold uppercase text-[9px]">SETOR</TableHead>
-            <TableHead className="font-bold uppercase text-[9px]">TIPO</TableHead>
-            <TableHead className="font-bold uppercase text-[9px] text-center">DATA FIM</TableHead>
+            <TableHead className="font-bold uppercase text-[11px] h-12">QRA / NOME</TableHead>
+            <TableHead className="font-bold uppercase text-[11px] h-12">ESCALA / TURNO</TableHead>
+            <TableHead className="font-bold uppercase text-[11px] h-12">SETOR</TableHead>
+            <TableHead className="font-bold uppercase text-[11px] h-12">TIPO</TableHead>
+            <TableHead className="font-bold uppercase text-[11px] h-12 text-center">DATA FIM</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {data.map((item) => (
             <TableRow key={item.id} className="hover:bg-muted/10">
-              <TableCell>
-                <div className="flex flex-col">
-                  <span className="font-black uppercase text-[11px] text-slate-900">{type === 'absent' ? item.employeeQra : item.qra}</span>
-                  <span className="text-[9px] uppercase text-muted-foreground">{type === 'absent' ? item.employeeName : item.name}</span>
+              <TableCell className="py-4">
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-black uppercase text-[14px] text-slate-900 leading-none">{type === 'absent' ? item.employeeQra : item.qra}</span>
+                  <span className="text-[11px] uppercase text-muted-foreground font-medium">{type === 'absent' ? item.employeeName : item.name}</span>
                 </div>
               </TableCell>
-              <TableCell className="text-[10px] uppercase font-bold text-slate-700">
+              <TableCell className="text-[12px] uppercase font-bold text-slate-700">
                 {item.escala} / {item.turno}
               </TableCell>
               <TableCell>
-                <Badge variant="secondary" className="text-[8px] uppercase font-bold whitespace-nowrap bg-slate-100">
+                <Badge variant="secondary" className="text-[10px] uppercase font-bold whitespace-nowrap bg-slate-100 px-2 py-0.5">
                   {type === 'absent' ? (employees?.find(e => e.id === item.employeeId)?.unit || "N/A") : item.unit}
                 </Badge>
               </TableCell>
               <TableCell>
                 <Badge variant="outline" className={cn(
-                  "text-[8px] uppercase font-black whitespace-nowrap border-none",
+                  "text-[10px] uppercase font-black whitespace-nowrap border-none px-3 py-1",
                   (normalizeStr(item.type || item.status).includes("FERIAS")) ? "bg-blue-600 text-white" :
                   (normalizeStr(item.type || item.status).includes("LICENCA")) ? "bg-purple-600 text-white" :
                   (normalizeStr(item.type || item.status).includes("ATESTADO")) ? "bg-red-600 text-white" :
@@ -292,10 +292,10 @@ export default function Dashboard() {
                   {item.type || item.status}
                 </Badge>
               </TableCell>
-              <TableCell className="text-center">
+              <TableCell className="text-center py-4">
                 <div className="flex flex-col items-center gap-1">
-                  <Calendar className="h-3 w-3 text-muted-foreground/50" />
-                  <span className="text-[10px] font-black font-mono text-slate-900">
+                  <Calendar className="h-4 w-4 text-muted-foreground/50" />
+                  <span className="text-[12px] font-black font-mono text-slate-900">
                     {formatDateBR(item.endDate)}
                   </span>
                 </div>
@@ -304,7 +304,7 @@ export default function Dashboard() {
           ))}
           {data.length === 0 && (
             <TableRow>
-              <TableCell colSpan={5} className="text-center py-10 uppercase text-[10px] font-bold text-muted-foreground italic">
+              <TableCell colSpan={5} className="text-center py-20 uppercase text-[11px] font-bold text-muted-foreground italic">
                 NENHUM SERVIDOR NESTA CONDIÇÃO HOJE.
               </TableCell>
             </TableRow>
@@ -413,15 +413,15 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-3xl rounded-2xl border-none shadow-2xl p-6">
+          <DialogContent className="max-w-[95vw] sm:max-w-6xl rounded-2xl border-none shadow-2xl p-6 sm:p-8">
             <DialogHeader>
-              <div className="flex items-center gap-3">
-                <div className="bg-red-50 p-2 rounded-xl border border-red-100">
-                  <UserMinus className="h-5 w-5 text-red-600" />
+              <div className="flex items-center gap-4">
+                <div className="bg-red-50 p-3 rounded-2xl border border-red-100">
+                  <UserMinus className="h-7 w-7 text-red-600" />
                 </div>
                 <div>
-                  <DialogTitle className="uppercase text-lg font-black tracking-tight">DETALHAMENTO: AUSENTES HOJE</DialogTitle>
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">SERVIDORES COM LANÇAMENTO DE FOLGA, ABONO OU FALTA EM ATIVIDADE.</p>
+                  <DialogTitle className="uppercase text-xl sm:text-2xl font-black tracking-tight">DETALHAMENTO: AUSENTES HOJE</DialogTitle>
+                  <p className="text-xs uppercase font-bold text-muted-foreground tracking-widest mt-1">SERVIDORES COM LANÇAMENTO DE FOLGA, ABONO OU FALTA EM ATIVIDADE.</p>
                 </div>
               </div>
             </DialogHeader>
@@ -459,15 +459,15 @@ export default function Dashboard() {
               </CardContent>
             </Card>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-3xl rounded-2xl border-none shadow-2xl p-6">
+          <DialogContent className="max-w-[95vw] sm:max-w-6xl rounded-2xl border-none shadow-2xl p-6 sm:p-8">
             <DialogHeader>
-              <div className="flex items-center gap-3">
-                <div className="bg-blue-50 p-2 rounded-xl border border-blue-100">
-                  <FileText className="h-5 w-5 text-blue-600" />
+              <div className="flex items-center gap-4">
+                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100">
+                  <FileText className="h-7 w-7 text-blue-600" />
                 </div>
                 <div>
-                  <DialogTitle className="uppercase text-lg font-black tracking-tight">DETALHAMENTO: SERVIDORES AFASTADOS</DialogTitle>
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest">SERVIDORES ATUALMENTE EM GOZO DE FÉRIAS, LICENÇA OU AFASTAMENTO MÉDICO.</p>
+                  <DialogTitle className="uppercase text-xl sm:text-2xl font-black tracking-tight">DETALHAMENTO: SERVIDORES AFASTADOS</DialogTitle>
+                  <p className="text-xs uppercase font-bold text-muted-foreground tracking-widest mt-1">SERVIDORES ATUALMENTE EM GOZO DE FÉRIAS, LICENÇA OU AFASTAMENTO MÉDICO.</p>
                 </div>
               </div>
             </DialogHeader>
