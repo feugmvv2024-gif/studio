@@ -12,8 +12,7 @@ import {
   Check,
   ChevronRight,
   Sparkles,
-  Search,
-  User
+  Search
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -352,42 +351,39 @@ export default function RequestsPage() {
                     </div>
 
                     <div className="p-4 border border-blue-100 bg-blue-50/30 rounded-2xl space-y-4">
-                      <div className="grid gap-2 relative">
-                        <Label className="text-[10px] font-bold uppercase text-blue-700">PARCEIRO DA PERMUTA</Label>
-                        <div className="relative">
-                          <Input 
-                            placeholder="BUSCAR PARCEIRO..."
-                            value={permutaPartnerTerm}
-                            onChange={(e) => { setPermutaPartnerTerm(e.target.value.toUpperCase()); setPermutaPartnerShow(true); setPermutaPartnerId(""); setPermutaPartnerData(null); }}
-                            onFocus={() => setPermutaPartnerShow(true)}
-                            className="h-11 border-blue-200 uppercase text-[11px] font-bold pr-10 bg-white"
-                          />
-                          {permutaPartnerId && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
-                          {permutaPartnerShow && permutaPartnerTerm && (
-                            <div className="absolute z-[65] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-2xl max-h-48 overflow-y-auto">
-                              {allEmployees?.filter(e => e.uid !== user?.uid && (e.name.includes(permutaPartnerTerm) || e.qra.includes(permutaPartnerTerm))).map(c => (
-                                <button key={c.id} type="button" onMouseDown={() => { setPermutaPartnerId(c.uid); setPermutaPartnerData(c); setPermutaPartnerTerm(`${c.name} (${c.qra}) - ${c.escala} / ${c.turno}`); setPermutaPartnerShow(false); }} className="w-full px-4 py-3 text-left hover:bg-blue-50 text-[10px] uppercase border-b last:border-0 flex flex-col">
-                                  <span className="font-black">{c.name} ({c.qra})</span>
-                                  <span className="text-muted-foreground">{c.escala} / {c.turno}</span>
-                                </button>
-                              ))}
-                            </div>
-                          )}
+                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
+                        <div className="grid gap-2 lg:col-span-2 relative">
+                          <Label className="text-[10px] font-bold uppercase text-blue-700">PARCEIRO DA TROCA (SELECT)</Label>
+                          <div className="relative">
+                            <Input 
+                              placeholder="BUSCAR PARCEIRO..."
+                              value={permutaPartnerTerm}
+                              onChange={(e) => { setPermutaPartnerTerm(e.target.value.toUpperCase()); setPermutaPartnerShow(true); setPermutaPartnerId(""); setPermutaPartnerData(null); }}
+                              onFocus={() => setPermutaPartnerShow(true)}
+                              className="h-11 border-blue-200 uppercase text-[11px] font-bold pr-10 bg-white"
+                            />
+                            {permutaPartnerId && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
+                            {permutaPartnerShow && permutaPartnerTerm && (
+                              <div className="absolute z-[65] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-2xl max-h-48 overflow-y-auto">
+                                {allEmployees?.filter(e => e.uid !== user?.uid && (e.name.includes(permutaPartnerTerm) || e.qra.includes(permutaPartnerTerm))).map(c => (
+                                  <button key={c.id} type="button" onMouseDown={() => { setPermutaPartnerId(c.uid); setPermutaPartnerData(c); setPermutaPartnerTerm(`${c.name} (${c.qra}) - ${c.escala} / ${c.turno}`); setPermutaPartnerShow(false); }} className="w-full px-4 py-3 text-left hover:bg-blue-50 text-[10px] uppercase border-b last:border-0 flex flex-col">
+                                    <span className="font-black">{c.name} ({c.qra})</span>
+                                    <span className="text-muted-foreground">{c.escala} / {c.turno}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="grid gap-2">
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO SAI</Label>
+                          <Input type="date" value={permutaInDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO ENTRA</Label>
+                          <Input type="date" value={permutaOutDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
                         </div>
                       </div>
-
-                      {permutaPartnerId && (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-300">
-                          <div className="grid gap-2">
-                            <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO SAI (CRONOGRAMA DELE)</Label>
-                            <Input value={formatDateBR(permutaInDate)} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO ENTRA (CRONOGRAMA DELE)</Label>
-                            <Input value={formatDateBR(permutaOutDate)} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
-                          </div>
-                        </div>
-                      )}
                     </div>
                   </div>
                 )}
