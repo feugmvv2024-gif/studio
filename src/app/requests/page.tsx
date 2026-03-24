@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -50,6 +49,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { useFirestore, useCollection, useAuth } from '@/firebase';
 import { collection, addDoc, query, orderBy, where, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
@@ -84,7 +84,7 @@ export default function RequestsPage() {
   const [requestType, setRequestType] = React.useState<string>("");
   const [multiDates, setMultiDates] = React.useState<string[]>([""]);
   
-  // Outros estados do formulário...
+  // Estados específicos de tipos de pedido
   const [currentVacationStart, setCurrentVacationStart] = React.useState("");
   const [currentVacationEnd, setCurrentVacationEnd] = React.useState("");
   const [newVacationStart, setNewVacationStart] = React.useState("");
@@ -96,16 +96,13 @@ export default function RequestsPage() {
   const [swapInShift, setSwapInShift] = React.useState("");
   const [permutaOutDate, setPermutaOutDate] = React.useState("");
   const [permutaInDate, setPermutaInDate] = React.useState("");
-  const [permutaPartnerId, setPermutaPartnerId] = React.useState("");
-  const [searchPartnerTerm, setSearchPartnerTerm] = React.useState("");
-  const [showPartnerSuggestions, setShowPartnerSuggestions] = React.useState(false);
   const [chefiaRows, setChefiaRows] = React.useState([{ id: "", uid: "", term: "", show: false }]);
   
   // Estados de Gestão
   const [aiLoadingId, setAiLoadingId] = React.useState<string | null>(null);
   const [adminResponseDraft, setAdminResponseDraft] = React.useState<{ [key: string]: string }>({});
 
-  // Consultas
+  // Consultas de pedidos do próprio servidor
   const requestsQuery = React.useMemo(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'requests'), where('employeeId', '==', user.uid), orderBy('createdAt', 'desc'));
@@ -131,7 +128,7 @@ export default function RequestsPage() {
   const { data: managementRequests, loading: loadingManagement } = useCollection(managementQuery);
 
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
-  const { data: allEmployees } = useCollection(employeesRef);
+  const { data: allEmployees } = useCollection(allEmployeesRef);
 
   const myLaunchesRef = React.useMemo(() => {
     if (!firestore || !employeeData?.id) return null;
@@ -177,8 +174,9 @@ export default function RequestsPage() {
 
   const isManagement = React.useMemo(() => {
     if (!employeeData) return false;
-    const roles = ["INSPETOR GERAL", "INSPETOR", "SUBINSPETOR", "GESTOR DE RH"];
-    return roles.includes(normalizeStr(employeeData.role || ""));
+    const role = normalizeStr(employeeData.role || "");
+    const managementRoles = ["INSPETOR GERAL", "INSPETOR", "SUBINSPETOR", "GESTOR DE RH"];
+    return managementRoles.includes(role);
   }, [employeeData]);
 
   // Handlers
@@ -267,8 +265,6 @@ export default function RequestsPage() {
     if (action === 'deny') nextStatus = "Negado";
     else if (action === 'review') nextStatus = "Em Revisão";
     else {
-      // Se for chefia aprovando, vai pro RH
-      // Se for RH aprovando, aprova definitivo
       nextStatus = isRH ? "Aprovado" : "Aprovado pela Chefia";
     }
 
