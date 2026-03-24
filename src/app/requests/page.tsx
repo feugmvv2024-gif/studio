@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -6,22 +7,11 @@ import {
   CheckCircle2, 
   Loader2,
   Send,
-  Plus,
   Trash2,
-  Calendar,
-  AlertCircle,
-  User,
-  Timer,
   ShieldCheck,
-  RefreshCw,
-  ArrowRightLeft,
-  Users,
-  Search,
   Check,
-  Info,
   ChevronRight,
-  Sparkles,
-  MessageSquare
+  Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -116,12 +106,10 @@ export default function RequestsPage() {
     const role = normalizeStr(employeeData.role || "");
     const isRH = role.includes("GESTOR DE RH");
     
-    // RH vê Pendentes e Aprovados pela Chefia para filtragem em memória
     if (isRH) {
       return query(collection(firestore, 'requests'), where('status', 'in', ['Aprovado pela Chefia', 'Pendente']));
     }
     
-    // Chefia (Inspetor, etc) vê apenas Pendentes onde seu UID está na lista
     return query(collection(firestore, 'requests'), where('chefiaIds', 'array-contains', user.uid), where('status', '==', 'Pendente'));
   }, [firestore, user, employeeData]);
 
@@ -179,7 +167,6 @@ export default function RequestsPage() {
     return managementRoles.includes(role);
   }, [employeeData]);
 
-  // Filtragem de solicitações de gestão baseada no perfil logado
   const filteredManagementRequests = React.useMemo(() => {
     if (!managementRequests || !user || !employeeData) return [];
     const role = normalizeStr(employeeData.role || "");
@@ -187,20 +174,15 @@ export default function RequestsPage() {
 
     return managementRequests.filter(req => {
       const isChefiaForThis = req.chefiaIds?.includes(user.uid);
-      
       if (isRH) {
-        // RH vê o que a chefia aprovou OU o que está pendente onde ele próprio é a chefia selecionada
         if (req.status === "Aprovado pela Chefia") return true;
         if (req.status === "Pendente" && isChefiaForThis) return true;
         return false;
       }
-      
-      // Chefias comuns veem apenas o que está pendente de seu parecer
       return req.status === "Pendente" && isChefiaForThis;
     });
   }, [managementRequests, user, employeeData]);
 
-  // Handlers
   const addChefiaRow = () => setChefiaRows([...chefiaRows, { id: "", uid: "", term: "", show: false }]);
   const removeChefiaRow = (index: number) => {
     const newRows = chefiaRows.filter((_, i) => i !== index);
@@ -275,19 +257,13 @@ export default function RequestsPage() {
     setChefiaRows([{ id: "", uid: "", term: "", show: false }]);
   };
 
-  // Lógica de Gestão
   async function handleProcessRequest(request: any, action: 'approve' | 'deny' | 'review') {
     if (!firestore || !employeeData) return;
-    
-    const role = normalizeStr(employeeData.role || "");
-    const isRH = role.includes("GESTOR DE RH");
     
     let nextStatus = "";
     if (action === 'deny') nextStatus = "Negado";
     else if (action === 'review') nextStatus = "Em Revisão";
     else {
-      // Se era Pendente, vai para Aprovado pela Chefia
-      // Se já estava Aprovado pela Chefia, vai para Aprovado (RH finaliza)
       if (request.status === "Pendente") {
         nextStatus = "Aprovado pela Chefia";
       } else {
@@ -320,7 +296,7 @@ export default function RequestsPage() {
         adminNotes: "Analise a pertinência operacional com base nas regras de RH."
       });
       setAdminResponseDraft(prev => ({ ...prev, [request.id]: response.suggestedResponse }));
-      toast({ title: "SUGESTÃO DA IA GERADA", icon: <Sparkles className="h-4 w-4 text-primary" /> });
+      toast({ title: "SUGESTÃO DA IA GERADA" });
     } catch (err) {
       toast({ variant: "destructive", title: "IA INDISPONÍVEL NO MOMENTO" });
     } finally {
@@ -518,8 +494,6 @@ export default function RequestsPage() {
                   const isAwaitingRH = req.status === "Aprovado pela Chefia";
                   const isChefiaForThis = req.chefiaIds?.includes(user?.uid);
                   
-                  // O botão deve ser desabilitado para o RH se o status ainda for Pendente (chefia não aprovou)
-                  // Exceto se o RH logado for também a chefia imediata selecionada.
                   const canAct = (isChefiaForThis && isPending) || (isRH && isAwaitingRH);
                   const label = isAwaitingRH ? "APROVAR DEFINITIVO" : "APROVAR PARECER";
 
