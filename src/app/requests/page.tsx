@@ -96,7 +96,7 @@ export default function RequestsPage() {
   const [aiLoadingId, setAiLoadingId] = React.useState<string | null>(null);
   const [adminResponseDraft, setAdminResponseDraft] = React.useState<{ [key: string]: string }>({});
 
-  // Consultas
+  // Consultas unificadas
   const requestsQuery = React.useMemo(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'requests'), where('employeeId', '==', user.uid), orderBy('createdAt', 'desc'));
@@ -351,8 +351,8 @@ export default function RequestsPage() {
                     </div>
 
                     <div className="p-4 border border-blue-100 bg-blue-50/30 rounded-2xl space-y-4">
-                      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 items-end">
-                        <div className="grid gap-2 lg:col-span-2 relative">
+                      <div className="grid gap-4">
+                        <div className="grid gap-2 relative">
                           <Label className="text-[10px] font-bold uppercase text-blue-700">PARCEIRO DA TROCA (SELECT)</Label>
                           <div className="relative">
                             <Input 
@@ -365,7 +365,7 @@ export default function RequestsPage() {
                             {permutaPartnerId && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
                             {permutaPartnerShow && permutaPartnerTerm && (
                               <div className="absolute z-[65] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-2xl max-h-48 overflow-y-auto">
-                                {allEmployees?.filter(e => e.uid !== user?.uid && (e.name.includes(permutaPartnerTerm) || e.qra.includes(permutaPartnerTerm))).map(c => (
+                                {allEmployees?.filter(e => e.uid !== user?.uid && (normalizeStr(e.name).includes(permutaPartnerTerm) || normalizeStr(e.qra).includes(permutaPartnerTerm))).map(c => (
                                   <button key={c.id} type="button" onMouseDown={() => { setPermutaPartnerId(c.uid); setPermutaPartnerData(c); setPermutaPartnerTerm(`${c.name} (${c.qra}) - ${c.escala} / ${c.turno}`); setPermutaPartnerShow(false); }} className="w-full px-4 py-3 text-left hover:bg-blue-50 text-[10px] uppercase border-b last:border-0 flex flex-col">
                                     <span className="font-black">{c.name} ({c.qra})</span>
                                     <span className="text-muted-foreground">{c.escala} / {c.turno}</span>
@@ -375,13 +375,15 @@ export default function RequestsPage() {
                             )}
                           </div>
                         </div>
-                        <div className="grid gap-2">
-                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO SAI</Label>
-                          <Input type="date" value={permutaInDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
-                        </div>
-                        <div className="grid gap-2">
-                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO ENTRA</Label>
-                          <Input type="date" value={permutaOutDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="grid gap-2">
+                            <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO SAI</Label>
+                            <Input type="date" value={permutaInDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO ENTRA</Label>
+                            <Input type="date" value={permutaOutDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -425,7 +427,7 @@ export default function RequestsPage() {
                         {row.uid && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
                         {row.show && row.term && (
                           <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-xl max-h-40 overflow-y-auto">
-                            {allEmployees?.filter(e => ["INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(normalizeStr(e.role || "")) && (e.name.includes(row.term) || e.qra.includes(row.term))).map(c => (
+                            {allEmployees?.filter(e => ["INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(normalizeStr(e.role || "")) && (normalizeStr(e.name).includes(row.term) || normalizeStr(e.qra).includes(row.term))).map(c => (
                               <button key={c.id} type="button" onMouseDown={() => updateChefiaRow(index, { uid: c.uid, term: `${c.name} (${c.qra})`, show: false })} className="w-full px-4 py-2 text-left hover:bg-muted text-[10px] uppercase border-b last:border-0">
                                 {c.name} ({c.qra}) - {c.role}
                               </button>
