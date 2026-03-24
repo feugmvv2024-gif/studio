@@ -7,6 +7,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "uid": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "qra": { "type": "string" },
@@ -56,10 +57,13 @@
         "id": { "type": "string" },
         "employeeId": { "type": "string" },
         "employeeName": { "type": "string" },
-        "type": { "type": "string", "enum": ["vacation", "leave", "exchange", "other"] },
+        "type": { "type": "string" },
         "date": { "type": "string" },
-        "status": { "type": "string", "enum": ["Pendente", "Aprovado", "Negado", "Em Revisão"] },
+        "status": { "type": "string", "enum": ["Pendente", "Aprovado pela Chefia", "Aprovado", "Negado", "Em Revisão"] },
         "description": { "type": "string" },
+        "chefiaImediata": { "type": "string" },
+        "chefiaIds": { "type": "array", "items": { "type": "string" } },
+        "adminResponse": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["employeeId", "type", "status"]
