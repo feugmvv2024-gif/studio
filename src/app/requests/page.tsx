@@ -144,6 +144,9 @@ export default function RequestsPage() {
   }, [requestType, myBalanceMinutes, multiDates, requiredMinutesForFolga]);
 
   const hasInsufficientBalance = requestType === "FOLGA" && simulatedRemainingMinutes < 0;
+  
+  // Validação Abono Aniversário: Data folga não pode ser menor q aniversário
+  const hasInvalidAbonoDate = requestType === "ABONO DE ANIVERSÁRIO" && birthdayDate && abonoDate && abonoDate < birthdayDate;
 
   const isManagement = React.useMemo(() => {
     if (!employeeData) return false;
@@ -240,6 +243,8 @@ export default function RequestsPage() {
     setPermutaPartnerTerm("");
     setPermutaOutDate("");
     setPermutaInDate("");
+    setBirthdayDate("");
+    setAbonoDate("");
   };
 
   async function handleProcessRequest(request: any, action: 'approve' | 'deny' | 'review') {
@@ -334,6 +339,24 @@ export default function RequestsPage() {
                     </div>
                   )}
                 </div>
+
+                {requestType === "ABONO DE ANIVERSÁRIO" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid gap-2">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATA DE ANIVERSÁRIO</Label>
+                      <Input type="date" value={birthdayDate} onChange={(e) => setBirthdayDate(e.target.value)} required className="h-11 font-bold" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATA DA FOLGA</Label>
+                      <Input type="date" value={abonoDate} onChange={(e) => setAbonoDate(e.target.value)} required className="h-11 font-bold" />
+                      {birthdayDate && abonoDate && abonoDate < birthdayDate && (
+                        <p className="text-[10px] text-destructive font-black uppercase flex items-center gap-1">
+                          A folga não pode ser anterior ao aniversário.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {requestType === "PERMUTA" && (
                   <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
@@ -440,7 +463,7 @@ export default function RequestsPage() {
                 </div>
               </CardContent>
               <CardFooter className="border-t p-6 bg-muted/5">
-                <Button type="submit" disabled={loading || hasInsufficientBalance} className="w-full h-11 uppercase font-bold text-xs tracking-widest shadow-lg">
+                <Button type="submit" disabled={loading || hasInsufficientBalance || hasInvalidAbonoDate} className="w-full h-11 uppercase font-bold text-xs tracking-widest shadow-lg">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                   ENVIAR SOLICITAÇÃO
                 </Button>
