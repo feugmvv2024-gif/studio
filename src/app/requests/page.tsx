@@ -116,12 +116,12 @@ export default function RequestsPage() {
     const role = normalizeStr(employeeData.role || "");
     const isRH = role.includes("GESTOR DE RH");
     
-    // Se for RH, vê o que a chefia aprovou ou o que está pendente de RH
+    // RH vê Pendentes e Aprovados pela Chefia para filtragem em memória
     if (isRH) {
       return query(collection(firestore, 'requests'), where('status', 'in', ['Aprovado pela Chefia', 'Pendente']));
     }
     
-    // Se for Chefia (Inspetor, etc), vê o que está pendente onde seu UID está na lista
+    // Chefia (Inspetor, etc) vê apenas Pendentes onde seu UID está na lista
     return query(collection(firestore, 'requests'), where('chefiaIds', 'array-contains', user.uid), where('status', '==', 'Pendente'));
   }, [firestore, user, employeeData]);
 
@@ -178,6 +178,27 @@ export default function RequestsPage() {
     const managementRoles = ["INSPETOR GERAL", "INSPETOR", "SUBINSPETOR", "GESTOR DE RH"];
     return managementRoles.includes(role);
   }, [employeeData]);
+
+  // Filtragem de solicitações de gestão baseada no perfil logado
+  const filteredManagementRequests = React.useMemo(() => {
+    if (!managementRequests || !user || !employeeData) return [];
+    const role = normalizeStr(employeeData.role || "");
+    const isRH = role.includes("GESTOR DE RH");
+
+    return managementRequests.filter(req => {
+      const isChefiaForThis = req.chefiaIds?.includes(user.uid);
+      
+      if (isRH) {
+        // RH vê o que a chefia aprovou OU o que está pendente onde ele próprio é a chefia selecionada
+        if (req.status === "Aprovado pela Chefia") return true;
+        if (req.status === "Pendente" && isChefiaForThis) return true;
+        return false;
+      }
+      
+      // Chefias comuns veem apenas o que está pendente de seu parecer
+      return req.status === "Pendente" && isChefiaForThis;
+    });
+  }, [managementRequests, user, employeeData]);
 
   // Handlers
   const addChefiaRow = () => setChefiaRows([...chefiaRows, { id: "", uid: "", term: "", show: false }]);
@@ -255,7 +276,7 @@ export default function RequestsPage() {
   };
 
   // Lógica de Gestão
-  async function handleProcessRequest(requestId: string, action: 'approve' | 'deny' | 'review') {
+  async function handleProcessRequest(request: any, action: 'approve' | 'deny' | 'review') {
     if (!firestore || !employeeData) return;
     
     const role = normalizeStr(employeeData.role || "");
@@ -265,13 +286,19 @@ export default function RequestsPage() {
     if (action === 'deny') nextStatus = "Negado";
     else if (action === 'review') nextStatus = "Em Revisão";
     else {
-      nextStatus = isRH ? "Aprovado" : "Aprovado pela Chefia";
+      // Se era Pendente, vai para Aprovado pela Chefia
+      // Se já estava Aprovado pela Chefia, vai para Aprovado (RH finaliza)
+      if (request.status === "Pendente") {
+        nextStatus = "Aprovado pela Chefia";
+      } else {
+        nextStatus = "Aprovado";
+      }
     }
 
-    const response = adminResponseDraft[requestId] || "";
+    const response = adminResponseDraft[request.id] || "";
     
     try {
-      await updateDoc(doc(firestore, 'requests', requestId), {
+      await updateDoc(doc(firestore, 'requests', request.id), {
         status: nextStatus,
         adminResponse: response.toUpperCase(),
         updatedAt: serverTimestamp()
@@ -484,70 +511,88 @@ export default function RequestsPage() {
                   </p>
                 </div>
 
-                {managementRequests?.map(req => (
-                  <Card key={req.id} className="card-shadow border-2 border-primary/5 rounded-2xl overflow-hidden">
-                    <CardHeader className="bg-muted/5 border-b pb-4">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-1">
-                          <CardTitle className="text-sm font-black uppercase">{req.employeeName}</CardTitle>
-                          <Badge variant="outline" className="text-[9px] uppercase font-bold">{req.type}</Badge>
-                        </div>
-                        <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none uppercase text-[8px]">{req.status}</Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-6 space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <Label className="text-[9px] font-bold text-muted-foreground uppercase">DATA(S) SOLICITADA(S)</Label>
-                          <p className="text-[10px] font-black uppercase text-slate-900 bg-slate-50 p-2 rounded-lg border">{req.date}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[9px] font-bold text-muted-foreground uppercase">CHEFIA SELECIONADA</Label>
-                          <p className="text-[10px] font-medium uppercase text-slate-700 bg-slate-50 p-2 rounded-lg border">{req.chefiaImediata}</p>
-                        </div>
-                      </div>
+                {filteredManagementRequests?.map(req => {
+                  const role = normalizeStr(employeeData?.role || "");
+                  const isRH = role.includes("GESTOR DE RH");
+                  const isPending = req.status === "Pendente";
+                  const isAwaitingRH = req.status === "Aprovado pela Chefia";
+                  const isChefiaForThis = req.chefiaIds?.includes(user?.uid);
+                  
+                  // O botão deve ser desabilitado para o RH se o status ainda for Pendente (chefia não aprovou)
+                  // Exceto se o RH logado for também a chefia imediata selecionada.
+                  const canAct = (isChefiaForThis && isPending) || (isRH && isAwaitingRH);
+                  const label = isAwaitingRH ? "APROVAR DEFINITIVO" : "APROVAR PARECER";
 
-                      <div className="space-y-1">
-                        <Label className="text-[9px] font-bold text-muted-foreground uppercase">JUSTIFICATIVA DO SERVIDOR</Label>
-                        <p className="text-[11px] uppercase p-4 bg-muted/20 rounded-xl italic">"{req.description}"</p>
-                      </div>
-
-                      <Separator className="my-4" />
-
-                      <div className="space-y-3">
+                  return (
+                    <Card key={req.id} className="card-shadow border-2 border-primary/5 rounded-2xl overflow-hidden">
+                      <CardHeader className="bg-muted/5 border-b pb-4">
                         <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold uppercase text-primary">Parecer / Despacho Administrativo</Label>
-                          <Button 
-                            variant="ghost" 
-                            size="sm" 
-                            className="h-8 gap-2 text-[10px] font-bold uppercase text-primary hover:bg-primary/5"
-                            onClick={() => handleAskIA(req)}
-                            disabled={aiLoadingId === req.id}
-                          >
-                            {aiLoadingId === req.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                            Assistente IA
-                          </Button>
+                          <div className="space-y-1">
+                            <CardTitle className="text-sm font-black uppercase">{req.employeeName}</CardTitle>
+                            <Badge variant="outline" className="text-[9px] uppercase font-bold">{req.type}</Badge>
+                          </div>
+                          <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none uppercase text-[8px]">{req.status}</Badge>
                         </div>
-                        <Textarea 
-                          value={adminResponseDraft[req.id] || ""}
-                          onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))}
-                          placeholder="ESCREVA SEU PARECER OU USE A SUGESTÃO DA IA..."
-                          className="min-h-[100px] uppercase text-[11px] font-medium p-4 rounded-xl resize-none bg-blue-50/10 border-blue-100"
-                        />
-                      </div>
-                    </CardContent>
-                    <CardFooter className="bg-muted/5 p-4 border-t flex flex-wrap gap-2 justify-end">
-                      <Button variant="ghost" size="sm" className="uppercase text-[10px] font-black text-red-600 hover:bg-red-50 h-10 px-6" onClick={() => handleProcessRequest(req.id, 'deny')}>NEGAR PEDIDO</Button>
-                      <Button variant="outline" size="sm" className="uppercase text-[10px] font-black text-slate-600 h-10 px-6" onClick={() => handleProcessRequest(req.id, 'review')}>EM REVISÃO</Button>
-                      <Button size="sm" className="uppercase text-[10px] font-black h-10 px-8 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100" onClick={() => handleProcessRequest(req.id, 'approve')}>
-                        {normalizeStr(employeeData.role).includes("RH") ? "APROVAR DEFINITIVO" : "APROVAR PARECER"}
-                        <ChevronRight className="ml-2 h-4 w-4" />
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+                      </CardHeader>
+                      <CardContent className="pt-6 space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <Label className="text-[9px] font-bold text-muted-foreground uppercase">DATA(S) SOLICITADA(S)</Label>
+                            <p className="text-[10px] font-black uppercase text-slate-900 bg-slate-50 p-2 rounded-lg border">{req.date}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-[9px] font-bold text-muted-foreground uppercase">CHEFIA SELECIONADA</Label>
+                            <p className="text-[10px] font-medium uppercase text-slate-700 bg-slate-50 p-2 rounded-lg border">{req.chefiaImediata}</p>
+                          </div>
+                        </div>
 
-                {managementRequests?.length === 0 && (
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-bold text-muted-foreground uppercase">JUSTIFICATIVA DO SERVIDOR</Label>
+                          <p className="text-[11px] uppercase p-4 bg-muted/20 rounded-xl italic">"{req.description}"</p>
+                        </div>
+
+                        <Separator className="my-4" />
+
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-[10px] font-bold uppercase text-primary">Parecer / Despacho Administrativo</Label>
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="h-8 gap-2 text-[10px] font-bold uppercase text-primary hover:bg-primary/5"
+                              onClick={() => handleAskIA(req)}
+                              disabled={aiLoadingId === req.id}
+                            >
+                              {aiLoadingId === req.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                              Assistente IA
+                            </Button>
+                          </div>
+                          <Textarea 
+                            value={adminResponseDraft[req.id] || ""}
+                            onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))}
+                            placeholder="ESCREVA SEU PARECER OU USE A SUGESTÃO DA IA..."
+                            className="min-h-[100px] uppercase text-[11px] font-medium p-4 rounded-xl resize-none bg-blue-50/10 border-blue-100"
+                          />
+                        </div>
+                      </CardContent>
+                      <CardFooter className="bg-muted/5 p-4 border-t flex flex-wrap gap-2 justify-end">
+                        <Button variant="ghost" size="sm" className="uppercase text-[10px] font-black text-red-600 hover:bg-red-50 h-10 px-6" onClick={() => handleProcessRequest(req, 'deny')}>NEGAR PEDIDO</Button>
+                        <Button variant="outline" size="sm" className="uppercase text-[10px] font-black text-slate-600 h-10 px-6" onClick={() => handleProcessRequest(req, 'review')}>EM REVISÃO</Button>
+                        <Button 
+                          size="sm" 
+                          disabled={!canAct}
+                          className="uppercase text-[10px] font-black h-10 px-8 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 disabled:opacity-30" 
+                          onClick={() => handleProcessRequest(req, 'approve')}
+                        >
+                          {label}
+                          <ChevronRight className="ml-2 h-4 w-4" />
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
+
+                {filteredManagementRequests?.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-3xl border-2 border-dashed">
                     <CheckCircle2 className="h-12 w-12 text-green-200 mb-4" />
                     <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tudo em dia! Nenhuma solicitação aguarda seu parecer.</p>
