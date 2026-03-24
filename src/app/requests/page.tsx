@@ -127,7 +127,7 @@ export default function RequestsPage() {
 
   const { data: managementRequests, loading: loadingManagement } = useCollection(managementQuery);
 
-  const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
+  const allEmployeesRef = React.useMemo(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
   const { data: allEmployees } = useCollection(allEmployeesRef);
 
   const myLaunchesRef = React.useMemo(() => {
