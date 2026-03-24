@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -11,8 +10,7 @@ import {
   ShieldCheck,
   Check,
   ChevronRight,
-  Sparkles,
-  Search
+  Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -341,11 +339,11 @@ export default function RequestsPage() {
                   <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="grid gap-2">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">EU SAIO (MINHA ESCALA)</Label>
+                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">MINHA ESCALA</Label>
                         <Input type="date" value={permutaOutDate} onChange={(e) => setPermutaOutDate(e.target.value)} required className="h-11 font-bold" />
                       </div>
                       <div className="grid gap-2">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">EU ENTRO (ESCALA DO PARCEIRO)</Label>
+                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">ESCALA DO PARCEIRO</Label>
                         <Input type="date" value={permutaInDate} onChange={(e) => setPermutaInDate(e.target.value)} required className="h-11 font-bold" />
                       </div>
                     </div>
@@ -353,7 +351,7 @@ export default function RequestsPage() {
                     <div className="p-4 border border-blue-100 bg-blue-50/30 rounded-2xl space-y-4">
                       <div className="grid gap-4">
                         <div className="grid gap-2 relative">
-                          <Label className="text-[10px] font-bold uppercase text-blue-700">PARCEIRO DA TROCA (SELECT)</Label>
+                          <Label className="text-[10px] font-bold uppercase text-blue-700">PARCEIRO DA TROCA</Label>
                           <div className="relative">
                             <Input 
                               placeholder="BUSCAR PARCEIRO..."
@@ -375,7 +373,7 @@ export default function RequestsPage() {
                             )}
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
                           <div className="grid gap-2">
                             <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO SAI</Label>
                             <Input type="date" value={permutaInDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
