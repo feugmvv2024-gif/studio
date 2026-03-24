@@ -11,7 +11,9 @@ import {
   ShieldCheck,
   Check,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  Search,
+  User
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -46,7 +48,6 @@ import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils"
 import { operationalRequestResponseAssistant } from "@/ai/flows/operational-request-response-assistant"
 
-// Utilitários de cálculo de horas
 const hhmmToMinutes = (hhmm: string) => {
   if (!hhmm || !hhmm.includes(':')) return 0;
   const [h, m] = hhmm.split(':').map(Number);
@@ -62,6 +63,7 @@ const minutesToHHmm = (totalMinutes: number) => {
 };
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
+const formatDateBR = (dateStr: string) => dateStr ? dateStr.split('-').reverse().join('/') : "";
 
 export default function RequestsPage() {
   const firestore = useFirestore();
@@ -70,11 +72,9 @@ export default function RequestsPage() {
   const [loading, setLoading] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("new");
   
-  // Estados do formulário dinâmico
+  // Estados do formulário
   const [requestType, setRequestType] = React.useState<string>("");
   const [multiDates, setMultiDates] = React.useState<string[]>([""]);
-  
-  // Estados específicos de tipos de pedido
   const [currentVacationStart, setCurrentVacationStart] = React.useState("");
   const [currentVacationEnd, setCurrentVacationEnd] = React.useState("");
   const [newVacationStart, setNewVacationStart] = React.useState("");
@@ -84,61 +84,49 @@ export default function RequestsPage() {
   const [swapOutDate, setSwapOutDate] = React.useState("");
   const [swapInDate, setSwapInDate] = React.useState("");
   const [swapInShift, setSwapInShift] = React.useState("");
+  
+  // Estados Permuta
   const [permutaOutDate, setPermutaOutDate] = React.useState("");
   const [permutaInDate, setPermutaInDate] = React.useState("");
+  const [permutaPartnerId, setPermutaPartnerId] = React.useState("");
+  const [permutaPartnerTerm, setPermutaPartnerTerm] = React.useState("");
+  const [permutaPartnerShow, setPermutaPartnerShow] = React.useState(false);
+  const [permutaPartnerData, setPermutaPartnerData] = React.useState<any>(null);
+
   const [chefiaRows, setChefiaRows] = React.useState([{ id: "", uid: "", term: "", show: false }]);
-  
-  // Estados de Gestão
   const [aiLoadingId, setAiLoadingId] = React.useState<string | null>(null);
   const [adminResponseDraft, setAdminResponseDraft] = React.useState<{ [key: string]: string }>({});
 
-  // Consultas de pedidos do próprio servidor
+  // Consultas
   const requestsQuery = React.useMemo(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'requests'), where('employeeId', '==', user.uid), orderBy('createdAt', 'desc'));
   }, [firestore, user]);
 
-  const { data: myRequests, loading: loadingRequests } = useCollection(requestsQuery);
-
-  // Consulta de Gestão (Hierárquica)
   const managementQuery = React.useMemo(() => {
     if (!firestore || !user || !employeeData) return null;
     const role = normalizeStr(employeeData.role || "");
     const isRH = role.includes("GESTOR DE RH");
-    
-    if (isRH) {
-      return query(collection(firestore, 'requests'), where('status', 'in', ['Aprovado pela Chefia', 'Pendente']));
-    }
-    
+    if (isRH) return query(collection(firestore, 'requests'), where('status', 'in', ['Aprovado pela Chefia', 'Pendente']));
     return query(collection(firestore, 'requests'), where('chefiaIds', 'array-contains', user.uid), where('status', '==', 'Pendente'));
   }, [firestore, user, employeeData]);
 
-  const { data: managementRequests, loading: loadingManagement } = useCollection(managementQuery);
-
   const allEmployeesRef = React.useMemo(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
-  const { data: allEmployees } = useCollection(allEmployeesRef);
-
-  const myLaunchesRef = React.useMemo(() => {
-    if (!firestore || !employeeData?.id) return null;
-    return query(collection(firestore, 'launches'), where('employeeId', '==', employeeData.id));
-  }, [firestore, employeeData?.id]);
-  const { data: myLaunches } = useCollection(myLaunchesRef);
-
+  const myLaunchesRef = React.useMemo(() => (firestore && employeeData?.id) ? query(collection(firestore, 'launches'), where('employeeId', '==', employeeData.id)) : null, [firestore, employeeData?.id]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? collection(firestore, 'shiftPeriods') : null, [firestore]);
+
+  const { data: myRequests, loading: loadingRequests } = useCollection(requestsQuery);
+  const { data: managementRequests, loading: loadingManagement } = useCollection(managementQuery);
+  const { data: allEmployees } = useCollection(allEmployeesRef);
+  const { data: myLaunches } = useCollection(myLaunchesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
 
-  const myShiftPeriod = React.useMemo(() => {
-    if (!employeeData?.escala || !shiftPeriods) return null;
-    return shiftPeriods.find(p => p.escalaName === employeeData.escala);
-  }, [employeeData?.escala, shiftPeriods]);
-
+  const myShiftPeriod = React.useMemo(() => (employeeData?.escala && shiftPeriods) ? shiftPeriods.find(p => p.escalaName === employeeData.escala) : null, [employeeData?.escala, shiftPeriods]);
   const requiredMinutesForFolga = React.useMemo(() => myShiftPeriod?.duration ? hhmmToMinutes(myShiftPeriod.duration) : 0, [myShiftPeriod]);
 
   const reservedMinutes = React.useMemo(() => {
     if (!myRequests || !requiredMinutesForFolga) return 0;
-    return myRequests
-      .filter(req => req.status === "Pendente" && req.type === "FOLGA")
-      .reduce((acc, req) => acc + (req.date ? req.date.split(',').length * requiredMinutesForFolga : 0), 0);
+    return myRequests.filter(req => req.status === "Pendente" && req.type === "FOLGA").reduce((acc, req) => acc + (req.date ? req.date.split(',').length * requiredMinutesForFolga : 0), 0);
   }, [myRequests, requiredMinutesForFolga]);
 
   const myBalanceMinutes = React.useMemo(() => {
@@ -163,15 +151,13 @@ export default function RequestsPage() {
   const isManagement = React.useMemo(() => {
     if (!employeeData) return false;
     const role = normalizeStr(employeeData.role || "");
-    const managementRoles = ["INSPETOR GERAL", "INSPETOR", "SUBINSPETOR", "GESTOR DE RH"];
-    return managementRoles.includes(role);
+    return ["INSPETOR GERAL", "INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(role);
   }, [employeeData]);
 
   const filteredManagementRequests = React.useMemo(() => {
     if (!managementRequests || !user || !employeeData) return [];
     const role = normalizeStr(employeeData.role || "");
     const isRH = role.includes("GESTOR DE RH");
-
     return managementRequests.filter(req => {
       const isChefiaForThis = req.chefiaIds?.includes(user.uid);
       if (isRH) {
@@ -196,15 +182,13 @@ export default function RequestsPage() {
     });
   };
 
-  const formatDateBR = (dateStr: string) => dateStr ? dateStr.split('-').reverse().join('/') : "";
-
   async function handleSendRequest(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!firestore || !user) return;
 
     const selectedChefias = chefiaRows.filter(r => r.uid);
     if (selectedChefias.length === 0) {
-      toast({ variant: "destructive", title: "ATENÇÃO", description: "SELECIONE AO MENOS UMA CHEFIA DA LISTA." });
+      toast({ variant: "destructive", title: "ATENÇÃO", description: "SELECIONE AO MENOS UMA CHEFIA." });
       return;
     }
 
@@ -222,7 +206,7 @@ export default function RequestsPage() {
     } else if (requestType === "TROCA DE ESCALA") {
       finalDate = `SAI: ${formatDateBR(swapOutDate)} | ENTRA: ${formatDateBR(swapInDate)} (${swapInShift.toUpperCase()})`;
     } else if (requestType === "PERMUTA") {
-      finalDate = `PERMUTA COM PARCEIRO | EU SAI: ${formatDateBR(permutaOutDate)} | EU ENTRO: ${formatDateBR(permutaInDate)}`;
+      finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: SAI ${formatDateBR(permutaOutDate)} ENTRA ${formatDateBR(permutaInDate)} | PARCEIRO: SAI ${formatDateBR(permutaInDate)} ENTRA ${formatDateBR(permutaOutDate)}`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -255,31 +239,19 @@ export default function RequestsPage() {
     setRequestType("");
     setMultiDates([""]);
     setChefiaRows([{ id: "", uid: "", term: "", show: false }]);
+    setPermutaPartnerData(null);
+    setPermutaPartnerTerm("");
+    setPermutaOutDate("");
+    setPermutaInDate("");
   };
 
   async function handleProcessRequest(request: any, action: 'approve' | 'deny' | 'review') {
-    if (!firestore || !employeeData) return;
-    
-    let nextStatus = "";
-    if (action === 'deny') nextStatus = "Negado";
-    else if (action === 'review') nextStatus = "Em Revisão";
-    else {
-      if (request.status === "Pendente") {
-        nextStatus = "Aprovado pela Chefia";
-      } else {
-        nextStatus = "Aprovado";
-      }
-    }
-
+    if (!firestore) return;
+    let nextStatus = action === 'deny' ? "Negado" : action === 'review' ? "Em Revisão" : (request.status === "Pendente" ? "Aprovado pela Chefia" : "Aprovado");
     const response = adminResponseDraft[request.id] || "";
-    
     try {
-      await updateDoc(doc(firestore, 'requests', request.id), {
-        status: nextStatus,
-        adminResponse: response.toUpperCase(),
-        updatedAt: serverTimestamp()
-      });
-      toast({ title: "SOLICITAÇÃO PROCESSADA", description: `STATUS: ${nextStatus.toUpperCase()}` });
+      await updateDoc(doc(firestore, 'requests', request.id), { status: nextStatus, adminResponse: response.toUpperCase(), updatedAt: serverTimestamp() });
+      toast({ title: "SOLICITAÇÃO PROCESSADA" });
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO PROCESSAR" });
     }
@@ -298,7 +270,7 @@ export default function RequestsPage() {
       setAdminResponseDraft(prev => ({ ...prev, [request.id]: response.suggestedResponse }));
       toast({ title: "SUGESTÃO DA IA GERADA" });
     } catch (err) {
-      toast({ variant: "destructive", title: "IA INDISPONÍVEL NO MOMENTO" });
+      toast({ variant: "destructive", title: "IA INDISPONÍVEL" });
     } finally {
       setAiLoadingId(null);
     }
@@ -314,10 +286,7 @@ export default function RequestsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={cn(
-          "grid w-full bg-muted/50 p-1 rounded-xl",
-          isManagement ? "grid-cols-3 lg:w-[600px]" : "grid-cols-2 lg:w-[400px]"
-        )}>
+        <TabsList className={cn("grid w-full bg-muted/50 p-1 rounded-xl", isManagement ? "grid-cols-3 lg:w-[600px]" : "grid-cols-2 lg:w-[400px]")}>
           <TabsTrigger value="new" className="rounded-lg uppercase text-[10px] font-bold">NOVA SOLICITAÇÃO</TabsTrigger>
           <TabsTrigger value="history" className="rounded-lg uppercase text-[10px] font-bold">HISTÓRICO</TabsTrigger>
           {isManagement && <TabsTrigger value="management" className="rounded-lg uppercase text-[10px] font-bold text-primary">GESTÃO DE REQUERIMENTOS</TabsTrigger>}
@@ -328,13 +297,12 @@ export default function RequestsPage() {
             <form onSubmit={handleSendRequest}>
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="text-lg uppercase font-bold">Formulário de Requerimento</CardTitle>
-                <CardDescription className="text-[10px] uppercase font-bold text-muted-foreground">PREENCHA OS CAMPOS CONFORME A SUA NECESSIDADE.</CardDescription>
+                <CardDescription className="text-[10px] uppercase font-bold text-muted-foreground">PREENCHA CONFORME SUA NECESSIDADE.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6 pt-8">
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/20 border rounded-xl">
                   <div className="space-y-1">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">SERVIDOR SOLICITANTE</Label>
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">SOLICITANTE</Label>
                     <p className="text-sm font-black uppercase text-slate-900">{employeeData?.name}</p>
                   </div>
                   <div className="space-y-1">
@@ -347,9 +315,7 @@ export default function RequestsPage() {
                   <div className="grid gap-2">
                     <Label className="text-[10px] font-bold uppercase text-muted-foreground">TIPO DE SOLICITAÇÃO</Label>
                     <Select value={requestType} onValueChange={setRequestType} required>
-                      <SelectTrigger className="h-11 uppercase text-[11px] font-bold">
-                        <SelectValue placeholder="SELECIONE..." />
-                      </SelectTrigger>
+                      <SelectTrigger className="h-11 uppercase text-[11px] font-bold"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
                       <SelectContent>
                         <SelectItem value="FOLGA" className="uppercase text-[11px]">FOLGA (BANCO DE HORAS)</SelectItem>
                         <SelectItem value="ABONO DE ANIVERSÁRIO" className="uppercase text-[11px]">ABONO DE ANIVERSÁRIO</SelectItem>
@@ -362,27 +328,75 @@ export default function RequestsPage() {
                       </SelectContent>
                     </Select>
                   </div>
-
                   {requestType === "FOLGA" && (
                     <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">SALDO LÍQUIDO DISPONÍVEL</Label>
-                      <div className={cn(
-                        "h-11 flex items-center px-4 rounded-xl border-2 font-black text-[11px] uppercase",
-                        hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700"
-                      )}>
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">SALDO DISPONÍVEL</Label>
+                      <div className={cn("h-11 flex items-center px-4 rounded-xl border-2 font-black text-[11px] uppercase", hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>
                         {minutesToHHmm(simulatedRemainingMinutes)}H DISPONÍVEIS
                       </div>
                     </div>
                   )}
                 </div>
 
+                {requestType === "PERMUTA" && (
+                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid gap-2">
+                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">EU SAIO (MINHA ESCALA)</Label>
+                        <Input type="date" value={permutaOutDate} onChange={(e) => setPermutaOutDate(e.target.value)} required className="h-11 font-bold" />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">EU ENTRO (ESCALA DO PARCEIRO)</Label>
+                        <Input type="date" value={permutaInDate} onChange={(e) => setPermutaInDate(e.target.value)} required className="h-11 font-bold" />
+                      </div>
+                    </div>
+
+                    <div className="p-4 border border-blue-100 bg-blue-50/30 rounded-2xl space-y-4">
+                      <div className="grid gap-2 relative">
+                        <Label className="text-[10px] font-bold uppercase text-blue-700">PARCEIRO DA PERMUTA</Label>
+                        <div className="relative">
+                          <Input 
+                            placeholder="BUSCAR PARCEIRO..."
+                            value={permutaPartnerTerm}
+                            onChange={(e) => { setPermutaPartnerTerm(e.target.value.toUpperCase()); setPermutaPartnerShow(true); setPermutaPartnerId(""); setPermutaPartnerData(null); }}
+                            onFocus={() => setPermutaPartnerShow(true)}
+                            className="h-11 border-blue-200 uppercase text-[11px] font-bold pr-10 bg-white"
+                          />
+                          {permutaPartnerId && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
+                          {permutaPartnerShow && permutaPartnerTerm && (
+                            <div className="absolute z-[65] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-2xl max-h-48 overflow-y-auto">
+                              {allEmployees?.filter(e => e.uid !== user?.uid && (e.name.includes(permutaPartnerTerm) || e.qra.includes(permutaPartnerTerm))).map(c => (
+                                <button key={c.id} type="button" onMouseDown={() => { setPermutaPartnerId(c.uid); setPermutaPartnerData(c); setPermutaPartnerTerm(`${c.name} (${c.qra}) - ${c.escala} / ${c.turno}`); setPermutaPartnerShow(false); }} className="w-full px-4 py-3 text-left hover:bg-blue-50 text-[10px] uppercase border-b last:border-0 flex flex-col">
+                                  <span className="font-black">{c.name} ({c.qra})</span>
+                                  <span className="text-muted-foreground">{c.escala} / {c.turno}</span>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {permutaPartnerId && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in duration-300">
+                          <div className="grid gap-2">
+                            <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO SAI (CRONOGRAMA DELE)</Label>
+                            <Input value={formatDateBR(permutaInDate)} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO ENTRA (CRONOGRAMA DELE)</Label>
+                            <Input value={formatDateBR(permutaOutDate)} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {["FOLGA", "ABONO TRE", "ESCALA ESPECIAL"].includes(requestType) && (
                    <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATAS SOLICITADAS ({multiDates.length})</Label>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setMultiDates([...multiDates, ""])} className="h-8 text-[10px] font-bold uppercase">
-                        + ADICIONAR DATA
-                      </Button>
+                      <Button type="button" variant="outline" size="sm" onClick={() => setMultiDates([...multiDates, ""])} className="h-8 text-[10px] font-bold uppercase">+ DATA</Button>
                     </div>
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                       {multiDates.map((date, index) => (
@@ -406,7 +420,7 @@ export default function RequestsPage() {
                     <div key={index} className="flex gap-2 relative">
                       <div className="relative flex-1">
                         <Input 
-                          placeholder="BUSCAR CHEFIA POR QRA OU NOME..."
+                          placeholder="BUSCAR CHEFIA..."
                           value={row.term}
                           onChange={(e) => updateChefiaRow(index, { term: e.target.value.toUpperCase(), uid: "" })}
                           onFocus={() => updateChefiaRow(index, { show: true })}
@@ -426,9 +440,8 @@ export default function RequestsPage() {
                       <Button type="button" variant="ghost" size="icon" onClick={() => removeChefiaRow(index)} className="h-11 text-destructive"><Trash2 className="h-4 w-4" /></Button>
                     </div>
                   ))}
-                  <Button type="button" variant="outline" size="sm" onClick={addChefiaRow} className="text-[10px] font-bold uppercase">+ ADICIONAR CHEFIA</Button>
+                  <Button type="button" variant="outline" size="sm" onClick={addChefiaRow} className="text-[10px] font-bold uppercase">+ CHEFIA</Button>
                 </div>
-
               </CardContent>
               <CardFooter className="border-t p-6 bg-muted/5">
                 <Button type="submit" disabled={loading || hasInsufficientBalance} className="w-full h-11 uppercase font-bold text-xs tracking-widest shadow-lg">
@@ -447,11 +460,7 @@ export default function RequestsPage() {
                 <Card key={req.id} className="card-shadow border-none rounded-2xl overflow-hidden hover:bg-slate-50 transition-all group">
                   <CardContent className="p-6 flex flex-col sm:flex-row justify-between gap-4">
                     <div className="flex gap-4">
-                      <div className={cn(
-                        "p-3 rounded-2xl shrink-0 h-fit",
-                        req.status === 'Aprovado' ? 'bg-green-100 text-green-700' : 
-                        req.status === 'Negado' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700'
-                      )}>
+                      <div className={cn("p-3 rounded-2xl shrink-0 h-fit", req.status === 'Aprovado' ? 'bg-green-100 text-green-700' : req.status === 'Negado' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700')}>
                         {req.status === 'Aprovado' ? <CheckCircle2 className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
                       </div>
                       <div className="space-y-1">
@@ -463,7 +472,7 @@ export default function RequestsPage() {
                         <p className="text-xs text-muted-foreground uppercase mt-2 italic">"{req.description}"</p>
                         {req.adminResponse && (
                           <div className="bg-slate-100 p-2 rounded-lg mt-3 border-l-4 border-primary">
-                            <p className="text-[9px] font-black uppercase text-primary mb-1">Resposta do RH/Chefia:</p>
+                            <p className="text-[9px] font-black uppercase text-primary mb-1">Resposta RH/Chefia:</p>
                             <p className="text-[10px] uppercase font-medium">{req.adminResponse}</p>
                           </div>
                         )}
@@ -482,21 +491,16 @@ export default function RequestsPage() {
               <div className="grid gap-6">
                 <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
                   <ShieldCheck className="h-6 w-6 text-blue-600" />
-                  <p className="text-[10px] font-bold uppercase text-blue-800 tracking-tight">
-                    ESTA ÁREA EXIBE SOLICITAÇÕES QUE AGUARDAM SEU PARECER OU DECISÃO DO RH.
-                  </p>
+                  <p className="text-[10px] font-bold uppercase text-blue-800 tracking-tight">PEDIDOS AGUARDANDO SEU PARECER OU DECISÃO DO RH.</p>
                 </div>
-
                 {filteredManagementRequests?.map(req => {
                   const role = normalizeStr(employeeData?.role || "");
                   const isRH = role.includes("GESTOR DE RH");
                   const isPending = req.status === "Pendente";
                   const isAwaitingRH = req.status === "Aprovado pela Chefia";
                   const isChefiaForThis = req.chefiaIds?.includes(user?.uid);
-                  
                   const canAct = (isChefiaForThis && isPending) || (isRH && isAwaitingRH);
                   const label = isAwaitingRH ? "APROVAR DEFINITIVO" : "APROVAR PARECER";
-
                   return (
                     <Card key={req.id} className="card-shadow border-2 border-primary/5 rounded-2xl overflow-hidden">
                       <CardHeader className="bg-muted/5 border-b pb-4">
@@ -519,59 +523,31 @@ export default function RequestsPage() {
                             <p className="text-[10px] font-medium uppercase text-slate-700 bg-slate-50 p-2 rounded-lg border">{req.chefiaImediata}</p>
                           </div>
                         </div>
-
                         <div className="space-y-1">
                           <Label className="text-[9px] font-bold text-muted-foreground uppercase">JUSTIFICATIVA DO SERVIDOR</Label>
                           <p className="text-[11px] uppercase p-4 bg-muted/20 rounded-xl italic">"{req.description}"</p>
                         </div>
-
                         <Separator className="my-4" />
-
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <Label className="text-[10px] font-bold uppercase text-primary">Parecer / Despacho Administrativo</Label>
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="h-8 gap-2 text-[10px] font-bold uppercase text-primary hover:bg-primary/5"
-                              onClick={() => handleAskIA(req)}
-                              disabled={aiLoadingId === req.id}
-                            >
-                              {aiLoadingId === req.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
-                              Assistente IA
+                            <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold uppercase text-primary" onClick={() => handleAskIA(req)} disabled={aiLoadingId === req.id}>
+                              {aiLoadingId === req.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Assistente IA
                             </Button>
                           </div>
-                          <Textarea 
-                            value={adminResponseDraft[req.id] || ""}
-                            onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))}
-                            placeholder="ESCREVA SEU PARECER OU USE A SUGESTÃO DA IA..."
-                            className="min-h-[100px] uppercase text-[11px] font-medium p-4 rounded-xl resize-none bg-blue-50/10 border-blue-100"
-                          />
+                          <Textarea value={adminResponseDraft[req.id] || ""} onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))} placeholder="..." className="min-h-[100px] uppercase text-[11px] p-4 rounded-xl resize-none bg-blue-50/10 border-blue-100" />
                         </div>
                       </CardContent>
                       <CardFooter className="bg-muted/5 p-4 border-t flex flex-wrap gap-2 justify-end">
-                        <Button variant="ghost" size="sm" className="uppercase text-[10px] font-black text-red-600 hover:bg-red-50 h-10 px-6" onClick={() => handleProcessRequest(req, 'deny')}>NEGAR PEDIDO</Button>
+                        <Button variant="ghost" size="sm" className="uppercase text-[10px] font-black text-red-600 h-10 px-6" onClick={() => handleProcessRequest(req, 'deny')}>NEGAR PEDIDO</Button>
                         <Button variant="outline" size="sm" className="uppercase text-[10px] font-black text-slate-600 h-10 px-6" onClick={() => handleProcessRequest(req, 'review')}>EM REVISÃO</Button>
-                        <Button 
-                          size="sm" 
-                          disabled={!canAct}
-                          className="uppercase text-[10px] font-black h-10 px-8 bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-100 disabled:opacity-30" 
-                          onClick={() => handleProcessRequest(req, 'approve')}
-                        >
-                          {label}
-                          <ChevronRight className="ml-2 h-4 w-4" />
+                        <Button size="sm" disabled={!canAct} className="uppercase text-[10px] font-black h-10 px-8 bg-blue-600 hover:bg-blue-700 shadow-lg disabled:opacity-30" onClick={() => handleProcessRequest(req, 'approve')}>
+                          {label} <ChevronRight className="ml-2 h-4 w-4" />
                         </Button>
                       </CardFooter>
                     </Card>
                   );
                 })}
-
-                {filteredManagementRequests?.length === 0 && (
-                  <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50 rounded-3xl border-2 border-dashed">
-                    <CheckCircle2 className="h-12 w-12 text-green-200 mb-4" />
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Tudo em dia! Nenhuma solicitação aguarda seu parecer.</p>
-                  </div>
-                )}
               </div>
             )}
           </TabsContent>
