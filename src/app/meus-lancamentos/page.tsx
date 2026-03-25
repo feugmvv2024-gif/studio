@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -91,29 +92,7 @@ export default function MeusLancamentosPage() {
   const { data: myLaunches, loading: loadingLaunches } = useCollection(myLaunchesRef);
   const { data: launchTypes } = useCollection(launchTypesRef);
 
-  // Cálculo de Saldos Individuais (Sempre baseado no total, independente do filtro visual da tabela)
-  const myStats = React.useMemo(() => {
-    if (!myLaunches) return { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 };
-    
-    return myLaunches.reduce((acc, l) => {
-      const type = normalizeStr(l.type || "");
-      const minutes = hhmmToMinutes(l.hours || "00:00");
-      const days = Number(l.days) || 0;
-      const qtdEscala = Number(l.qtdEscala) || 0;
-
-      if (type === "BANCO DE HORAS CREDITO") acc.bhCredit += minutes;
-      if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") acc.bhDebit += minutes;
-      if (type === "TRE CREDITO") acc.treCredit += days;
-      if (type === "TRE DEBITO") acc.treDebit += days;
-      
-      // Contagem de Escalas Extras
-      if (type.includes("GSE")) acc.gseTotal += qtdEscala;
-      if (type.includes("ESPECIAL")) acc.especialTotal += qtdEscala;
-      
-      return acc;
-    }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 });
-  }, [myLaunches]);
-
+  // Filtragem dos dados (Tabela)
   const filteredLaunches = React.useMemo(() => {
     if (!myLaunches) return [];
     const term = searchTerm.toLowerCase();
@@ -135,6 +114,29 @@ export default function MeusLancamentosPage() {
       return matchesSearch && matchesType && matchesDate;
     });
   }, [myLaunches, searchTerm, filterType, filterStartDate, filterEndDate]);
+
+  // Cálculo de Saldos Individuais (Agora reflete o resultado dos filtros)
+  const myStats = React.useMemo(() => {
+    if (!filteredLaunches) return { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 };
+    
+    return filteredLaunches.reduce((acc, l) => {
+      const type = normalizeStr(l.type || "");
+      const minutes = hhmmToMinutes(l.hours || "00:00");
+      const days = Number(l.days) || 0;
+      const qtdEscala = Number(l.qtdEscala) || 0;
+
+      if (type === "BANCO DE HORAS CREDITO") acc.bhCredit += minutes;
+      if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") acc.bhDebit += minutes;
+      if (type === "TRE CREDITO") acc.treCredit += days;
+      if (type === "TRE DEBITO") acc.treDebit += days;
+      
+      // Contagem de Escalas Extras
+      if (type.includes("GSE")) acc.gseTotal += qtdEscala;
+      if (type.includes("ESPECIAL")) acc.especialTotal += qtdEscala;
+      
+      return acc;
+    }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 });
+  }, [filteredLaunches]);
 
   const clearFilters = () => {
     setFilterType("");
@@ -165,7 +167,7 @@ export default function MeusLancamentosPage() {
           </div>
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">MEUS LANÇAMENTOS</h2>
-            <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">CONSULTA INDIVIDUAL DE REGISTROS E SALDOS.</p>
+            <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">CONSULTA INDIVIDUAL DE REGISTROS E SALDOS NO PERÍODO.</p>
           </div>
         </div>
       </div>
@@ -174,7 +176,7 @@ export default function MeusLancamentosPage() {
         {/* 1. BANCO DE HORAS INDIVIDUAL */}
         <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">MEU BANCO DE HORAS</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase">MOVIMENTAÇÃO BANCO DE HORAS</CardTitle>
             <Timer className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
@@ -186,14 +188,14 @@ export default function MeusLancamentosPage() {
             </div>
             <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-blue-100">
               <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">TOTAL CRÉDITOS</p>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">CRÉDITOS NO FILTRO</p>
                 <div className="flex items-center gap-1">
                   <ArrowUpRight className="h-3 w-3 text-green-600" />
                   <p className="text-xs font-bold text-green-600">{minutesToHHmm(myStats.bhCredit)}H</p>
                 </div>
               </div>
               <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">TOTAL DÉBITOS</p>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITOS NO FILTRO</p>
                 <div className="flex items-center gap-1">
                   <ArrowDownRight className="h-3 w-3 text-red-600" />
                   <p className="text-xs font-bold text-red-600">-{minutesToHHmm(myStats.bhDebit)}H</p>
@@ -206,7 +208,7 @@ export default function MeusLancamentosPage() {
         {/* 2. TRE INDIVIDUAL (SALDO) */}
         <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">MEU SALDO TRE</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase">SALDO TRE NO FILTRO</CardTitle>
             <CalendarDays className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
@@ -218,14 +220,14 @@ export default function MeusLancamentosPage() {
             </div>
             <div className="grid grid-cols-2 gap-4 mt-3 pt-3 border-t border-purple-100">
               <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">TOTAL CRÉDITOS</p>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">CRÉDITOS</p>
                 <div className="flex items-center gap-1">
                   <ArrowUpRight className="h-3 w-3 text-green-600" />
                   <p className="text-xs font-bold text-green-600">{myStats.treCredit}D</p>
                 </div>
               </div>
               <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">TOTAL DÉBITOS</p>
+                <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITOS</p>
                 <div className="flex items-center gap-1">
                   <ArrowDownRight className="h-3 w-3 text-red-600" />
                   <p className="text-xs font-bold text-red-600">-{myStats.treDebit}D</p>
@@ -238,7 +240,7 @@ export default function MeusLancamentosPage() {
         {/* 3. ESCALAS EXTRAS INDIVIDUAL */}
         <Card className="card-shadow border-orange-500/20 bg-orange-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">MINHAS ESCALAS EXTRAS</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase">ESCALAS EXTRAS NO FILTRO</CardTitle>
             <Briefcase className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
