@@ -301,9 +301,12 @@ export default function ProfilePage() {
               </div>
             </CardHeader>
             <CardContent className="p-6 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-                {/* ESTADO CIVIL */}
-                <div className="space-y-4">
+              <div className="space-y-6">
+                {/* ESTADO CIVIL E CÔNJUGE */}
+                <div className={cn(
+                  "grid gap-6",
+                  (maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1"
+                )}>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Estado Civil</Label>
                     <Select value={maritalStatus} onValueChange={setMaritalStatus}>
@@ -321,25 +324,26 @@ export default function ProfilePage() {
                   </div>
 
                   {(maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") && (
-                    <div className="space-y-4 p-4 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nome do Cônjuge</Label>
-                        <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value)} className="uppercase font-bold text-xs h-11 bg-white" />
-                      </div>
-                      <div className="flex items-center justify-between gap-4">
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase leading-tight tracking-widest">
-                          Cônjuge é servidor da Educação de Vila Velha?
-                        </Label>
-                        <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
-                      </div>
+                    <div className="md:col-span-2 space-y-1.5 animate-in slide-in-from-left-2 duration-300">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nome do Cônjuge</Label>
+                      <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value)} className="uppercase font-bold text-xs h-11" />
+                    </div>
+                  )}
+
+                  {(maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") && (
+                    <div className="md:col-span-3 flex items-center justify-between gap-4 p-4 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
+                      <Label className="text-[10px] font-bold text-muted-foreground uppercase leading-tight tracking-widest">
+                        Cônjuge é servidor da Educação de Vila Velha?
+                      </Label>
+                      <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
                     </div>
                   )}
                 </div>
 
-                <Separator orientation="vertical" className="hidden md:block h-auto" />
+                <Separator className="bg-muted/50" />
 
                 {/* FILHOS */}
-                <div className="md:col-span-2 space-y-4">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Baby className="h-4 w-4 text-primary" />
@@ -355,7 +359,7 @@ export default function ProfilePage() {
                       <p className="text-[10px] text-muted-foreground uppercase font-bold italic">Nenhum filho cadastrado.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {children.map((child, index) => (
                         <div key={index} className="flex gap-2 items-end p-3 border rounded-xl bg-slate-50 animate-in zoom-in-95 duration-200">
                           <div className="flex-1 space-y-1.5">
