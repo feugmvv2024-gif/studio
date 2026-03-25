@@ -73,12 +73,20 @@ export default function RequestsPage() {
   // Estados do formulário
   const [requestType, setRequestType] = React.useState<string>("");
   const [multiDates, setMultiDates] = React.useState<string[]>([""]);
+  
+  // Estados Reprogramação de Férias
   const [currentVacationStart, setCurrentVacationStart] = React.useState("");
   const [currentVacationEnd, setCurrentVacationEnd] = React.useState("");
   const [newVacationStart, setNewVacationStart] = React.useState("");
   const [newVacationEnd, setNewVacationEnd] = React.useState("");
+  
+  // Estados Abono de Aniversário
   const [birthdayDate, setBirthdayDate] = React.useState("");
   const [abonoDate, setAbonoDate] = React.useState("");
+  
+  // Estados Troca de Escala
+  const [swapFromDate, setSwapFromDate] = React.useState("");
+  const [swapToDate, setSwapToDate] = React.useState("");
   
   // Estados Permuta
   const [permutaOutDate, setPermutaOutDate] = React.useState("");
@@ -199,6 +207,8 @@ export default function RequestsPage() {
       finalDate = `AGENDADO: ${formatDateBR(currentVacationStart)} À ${formatDateBR(currentVacationEnd)} | NOVO: ${formatDateBR(newVacationStart)} À ${formatDateBR(newVacationEnd)}`;
     } else if (requestType === "ABONO DE ANIVERSÁRIO") {
       finalDate = `ANIV: ${formatDateBR(birthdayDate)} | FOLGA: ${formatDateBR(abonoDate)}`;
+    } else if (requestType === "TROCA DE ESCALA") {
+      finalDate = `DE: ${formatDateBR(swapFromDate)} PARA: ${formatDateBR(swapToDate)}`;
     } else if (requestType === "PERMUTA") {
       finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: SAI ${formatDateBR(permutaOutDate)} ENTRA ${formatDateBR(permutaInDate)} | PARCEIRO: SAI ${formatDateBR(permutaInDate)} ENTRA ${formatDateBR(permutaOutDate)}`;
     } else {
@@ -243,6 +253,8 @@ export default function RequestsPage() {
     setCurrentVacationEnd("");
     setNewVacationStart("");
     setNewVacationEnd("");
+    setSwapFromDate("");
+    setSwapToDate("");
   };
 
   async function handleProcessRequest(request: any, action: 'approve' | 'deny' | 'review') {
@@ -458,6 +470,19 @@ export default function RequestsPage() {
                           {multiDates.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => setMultiDates(multiDates.filter((_, i) => i !== index))} className="h-11 text-destructive"><Trash2 className="h-4 w-4" /></Button>}
                         </div>
                       ))}
+                    </div>
+                  </div>
+                )}
+
+                {requestType === "TROCA DE ESCALA" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid gap-2">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">DE (DATA ORIGINAL)</Label>
+                      <Input type="date" value={swapFromDate} onChange={(e) => setSwapFromDate(e.target.value)} required className="h-11 font-bold" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARA (NOVA DATA)</Label>
+                      <Input type="date" value={swapToDate} onChange={(e) => setSwapToDate(e.target.value)} required className="h-11 font-bold" />
                     </div>
                   </div>
                 )}
