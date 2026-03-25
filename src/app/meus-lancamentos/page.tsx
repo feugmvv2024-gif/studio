@@ -23,7 +23,7 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
-} from "@/table"
+} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
