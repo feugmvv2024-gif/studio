@@ -10,7 +10,10 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Info,
-  Briefcase
+  Briefcase,
+  Filter,
+  X,
+  Calendar as CalendarIcon
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { 
@@ -20,9 +23,23 @@ import {
   TableHead, 
   TableHeader, 
   TableRow 
-} from "@/components/ui/table"
+} from "@/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
 import { collection, query, where, orderBy } from 'firebase/firestore'
 import { cn } from "@/lib/utils"
@@ -52,7 +69,12 @@ const formatDate = (dateStr: string) => {
 export default function MeusLancamentosPage() {
   const { employeeData, loading: loadingAuth } = useAuth();
   const firestore = useFirestore();
+  
+  // Estados de Filtro
   const [searchTerm, setSearchTerm] = React.useState("");
+  const [filterType, setFilterType] = React.useState("");
+  const [filterStartDate, setFilterStartDate] = React.useState("");
+  const [filterEndDate, setFilterEndDate] = React.useState("");
 
   // Busca apenas os lançamentos do servidor logado, ordenados pelo mais recente
   const myLaunchesRef = React.useMemo(() => {
@@ -60,13 +82,16 @@ export default function MeusLancamentosPage() {
     return query(
       collection(firestore, 'launches'), 
       where('employeeId', '==', employeeData.id),
-      orderBy('createdAt', 'desc')
+      orderBy('date', 'desc')
     );
   }, [firestore, employeeData?.id]);
 
-  const { data: myLaunches, loading: loadingLaunches } = useCollection(myLaunchesRef);
+  const launchTypesRef = React.useMemo(() => firestore ? query(collection(firestore, 'launchTypes'), orderBy('name', 'asc')) : null, [firestore]);
 
-  // Cálculo de Saldos Individuais
+  const { data: myLaunches, loading: loadingLaunches } = useCollection(myLaunchesRef);
+  const { data: launchTypes } = useCollection(launchTypesRef);
+
+  // Cálculo de Saldos Individuais (Sempre baseado no total, independente do filtro visual da tabela)
   const myStats = React.useMemo(() => {
     if (!myLaunches) return { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 };
     
@@ -92,12 +117,33 @@ export default function MeusLancamentosPage() {
   const filteredLaunches = React.useMemo(() => {
     if (!myLaunches) return [];
     const term = searchTerm.toLowerCase();
-    return myLaunches.filter(l => 
-      l.type?.toLowerCase().includes(term) ||
-      l.launchNumber?.toString().includes(term) ||
-      l.observations?.toLowerCase().includes(term)
-    );
-  }, [myLaunches, searchTerm]);
+    
+    return myLaunches.filter(l => {
+      const matchesSearch = !searchTerm || (
+        l.type?.toLowerCase().includes(term) ||
+        l.launchNumber?.toString().includes(term) ||
+        l.observations?.toLowerCase().includes(term)
+      );
+
+      const matchesType = !filterType || l.type === filterType;
+      
+      const matchesDate = (
+        (!filterStartDate || l.date >= filterStartDate) &&
+        (!filterEndDate || l.date <= filterEndDate)
+      );
+
+      return matchesSearch && matchesType && matchesDate;
+    });
+  }, [myLaunches, searchTerm, filterType, filterStartDate, filterEndDate]);
+
+  const clearFilters = () => {
+    setFilterType("");
+    setFilterStartDate("");
+    setFilterEndDate("");
+    setSearchTerm("");
+  };
+
+  const hasActiveFilters = filterType !== "" || filterStartDate !== "" || filterEndDate !== "";
 
   if (loadingAuth || loadingLaunches) {
     return (
@@ -214,21 +260,64 @@ export default function MeusLancamentosPage() {
       </div>
 
       <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
-        <CardHeader className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/5 border-b">
-          <div className="space-y-1">
+        <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 bg-muted/5 border-b">
+          <div className="space-y-1 flex-1">
             <CardTitle className="text-lg font-bold uppercase">Extrato Detalhado</CardTitle>
             <CardDescription className="text-[9px] uppercase font-bold text-muted-foreground">
               Histórico oficial de registros lançados pelo RH.
             </CardDescription>
           </div>
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="BUSCAR POR Nº OU TIPO..." 
-              className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="BUSCAR POR Nº OU TIPO..." 
+                className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant={hasActiveFilters ? "default" : "outline"} size="sm" className="gap-2 h-9 font-bold text-xs uppercase border-muted/50">
+                  <Filter className="h-4 w-4" /> 
+                  FILTROS
+                  {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-4 w-4 p-0 flex items-center justify-center rounded-full text-[8px] bg-white text-primary">!</Badge>}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-4 rounded-xl shadow-2xl border-muted/20" align="end">
+                <div className="grid gap-4">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <h4 className="font-bold uppercase text-[10px] tracking-widest text-primary">FILTROS DE PESQUISA</h4>
+                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}><X className="h-4 w-4" /></Button>
+                  </div>
+                  <div className="grid gap-4">
+                    <div className="grid gap-1.5">
+                      <Label className="text-[9px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                        <CalendarIcon className="h-3 w-3" /> PERÍODO (DE / ATÉ)
+                      </Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        <Input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="h-9 text-[10px] bg-muted/30 border-none" />
+                        <Input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="h-9 text-[10px] bg-muted/30 border-none" />
+                      </div>
+                    </div>
+                    <div className="grid gap-1.5">
+                      <Label className="text-[9px] uppercase font-bold text-muted-foreground">TIPO DE LANÇAMENTO</Label>
+                      <Select value={filterType} onValueChange={setFilterType}>
+                        <SelectTrigger className="h-9 text-[10px] uppercase bg-muted/30 border-none">
+                          <SelectValue placeholder="TODOS OS TIPOS" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ALL" className="uppercase text-[10px]">TODOS OS TIPOS</SelectItem>
+                          {launchTypes?.map((t: any) => <SelectItem key={t.id} value={t.name} className="uppercase text-[10px]">{t.name}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button size="sm" className="w-full uppercase text-[10px] font-bold" onClick={clearFilters}>LIMPAR TUDO</Button>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
         </CardHeader>
         <CardContent className="p-0">
@@ -250,7 +339,7 @@ export default function MeusLancamentosPage() {
                 {filteredLaunches.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic">
-                      Nenhum registro encontrado para a sua busca.
+                      Nenhum registro encontrado para os filtros aplicados.
                     </TableCell>
                   </TableRow>
                 ) : (
