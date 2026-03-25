@@ -173,6 +173,15 @@ export default function RequestsPage() {
     });
   }, [managementRequests, user, employeeData]);
 
+  // Contadores para os Badges
+  const historyBadgeCount = React.useMemo(() => 
+    myRequests?.filter(req => req.status === "Pendente" || req.status === "Em Revisão").length || 0
+  , [myRequests]);
+
+  const managementBadgeCount = React.useMemo(() => 
+    filteredManagementRequests.length
+  , [filteredManagementRequests]);
+
   const addChefiaRow = () => setChefiaRows([...chefiaRows, { id: "", uid: "", term: "", show: false }]);
   const removeChefiaRow = (index: number) => {
     const newRows = chefiaRows.filter((_, i) => i !== index);
@@ -298,10 +307,26 @@ export default function RequestsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={cn("grid w-full bg-muted/50 p-1 rounded-xl", isManagement ? "grid-cols-3 lg:w-[600px]" : "grid-cols-2 lg:w-[400px]")}>
+        <TabsList className={cn("grid w-full bg-muted/50 p-1 rounded-xl", isManagement ? "grid-cols-3 lg:w-[650px]" : "grid-cols-2 lg:w-[450px]")}>
           <TabsTrigger value="new" className="rounded-lg uppercase text-[10px] font-bold">NOVA SOLICITAÇÃO</TabsTrigger>
-          <TabsTrigger value="history" className="rounded-lg uppercase text-[10px] font-bold">HISTÓRICO</TabsTrigger>
-          {isManagement && <TabsTrigger value="management" className="rounded-lg uppercase text-[10px] font-bold text-primary">GESTÃO DE REQUERIMENTOS</TabsTrigger>}
+          <TabsTrigger value="history" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
+            HISTÓRICO
+            {historyBadgeCount > 0 && (
+              <Badge variant="secondary" className="h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-blue-600 text-white border-none rounded-full">
+                {historyBadgeCount}
+              </Badge>
+            )}
+          </TabsTrigger>
+          {isManagement && (
+            <TabsTrigger value="management" className="rounded-lg uppercase text-[10px] font-bold text-primary flex items-center gap-2">
+              GESTÃO DE REQUERIMENTOS
+              {managementBadgeCount > 0 && (
+                <Badge className="h-4 w-4 p-0 flex items-center justify-center text-[8px] bg-primary text-primary-foreground border-none rounded-full">
+                  {managementBadgeCount}
+                </Badge>
+              )}
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="new" className="mt-6">
@@ -534,6 +559,11 @@ export default function RequestsPage() {
         <TabsContent value="history" className="mt-6 space-y-4">
           {loadingRequests ? <div className="flex h-32 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
             <div className="grid gap-4">
+              {myRequests?.length === 0 && (
+                <div className="text-center py-20 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                  NENHUMA SOLICITAÇÃO ENCONTRADA.
+                </div>
+              )}
               {myRequests?.map(req => (
                 <Card key={req.id} className="card-shadow border-none rounded-2xl overflow-hidden hover:bg-slate-50 transition-all group">
                   <CardContent className="p-6 flex flex-col sm:flex-row justify-between gap-4">
@@ -571,6 +601,11 @@ export default function RequestsPage() {
                   <ShieldCheck className="h-6 w-6 text-blue-600" />
                   <p className="text-[10px] font-bold uppercase text-blue-800 tracking-tight">PEDIDOS AGUARDANDO SEU PARECER OU DECISÃO DO RH.</p>
                 </div>
+                {filteredManagementRequests?.length === 0 && (
+                  <div className="text-center py-20 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest border-2 border-dashed rounded-2xl">
+                    SUA FILA DE GESTÃO ESTÁ VAZIA.
+                  </div>
+                )}
                 {filteredManagementRequests?.map(req => {
                   const role = normalizeStr(employeeData?.role || "");
                   const isRH = role.includes("GESTOR DE RH");

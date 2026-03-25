@@ -23,13 +23,15 @@ import {
   SidebarGroupLabel,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { useAuth } from "@/firebase"
+import { useAuth, useCollection } from "@/firebase"
+import { collection, query, where } from "firebase/firestore"
 
 const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
@@ -44,9 +46,39 @@ const navigation = [
 
 export function AppSidebar() {
   const pathname = usePathname()
-  const { logout, loading, employeeData } = useAuth()
+  const { logout, loading, employeeData, user, firestore } = useAuth()
   
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'stable' | 'disconnected'>('stable')
+
+  // Lógica de monitoramento de requerimentos pendentes para resposta (Chefia/RH)
+  const managementRequestsQuery = React.useMemo(() => {
+    if (!firestore || !user || !employeeData) return null;
+    const role = (employeeData.role || "").toUpperCase();
+    const isRH = role.includes("GESTOR DE RH");
+    
+    if (isRH) {
+      return query(collection(firestore, 'requests'), where('status', 'in', ['Aprovado pela Chefia', 'Pendente']));
+    }
+    return query(collection(firestore, 'requests'), where('chefiaIds', 'array-contains', user.uid), where('status', '==', 'Pendente'));
+  }, [firestore, user, employeeData]);
+
+  const { data: managementRequests } = useCollection(managementRequestsQuery);
+
+  const pendingActionCount = React.useMemo(() => {
+    if (!managementRequests || !user || !employeeData) return 0;
+    const role = (employeeData.role || "").toUpperCase();
+    const isRH = role.includes("GESTOR DE RH");
+    
+    return managementRequests.filter(req => {
+      const isChefiaForThis = req.chefiaIds?.includes(user.uid);
+      if (isRH) {
+        if (req.status === "Aprovado pela Chefia") return true;
+        if (req.status === "Pendente" && isChefiaForThis) return true;
+        return false;
+      }
+      return req.status === "Pendente" && isChefiaForThis;
+    }).length;
+  }, [managementRequests, user, employeeData]);
 
   React.useEffect(() => {
     if (!loading) setConnectionStatus('connected')
@@ -110,6 +142,11 @@ export function AppSidebar() {
                         <span>{item.name}</span>
                       </Link>
                     </SidebarMenuButton>
+                    {item.href === "/requests" && pendingActionCount > 0 && (
+                      <SidebarMenuBadge className="bg-primary text-primary-foreground font-black text-[10px] rounded-full h-5 min-w-5 flex items-center justify-center border-2 border-background shadow-sm">
+                        {pendingActionCount}
+                      </SidebarMenuBadge>
+                    )}
                   </SidebarMenuItem>
                 ))}
             </SidebarMenu>
