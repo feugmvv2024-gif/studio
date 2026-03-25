@@ -128,6 +128,18 @@ export default function RequestsPage() {
   const myShiftPeriod = React.useMemo(() => (employeeData?.escala && shiftPeriods) ? shiftPeriods.find(p => p.escalaName === employeeData.escala) : null, [employeeData?.escala, shiftPeriods]);
   const requiredMinutesForFolga = React.useMemo(() => myShiftPeriod?.duration ? hhmmToMinutes(myShiftPeriod.duration) : 0, [myShiftPeriod]);
 
+  // Automação Abono de Aniversário: Preenche data com dia/mês do servidor no ano atual
+  React.useEffect(() => {
+    if (requestType === "ABONO DE ANIVERSÁRIO" && employeeData?.birthDate) {
+      const parts = employeeData.birthDate.split('-');
+      if (parts.length === 3) {
+        const [year, month, day] = parts;
+        const currentYear = new Date().getFullYear();
+        setBirthdayDate(`${currentYear}-${month}-${day}`);
+      }
+    }
+  }, [requestType, employeeData?.birthDate]);
+
   // Cálculos de Saldo Banco de Horas
   const reservedMinutes = React.useMemo(() => {
     if (!myRequests || !requiredMinutesForFolga) return 0;
@@ -421,11 +433,11 @@ export default function RequestsPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="grid gap-2">
                           <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA INÍCIO</Label>
-                          <Input type="date" value={currentVacationStart} onChange={(e) => currentVacationStart(e.target.value)} required className="h-11 font-bold bg-white" />
+                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-11 font-bold bg-white" />
                         </div>
                         <div className="grid gap-2">
                           <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA FIM</Label>
-                          <Input type="date" value={currentVacationEnd} onChange={(e) => currentVacationEnd(e.target.value)} required className="h-11 font-bold bg-white" />
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-11 font-bold bg-white" />
                         </div>
                       </div>
                     </div>
