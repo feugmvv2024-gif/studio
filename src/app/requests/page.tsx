@@ -128,6 +128,7 @@ export default function RequestsPage() {
   const myShiftPeriod = React.useMemo(() => (employeeData?.escala && shiftPeriods) ? shiftPeriods.find(p => p.escalaName === employeeData.escala) : null, [employeeData?.escala, shiftPeriods]);
   const requiredMinutesForFolga = React.useMemo(() => myShiftPeriod?.duration ? hhmmToMinutes(myShiftPeriod.duration) : 0, [myShiftPeriod]);
 
+  // Cálculos de Saldo Banco de Horas
   const reservedMinutes = React.useMemo(() => {
     if (!myRequests || !requiredMinutesForFolga) return 0;
     return myRequests.filter(req => req.status === "Pendente" && req.type === "FOLGA").reduce((acc, req) => acc + (req.date ? req.date.split(',').length * requiredMinutesForFolga : 0), 0);
@@ -150,7 +151,31 @@ export default function RequestsPage() {
     return myBalanceMinutes - (multiDates.filter(d => d).length * requiredMinutesForFolga);
   }, [requestType, myBalanceMinutes, multiDates, requiredMinutesForFolga]);
 
+  // Cálculos de Saldo TRE
+  const reservedTreDays = React.useMemo(() => {
+    if (!myRequests) return 0;
+    return myRequests.filter(req => req.status === "Pendente" && req.type === "ABONO TRE").reduce((acc, req) => acc + (req.date ? req.date.split(',').length : 0), 0);
+  }, [myRequests]);
+
+  const myBalanceTreDays = React.useMemo(() => {
+    if (!myLaunches) return 0;
+    const base = myLaunches.reduce((acc, l) => {
+      const type = normalizeStr(l.type || "");
+      const days = Number(l.days) || 0;
+      if (type === "TRE CREDITO") return acc + days;
+      if (type === "TRE DEBITO") return acc - days;
+      return acc;
+    }, 0);
+    return base - reservedTreDays;
+  }, [myLaunches, reservedTreDays]);
+
+  const simulatedRemainingTreDays = React.useMemo(() => {
+    if (requestType !== "ABONO TRE") return myBalanceTreDays;
+    return myBalanceTreDays - multiDates.filter(d => d).length;
+  }, [requestType, myBalanceTreDays, multiDates]);
+
   const hasInsufficientBalance = requestType === "FOLGA" && simulatedRemainingMinutes < 0;
+  const hasInsufficientTreBalance = requestType === "ABONO TRE" && simulatedRemainingTreDays < 0;
   const hasInvalidAbonoDate = requestType === "ABONO DE ANIVERSÁRIO" && birthdayDate && abonoDate && abonoDate < birthdayDate;
 
   const isManagement = React.useMemo(() => {
@@ -377,6 +402,14 @@ export default function RequestsPage() {
                       </div>
                     </div>
                   )}
+                  {requestType === "ABONO TRE" && (
+                    <div className="grid gap-2">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">SALDO TRE DISPONÍVEL</Label>
+                      <div className={cn("h-11 flex items-center px-4 rounded-xl border-2 font-black text-[11px] uppercase", hasInsufficientTreBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>
+                        {simulatedRemainingTreDays} DIAS DISPONÍVEIS
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {requestType === "REPROGRAMAÇÃO DE FÉRIAS" && (
@@ -551,7 +584,7 @@ export default function RequestsPage() {
                 </div>
               </CardContent>
               <CardFooter className="border-t p-6 bg-muted/5">
-                <Button type="submit" disabled={loading || hasInsufficientBalance || hasInvalidAbonoDate} className="w-full h-11 uppercase font-bold text-xs tracking-widest shadow-lg">
+                <Button type="submit" disabled={loading || hasInsufficientBalance || hasInsufficientTreBalance || hasInvalidAbonoDate} className="w-full h-11 uppercase font-bold text-xs tracking-widest shadow-lg">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                   ENVIAR SOLICITAÇÃO
                 </Button>
