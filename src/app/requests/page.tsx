@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -227,6 +228,9 @@ export default function RequestsPage() {
     const newRequest = {
       employeeId: user.uid,
       employeeName: (employeeData?.name || "USUÁRIO").toUpperCase(),
+      employeeQra: (employeeData?.qra || "N/A").toUpperCase(),
+      escala: (employeeData?.escala || "N/A").toUpperCase(),
+      turno: (employeeData?.turno || "N/A").toUpperCase(),
       type: requestType,
       date: finalDate,
       description: description,
@@ -272,7 +276,7 @@ export default function RequestsPage() {
     const response = adminResponseDraft[request.id] || "";
     try {
       await updateDoc(doc(firestore, 'requests', request.id), { status: nextStatus, adminResponse: response.toUpperCase(), updatedAt: serverTimestamp() });
-      toast({ title: "SOLICITAÇÃO PROCESSADA" });
+      toast({ title: "SOLICITAÇÃO PRROCESSADA" });
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO PROCESSAR" });
     }
@@ -384,11 +388,11 @@ export default function RequestsPage() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="grid gap-2">
                           <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA INÍCIO</Label>
-                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-11 font-bold bg-white" />
+                          <Input type="date" value={currentVacationStart} onChange={(e) => currentVacationStart(e.target.value)} required className="h-11 font-bold bg-white" />
                         </div>
                         <div className="grid gap-2">
                           <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA FIM</Label>
-                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-11 font-bold bg-white" />
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => currentVacationEnd(e.target.value)} required className="h-11 font-bold bg-white" />
                         </div>
                       </div>
                     </div>
@@ -618,29 +622,50 @@ export default function RequestsPage() {
                     <Card key={req.id} className="card-shadow border-2 border-primary/5 rounded-2xl overflow-hidden">
                       <CardHeader className="bg-muted/5 border-b pb-4">
                         <div className="flex items-center justify-between">
-                          <div className="space-y-1">
-                            <CardTitle className="text-sm font-black uppercase">{req.employeeName}</CardTitle>
-                            <Badge variant="outline" className="text-[9px] uppercase font-bold">{req.type}</Badge>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <CardTitle className="text-base font-black uppercase">
+                                {req.employeeName} 
+                                <span className="text-primary ml-2 font-black">({req.employeeQra})</span>
+                              </CardTitle>
+                              <Badge variant="outline" className="text-[9px] uppercase font-bold border-primary/20 text-primary">{req.type}</Badge>
+                            </div>
+                            <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase">
+                              <span className="bg-slate-100 px-2 py-0.5 rounded">ESCALA: {req.escala}</span>
+                              <span className="bg-slate-100 px-2 py-0.5 rounded">TURNO: {req.turno}</span>
+                            </div>
                           </div>
-                          <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none uppercase text-[8px]">{req.status}</Badge>
+                          <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none uppercase text-[9px] font-black">{req.status}</Badge>
                         </div>
                       </CardHeader>
-                      <CardContent className="pt-6 space-y-4">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <Label className="text-[9px] font-bold text-muted-foreground uppercase">DATA(S) SOLICITADA(S)</Label>
-                            <p className="text-[10px] font-black uppercase text-slate-900 bg-slate-50 p-2 rounded-lg border">{req.date}</p>
+                      <CardContent className="pt-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-2 p-4 bg-blue-50/30 rounded-2xl border border-blue-100/50">
+                            <Label className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
+                              <CalendarDays className="h-3.5 w-3.5" /> DATA(S) SOLICITADA(S)
+                            </Label>
+                            <p className="text-[13px] font-black uppercase text-blue-900 leading-relaxed">
+                              {req.date}
+                            </p>
                           </div>
-                          <div className="space-y-1">
-                            <Label className="text-[9px] font-bold text-muted-foreground uppercase">CHEFIA SELECIONADA</Label>
-                            <p className="text-[10px] font-medium uppercase text-slate-700 bg-slate-50 p-2 rounded-lg border">{req.chefiaImediata}</p>
+                          <div className="space-y-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
+                              <ShieldCheck className="h-3.5 w-3.5" /> CIÊNCIA DA CHEFIA
+                            </Label>
+                            <p className="text-[11px] font-bold uppercase text-slate-700">
+                              {req.chefiaImediata}
+                            </p>
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-[9px] font-bold text-muted-foreground uppercase">JUSTIFICATIVA DO SERVIDOR</Label>
-                          <p className="text-[11px] uppercase p-4 bg-muted/20 rounded-xl italic">"{req.description}"</p>
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">JUSTIFICATIVA DO SERVIDOR</Label>
+                          <div className="relative">
+                            <p className="text-[12px] uppercase p-5 bg-muted/10 border-l-4 border-muted rounded-r-2xl italic text-slate-600 leading-relaxed">
+                              "{req.description}"
+                            </p>
+                          </div>
                         </div>
-                        <Separator className="my-4" />
+                        <Separator className="my-2" />
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
                             <Label className="text-[10px] font-bold uppercase text-primary">Parecer / Despacho Administrativo</Label>
