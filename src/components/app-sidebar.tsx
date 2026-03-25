@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -26,6 +27,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
 import Link from "next/link"
@@ -47,6 +49,7 @@ const navigation = [
 export function AppSidebar() {
   const pathname = usePathname()
   const { logout, loading, employeeData, user, firestore } = useAuth()
+  const { state } = useSidebar()
   
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'stable' | 'disconnected'>('stable')
 
@@ -104,22 +107,21 @@ export function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b px-6 py-4">
-        <div className="flex items-center justify-between w-full">
-          <div className="flex items-center gap-2 font-headline font-bold text-primary">
+      <SidebarHeader className="border-b p-2">
+        <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
+          <div className="flex items-center gap-2 font-headline font-bold text-primary group-data-[collapsible=icon]:hidden px-4">
             <div className="bg-primary flex h-8 w-8 items-center justify-center rounded-lg text-white">
               N
             </div>
-            <span className="truncate text-lg group-data-[collapsible=icon]:hidden">
+            <span className="truncate text-lg">
               NRH - GMVV
             </span>
-          </div>
-          <div className="flex items-center group-data-[collapsible=icon]:hidden">
             <div 
-              className={`h-2.5 w-2.5 rounded-full ${getStatusColor()} animate-pulse shadow-[0_0_8px_rgba(0,0,0,0.2)]`} 
+              className={`ml-2 h-2.5 w-2.5 rounded-full ${getStatusColor()} animate-pulse shadow-[0_0_8px_rgba(0,0,0,0.2)]`} 
               title={getStatusLabel()}
             />
           </div>
+          <SidebarTrigger className="transition-transform duration-200" />
         </div>
       </SidebarHeader>
       <SidebarContent>
