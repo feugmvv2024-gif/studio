@@ -48,6 +48,15 @@ const applyCpfMask = (value: string) => {
   return `${limited.slice(0, 3)}.${limited.slice(3, 6)}.${limited.slice(6, 9)}-${limited.slice(9)}`;
 };
 
+const applyPhoneMask = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  const limited = digits.slice(0, 11);
+  if (limited.length <= 2) return limited;
+  if (limited.length <= 6) return `(${limited.slice(0, 2)}) ${limited.slice(2)}`;
+  if (limited.length <= 10) return `(${limited.slice(0, 2)}) ${limited.slice(2, 6)}-${limited.slice(6)}`;
+  return `(${limited.slice(0, 2)}) ${limited.slice(2, 7)}-${limited.slice(7)}`;
+};
+
 export default function ProfilePage() {
   const { employeeData, loading: authLoading } = useAuth();
   const firestore = useFirestore();
@@ -253,13 +262,23 @@ export default function ProfilePage() {
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                     <Phone className="h-3 w-3" /> Telefone Principal
                   </Label>
-                  <Input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="(27) 99999-9999" className="uppercase font-bold text-xs h-11" />
+                  <Input 
+                    value={phone} 
+                    onChange={(e) => setPhone(applyPhoneMask(e.target.value))} 
+                    placeholder="(27) 99999-9999" 
+                    className="uppercase font-bold text-xs h-11" 
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                     <Phone className="h-3 w-3" /> Telefone de Emergência
                   </Label>
-                  <Input value={emergencyPhone} onChange={(e) => setEmergencyPhone(e.target.value)} placeholder="(27) 99999-9999" className="uppercase font-bold text-xs h-11" />
+                  <Input 
+                    value={emergencyPhone} 
+                    onChange={(e) => setEmergencyPhone(applyPhoneMask(e.target.value))} 
+                    placeholder="(27) 99999-9999" 
+                    className="uppercase font-bold text-xs h-11" 
+                  />
                 </div>
               </div>
               <div className="space-y-1.5">
