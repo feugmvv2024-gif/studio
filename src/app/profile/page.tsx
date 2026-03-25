@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -38,6 +38,15 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
+
+const applyCpfMask = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  const limited = digits.slice(0, 11);
+  if (limited.length <= 3) return limited;
+  if (limited.length <= 6) return `${limited.slice(0, 3)}.${limited.slice(3)}`;
+  if (limited.length <= 9) return `${limited.slice(0, 3)}.${limited.slice(3, 6)}.${limited.slice(6)}`;
+  return `${limited.slice(0, 3)}.${limited.slice(3, 6)}.${limited.slice(6, 9)}-${limited.slice(9)}`;
+};
 
 export default function ProfilePage() {
   const { employeeData, loading: authLoading } = useAuth();
@@ -202,7 +211,12 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">CPF</Label>
-                  <Input value={cpf} onChange={(e) => setCpf(e.target.value)} placeholder="000.000.000-00" className="uppercase font-bold text-xs h-11" />
+                  <Input 
+                    value={cpf} 
+                    onChange={(e) => setCpf(applyCpfMask(e.target.value))} 
+                    placeholder="000.000.000-00" 
+                    className="uppercase font-bold text-xs h-11" 
+                  />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Nascimento</Label>
