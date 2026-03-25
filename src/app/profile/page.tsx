@@ -139,7 +139,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">FICHA DO SERVIDOR</h2>
@@ -186,7 +186,8 @@ export default function ProfilePage() {
           </CardContent>
         </Card>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        {/* ALINHAMENTO VERTICAL DOS CARDS */}
+        <div className="flex flex-col gap-8">
           {/* SEÇÃO 1: DADOS PESSOAIS */}
           <Card className="card-shadow border-none rounded-2xl">
             <CardHeader className="border-b bg-muted/5">
@@ -257,7 +258,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* SEÇÃO 3: FAMÍLIA E DEPENDENTES */}
-          <Card className="card-shadow border-none rounded-2xl lg:col-span-2">
+          <Card className="card-shadow border-none rounded-2xl">
             <CardHeader className="border-b bg-muted/5">
               <div className="flex items-center gap-3">
                 <div className="bg-red-50 p-2 rounded-lg border border-red-100">
@@ -345,7 +346,7 @@ export default function ProfilePage() {
           </Card>
 
           {/* SEÇÃO 4: DADOS ELEITORAIS */}
-          <Card className="card-shadow border-none rounded-2xl lg:col-span-2">
+          <Card className="card-shadow border-none rounded-2xl">
             <CardHeader className="border-b bg-muted/5">
               <div className="flex items-center gap-3">
                 <div className="bg-purple-50 p-2 rounded-lg border border-purple-100">
