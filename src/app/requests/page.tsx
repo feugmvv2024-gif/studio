@@ -10,7 +10,8 @@ import {
   ShieldCheck,
   Check,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  CalendarDays
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -78,9 +79,6 @@ export default function RequestsPage() {
   const [newVacationEnd, setNewVacationEnd] = React.useState("");
   const [birthdayDate, setBirthdayDate] = React.useState("");
   const [abonoDate, setAbonoDate] = React.useState("");
-  const [swapOutDate, setSwapOutDate] = React.useState("");
-  const [swapInDate, setSwapInDate] = React.useState("");
-  const [swapInShift, setSwapInShift] = React.useState("");
   
   // Estados Permuta
   const [permutaOutDate, setPermutaOutDate] = React.useState("");
@@ -94,7 +92,7 @@ export default function RequestsPage() {
   const [aiLoadingId, setAiLoadingId] = React.useState<string | null>(null);
   const [adminResponseDraft, setAdminResponseDraft] = React.useState<{ [key: string]: string }>({});
 
-  // Consultas unificadas
+  // Consultas
   const requestsQuery = React.useMemo(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'requests'), where('employeeId', '==', user.uid), orderBy('createdAt', 'desc'));
@@ -144,8 +142,6 @@ export default function RequestsPage() {
   }, [requestType, myBalanceMinutes, multiDates, requiredMinutesForFolga]);
 
   const hasInsufficientBalance = requestType === "FOLGA" && simulatedRemainingMinutes < 0;
-  
-  // Validação Abono Aniversário: Data folga não pode ser menor q aniversário
   const hasInvalidAbonoDate = requestType === "ABONO DE ANIVERSÁRIO" && birthdayDate && abonoDate && abonoDate < birthdayDate;
 
   const isManagement = React.useMemo(() => {
@@ -203,8 +199,6 @@ export default function RequestsPage() {
       finalDate = `AGENDADO: ${formatDateBR(currentVacationStart)} À ${formatDateBR(currentVacationEnd)} | NOVO: ${formatDateBR(newVacationStart)} À ${formatDateBR(newVacationEnd)}`;
     } else if (requestType === "ABONO DE ANIVERSÁRIO") {
       finalDate = `ANIV: ${formatDateBR(birthdayDate)} | FOLGA: ${formatDateBR(abonoDate)}`;
-    } else if (requestType === "TROCA DE ESCALA") {
-      finalDate = `SAI: ${formatDateBR(swapOutDate)} | ENTRA: ${formatDateBR(swapInDate)} (${swapInShift.toUpperCase()})`;
     } else if (requestType === "PERMUTA") {
       finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: SAI ${formatDateBR(permutaOutDate)} ENTRA ${formatDateBR(permutaInDate)} | PARCEIRO: SAI ${formatDateBR(permutaInDate)} ENTRA ${formatDateBR(permutaOutDate)}`;
     } else {
@@ -245,6 +239,10 @@ export default function RequestsPage() {
     setPermutaInDate("");
     setBirthdayDate("");
     setAbonoDate("");
+    setCurrentVacationStart("");
+    setCurrentVacationEnd("");
+    setNewVacationStart("");
+    setNewVacationEnd("");
   };
 
   async function handleProcessRequest(request: any, action: 'approve' | 'deny' | 'review') {
@@ -340,6 +338,42 @@ export default function RequestsPage() {
                   )}
                 </div>
 
+                {requestType === "REPROGRAMAÇÃO DE FÉRIAS" && (
+                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
+                    <div className="bg-slate-50 p-4 rounded-2xl border space-y-4">
+                      <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4" /> PERÍODO ATUAL AGENDADO
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA INÍCIO</Label>
+                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-11 font-bold bg-white" />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA FIM</Label>
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-11 font-bold bg-white" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-4">
+                      <h4 className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
+                        <CalendarDays className="h-4 w-4" /> NOVO PERÍODO SOLICITADO
+                      </h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid gap-2">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA INÍCIO</Label>
+                          <Input type="date" value={newVacationStart} onChange={(e) => setNewVacationStart(e.target.value)} required className="h-11 font-bold bg-white border-blue-200" />
+                        </div>
+                        <div className="grid gap-2">
+                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA FIM</Label>
+                          <Input type="date" value={newVacationEnd} onChange={(e) => setNewVacationEnd(e.target.value)} required className="h-11 font-bold bg-white border-blue-200" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {requestType === "ABONO DE ANIVERSÁRIO" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
                     <div className="grid gap-2">
@@ -396,14 +430,14 @@ export default function RequestsPage() {
                             )}
                           </div>
                         </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in fade-in slide-in-from-top-1 duration-200">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                           <div className="grid gap-2">
-                            <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO SAI</Label>
-                            <Input type="date" value={permutaInDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
+                            <Label className="text-[9px] font-bold uppercase text-muted-foreground">PARCEIRO SAI</Label>
+                            <Input value={formatDateBR(permutaInDate)} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
                           </div>
                           <div className="grid gap-2">
-                            <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARCEIRO ENTRA</Label>
-                            <Input type="date" value={permutaOutDate} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
+                            <Label className="text-[9px] font-bold uppercase text-muted-foreground">PARCEIRO ENTRA</Label>
+                            <Input value={formatDateBR(permutaOutDate)} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
                           </div>
                         </div>
                       </div>
