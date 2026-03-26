@@ -15,7 +15,8 @@ import {
   FileText,
   MessageSquare,
   User,
-  Plus
+  Plus,
+  AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -187,6 +188,14 @@ export default function RequestsPage() {
     return myBalanceTreDays - multiDates.filter(d => d).length;
   }, [requestType, myBalanceTreDays, multiDates]);
 
+  // Validação de Permuta no mesmo mês
+  const hasInvalidPermutaMonth = React.useMemo(() => {
+    if (requestType === "PERMUTA" && permutaMyOriginalDate && permutaMyNewDate) {
+      return permutaMyOriginalDate.substring(0, 7) !== permutaMyNewDate.substring(0, 7);
+    }
+    return false;
+  }, [requestType, permutaMyOriginalDate, permutaMyNewDate]);
+
   const hasInsufficientBalance = requestType === "FOLGA" && simulatedRemainingMinutes < 0;
   const hasInsufficientTreBalance = requestType === "ABONO TRE" && simulatedRemainingTreDays < 0;
   const hasInvalidAbonoDate = requestType === "ABONO DE ANIVERSÁRIO" && birthdayDate && abonoDate && abonoDate < birthdayDate;
@@ -240,6 +249,11 @@ export default function RequestsPage() {
     const selectedChefias = chefiaRows.filter(r => r.uid);
     if (selectedChefias.length === 0) {
       toast({ variant: "destructive", title: "ATENÇÃO", description: "SELECIONE AO MENOS UMA CHEFIA." });
+      return;
+    }
+
+    if (hasInvalidPermutaMonth) {
+      toast({ variant: "destructive", title: "ERRO DE DATA", description: "A PERMUTA DEVE SER NO MESMO MÊS." });
       return;
     }
 
@@ -537,6 +551,16 @@ export default function RequestsPage() {
                         </div>
                       </div>
                     </div>
+
+                    {/* VALIDAÇÃO DE MÊS */}
+                    {hasInvalidPermutaMonth && (
+                      <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-center gap-2 animate-in zoom-in-95">
+                        <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+                        <p className="text-[10px] font-black uppercase text-red-700">
+                          ERRO: A permuta deve ocorrer dentro do mesmo mês calendário.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -615,7 +639,11 @@ export default function RequestsPage() {
                 </div>
               </CardContent>
               <CardFooter className="border-t p-4 bg-muted/5">
-                <Button type="submit" disabled={loading || hasInsufficientBalance || hasInsufficientTreBalance || hasInvalidAbonoDate} className="w-full h-11 uppercase font-black text-xs tracking-widest shadow-xl shadow-blue-100 transition-all active:scale-[0.98]">
+                <Button 
+                  type="submit" 
+                  disabled={loading || hasInsufficientBalance || hasInsufficientTreBalance || hasInvalidAbonoDate || hasInvalidPermutaMonth} 
+                  className="w-full h-11 uppercase font-black text-xs tracking-widest shadow-xl shadow-blue-100 transition-all active:scale-[0.98]"
+                >
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
                   Finalizar e Enviar Solicitação
                 </Button>
