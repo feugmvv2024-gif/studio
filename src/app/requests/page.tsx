@@ -665,6 +665,11 @@ export default function RequestsPage() {
                 const isDenied = req.status === 'Negado';
                 const isAwaitingRH = req.status === 'Aprovado pela Chefia';
                 
+                const isFolga = req.type === "FOLGA";
+                const isTre = req.type === "ABONO TRE";
+                // Conta datas para exibição de débito
+                const dateCount = req.date ? req.date.split(',').length : 0;
+
                 return (
                   <Card key={req.id} className="card-shadow border-none rounded-xl overflow-hidden hover:shadow-md transition-all group">
                     <div className="flex flex-col sm:flex-row min-h-[120px]">
@@ -697,6 +702,14 @@ export default function RequestsPage() {
                               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                                 {req.escala || "---"} / {req.turno || "---"}
                               </p>
+                              {(isFolga || isTre) && (
+                                <>
+                                  <span className="text-slate-300">•</span>
+                                  <p className="text-[10px] font-black text-red-600 uppercase tracking-widest">
+                                    DÉBITO: {isFolga ? `${minutesToHHmm(dateCount * requiredMinutesForFolga)}H` : `${dateCount} DIAS`}
+                                  </p>
+                                </>
+                              )}
                             </div>
                           </div>
                         </div>
