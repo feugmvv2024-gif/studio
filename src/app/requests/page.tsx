@@ -11,7 +11,10 @@ import {
   Check,
   ChevronRight,
   Sparkles,
-  CalendarDays
+  CalendarDays,
+  User,
+  FileText,
+  MessageSquare
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -312,7 +315,7 @@ export default function RequestsPage() {
     const response = adminResponseDraft[request.id] || "";
     try {
       await updateDoc(doc(firestore, 'requests', request.id), { status: nextStatus, adminResponse: response.toUpperCase(), updatedAt: serverTimestamp() });
-      toast({ title: "SOLICITAÇÃO PRROCESSADA" });
+      toast({ title: "SOLICITAÇÃO PROCESSADA" });
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO PROCESSAR" });
     }
@@ -642,15 +645,15 @@ export default function RequestsPage() {
         </TabsContent>
 
         {isManagement && (
-          <TabsContent value="management" className="mt-6 space-y-4">
+          <TabsContent value="management" className="mt-6 space-y-3">
             {loadingManagement ? <div className="flex h-32 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
-              <div className="grid gap-6">
-                <div className="bg-blue-50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
-                  <ShieldCheck className="h-6 w-6 text-blue-600" />
+              <div className="grid gap-4">
+                <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-blue-600" />
                   <p className="text-[10px] font-bold uppercase text-blue-800 tracking-tight">PEDIDOS AGUARDANDO SEU PARECER OU DECISÃO DO RH.</p>
                 </div>
                 {filteredManagementRequests?.length === 0 && (
-                  <div className="text-center py-20 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest border-2 border-dashed rounded-2xl">
+                  <div className="text-center py-16 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest border-2 border-dashed rounded-2xl">
                     SUA FILA DE GESTÃO ESTÁ VAZIA.
                   </div>
                 )}
@@ -662,70 +665,98 @@ export default function RequestsPage() {
                   const isChefiaForThis = req.chefiaIds?.includes(user?.uid);
                   const canAct = (isChefiaForThis && isPending) || (isRH && isAwaitingRH);
                   const label = isAwaitingRH ? "APROVAR DEFINITIVO" : "APROVAR PARECER";
+                  
                   return (
-                    <Card key={req.id} className="card-shadow border-2 border-primary/5 rounded-2xl overflow-hidden">
-                      <CardHeader className="bg-muted/5 border-b pb-4">
-                        <div className="flex items-center justify-between">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-2">
-                              <CardTitle className="text-base font-black uppercase">
-                                {req.employeeName} 
-                                <span className="text-primary ml-2 font-black">({req.employeeQra})</span>
-                              </CardTitle>
-                              <Badge variant="outline" className="text-[9px] uppercase font-bold border-primary/20 text-primary">{req.type}</Badge>
+                    <Card key={req.id} className="card-shadow border-primary/10 rounded-xl overflow-hidden">
+                      <div className="flex flex-col sm:flex-row">
+                        {/* Sidebar do Card com Identificação */}
+                        <div className="sm:w-48 bg-muted/5 p-4 border-b sm:border-b-0 sm:border-r space-y-3 shrink-0">
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-black uppercase text-slate-900 leading-tight">{req.employeeName}</p>
+                            <p className="text-[10px] font-bold text-primary uppercase">QRA: {req.employeeQra}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <Badge variant="outline" className="text-[8px] uppercase font-bold border-primary/20 text-primary bg-primary/5">{req.type}</Badge>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase">{req.escala} / {req.turno}</p>
+                          </div>
+                          <Badge className="w-full justify-center bg-amber-100 text-amber-700 border-none uppercase text-[8px] font-black">{req.status}</Badge>
+                        </div>
+
+                        {/* Conteúdo Principal do Card */}
+                        <div className="flex-1 flex flex-col min-w-0">
+                          <CardContent className="p-4 flex-1 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1">
+                                <Label className="text-[9px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-1.5">
+                                  <CalendarDays className="h-3 w-3" /> Data(s) Solicitada(s)
+                                </Label>
+                                <p className="text-[11px] font-black uppercase text-blue-900 truncate">
+                                  {req.date}
+                                </p>
+                              </div>
+                              <div className="space-y-1">
+                                <Label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                  <ShieldCheck className="h-3 w-3" /> Chefia para Ciência
+                                </Label>
+                                <p className="text-[10px] font-bold uppercase text-slate-700 truncate">
+                                  {req.chefiaImediata}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase">
-                              <span className="bg-slate-100 px-2 py-0.5 rounded">ESCALA: {req.escala}</span>
-                              <span className="bg-slate-100 px-2 py-0.5 rounded">TURNO: {req.turno}</span>
+
+                            <div className="space-y-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                              <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                                <FileText className="h-3 w-3" /> Justificativa
+                              </Label>
+                              <p className="text-[10px] uppercase text-slate-600 leading-relaxed italic">
+                                "{req.description}"
+                              </p>
                             </div>
-                          </div>
-                          <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-none uppercase text-[9px] font-black">{req.status}</Badge>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="pt-6 space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2 p-4 bg-blue-50/30 rounded-2xl border border-blue-100/50">
-                            <Label className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-2">
-                              <CalendarDays className="h-3.5 w-3.5" /> DATA(S) SOLICITADA(S)
-                            </Label>
-                            <p className="text-[13px] font-black uppercase text-blue-900 leading-relaxed">
-                              {req.date}
-                            </p>
-                          </div>
-                          <div className="space-y-2 p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                            <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-2">
-                              <ShieldCheck className="h-3.5 w-3.5" /> CIÊNCIA DA CHEFIA
-                            </Label>
-                            <p className="text-[11px] font-bold uppercase text-slate-700">
-                              {req.chefiaImediata}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">JUSTIFICATIVA DO SERVIDOR</Label>
-                          <div className="relative">
-                            <p className="text-[12px] uppercase p-5 bg-muted/10 border-l-4 border-muted rounded-r-2xl italic text-slate-600 leading-relaxed">
-                              "{req.description}"
-                            </p>
-                          </div>
-                        </div>
-                        <Separator className="my-2" />
-                        <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-[10px] font-bold uppercase text-primary">Parecer / Despacho Administrativo</Label>
-                            <Button variant="ghost" size="sm" className="h-8 gap-2 text-[10px] font-bold uppercase text-primary" onClick={() => handleAskIA(req)} disabled={aiLoadingId === req.id}>
-                              {aiLoadingId === req.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Assistente IA
+
+                            <div className="space-y-2 pt-2 border-t">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-[9px] font-black uppercase text-primary flex items-center gap-1.5">
+                                  <MessageSquare className="h-3 w-3" /> Parecer Administrativo
+                                </Label>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="h-6 gap-1.5 text-[8px] font-bold uppercase text-primary hover:bg-primary/5" 
+                                  onClick={() => handleAskIA(req)} 
+                                  disabled={aiLoadingId === req.id}
+                                >
+                                  {aiLoadingId === req.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />} IA Draft
+                                </Button>
+                              </div>
+                              <Textarea 
+                                value={adminResponseDraft[req.id] || ""} 
+                                onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))} 
+                                placeholder="DIGITE O PARECER OU RESPOSTA..." 
+                                className="min-h-[60px] uppercase text-[10px] p-2 rounded-lg bg-blue-50/10 border-blue-100 resize-none" 
+                              />
+                            </div>
+                          </CardContent>
+
+                          <CardFooter className="bg-muted/5 p-3 border-t flex items-center justify-end gap-2">
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              className="uppercase text-[9px] font-black text-red-600 h-8 px-4" 
+                              onClick={() => handleProcessRequest(req, 'deny')}
+                            >
+                              NEGAR
                             </Button>
-                          </div>
-                          <Textarea value={adminResponseDraft[req.id] || ""} onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))} placeholder="..." className="min-h-[100px] uppercase text-[11px] p-4 rounded-xl resize-none bg-blue-50/10 border-blue-100" />
+                            <Button 
+                              size="sm" 
+                              disabled={!canAct} 
+                              className="uppercase text-[9px] font-black h-8 px-6 bg-blue-600 hover:bg-blue-700 shadow-md" 
+                              onClick={() => handleProcessRequest(req, 'approve')}
+                            >
+                              {label} <ChevronRight className="ml-1 h-3 w-3" />
+                            </Button>
+                          </CardFooter>
                         </div>
-                      </CardContent>
-                      <CardFooter className="bg-muted/5 p-4 border-t flex flex-wrap gap-2 justify-end">
-                        <Button variant="ghost" size="sm" className="uppercase text-[10px] font-black text-red-600 h-10 px-6" onClick={() => handleProcessRequest(req, 'deny')}>NEGAR PEDIDO</Button>
-                        <Button size="sm" disabled={!canAct} className="uppercase text-[10px] font-black h-10 px-8 bg-blue-600 hover:bg-blue-700 shadow-lg disabled:opacity-30" onClick={() => handleProcessRequest(req, 'approve')}>
-                          {label} <ChevronRight className="ml-2 h-4 w-4" />
-                        </Button>
-                      </CardFooter>
+                      </div>
                     </Card>
                   );
                 })}
