@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -93,6 +94,8 @@ export default function RequestsPage() {
   // Estados Permuta
   const [permutaOutDate, setPermutaOutDate] = React.useState("");
   const [permutaInDate, setPermutaInDate] = React.useState("");
+  const [permutaMyEntraDate, setPermutaMyEntraDate] = React.useState("");
+  const [permutaPartnerEntraDate, setPermutaPartnerEntraDate] = React.useState("");
   const [permutaPartnerId, setPermutaPartnerId] = React.useState("");
   const [permutaPartnerTerm, setPermutaPartnerTerm] = React.useState("");
   const [permutaPartnerShow, setPermutaPartnerShow] = React.useState(false);
@@ -256,7 +259,7 @@ export default function RequestsPage() {
     } else if (requestType === "TROCA DE ESCALA") {
       finalDate = `DE: ${formatDateBR(swapFromDate)} PARA: ${formatDateBR(swapToDate)}`;
     } else if (requestType === "PERMUTA") {
-      finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: SAI ${formatDateBR(permutaOutDate)} ENTRA ${formatDateBR(permutaInDate)} | PARCEIRO: SAI ${formatDateBR(permutaInDate)} ENTRA ${formatDateBR(permutaOutDate)}`;
+      finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: SAI ${formatDateBR(permutaOutDate)} ENTRA ${formatDateBR(permutaMyEntraDate)} | PARCEIRO: SAI ${formatDateBR(permutaInDate)} ENTRA ${formatDateBR(permutaPartnerEntraDate)}`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -296,6 +299,8 @@ export default function RequestsPage() {
     setPermutaPartnerTerm("");
     setPermutaOutDate("");
     setPermutaInDate("");
+    setPermutaMyEntraDate("");
+    setPermutaPartnerEntraDate("");
     setBirthdayDate("");
     setAbonoDate("");
     setCurrentVacationStart("");
@@ -355,14 +360,14 @@ export default function RequestsPage() {
             <form onSubmit={handleSendRequest}>
               <CardHeader className="bg-primary/5 border-b py-4">
                 <CardTitle className="text-base uppercase font-bold">Formulário de Requerimento</CardTitle>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
-                   <div className="flex items-center gap-1.5">
-                    <User className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-[10px] font-black uppercase text-slate-700">{employeeData?.name}</span>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-2">
+                   <div className="flex items-center gap-2">
+                    <User className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-xl font-black uppercase text-slate-800 tracking-tight">{employeeData?.name}</span>
                    </div>
-                   <div className="flex items-center gap-1.5">
-                    <ShieldCheck className="h-3 w-3 text-primary/70" />
-                    <span className="text-[10px] font-bold uppercase text-primary">{employeeData?.escala} - {employeeData?.turno}</span>
+                   <div className="flex items-center gap-2">
+                    <ShieldCheck className="h-5 w-5 text-primary/70" />
+                    <span className="text-xl font-black uppercase text-primary tracking-tight">{employeeData?.escala} - {employeeData?.turno}</span>
                    </div>
                 </div>
               </CardHeader>
@@ -484,6 +489,16 @@ export default function RequestsPage() {
                             ))}
                           </div>
                         )}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 pt-1">
+                      <div className="grid gap-1">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Minha Escala (Entra)</Label>
+                        <Input type="date" value={permutaMyEntraDate} onChange={(e) => setPermutaMyEntraDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                      </div>
+                      <div className="grid gap-1">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Escala Parceiro (Entra)</Label>
+                        <Input type="date" value={permutaPartnerEntraDate} onChange={(e) => setPermutaPartnerEntraDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                       </div>
                     </div>
                   </div>
