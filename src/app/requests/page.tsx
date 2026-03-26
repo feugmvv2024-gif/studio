@@ -12,7 +12,9 @@ import {
   ChevronRight,
   CalendarDays,
   FileText,
-  MessageSquare
+  MessageSquare,
+  User,
+  Plus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -126,12 +128,12 @@ export default function RequestsPage() {
   const myShiftPeriod = React.useMemo(() => (employeeData?.escala && shiftPeriods) ? shiftPeriods.find(p => p.escalaName === employeeData.escala) : null, [employeeData?.escala, shiftPeriods]);
   const requiredMinutesForFolga = React.useMemo(() => myShiftPeriod?.duration ? hhmmToMinutes(myShiftPeriod.duration) : 0, [myShiftPeriod]);
 
-  // Automação Abono de Aniversário: Preenche data com dia/mês do servidor no ano atual
+  // Automação Abono de Aniversário
   React.useEffect(() => {
     if (requestType === "ABONO DE ANIVERSÁRIO" && employeeData?.birthDate) {
       const parts = employeeData.birthDate.split('-');
       if (parts.length === 3) {
-        const [year, month, day] = parts;
+        const [, month, day] = parts;
         const currentYear = new Date().getFullYear();
         setBirthdayDate(`${currentYear}-${month}-${day}`);
       }
@@ -209,7 +211,6 @@ export default function RequestsPage() {
     });
   }, [managementRequests, user, employeeData]);
 
-  // Contadores para os Badges
   const historyBadgeCount = React.useMemo(() => 
     myRequests?.filter(req => req.status === "Pendente" || req.status === "Em Revisão").length || 0
   , [myRequests]);
@@ -305,9 +306,9 @@ export default function RequestsPage() {
     setSwapToDate("");
   };
 
-  async function handleProcessRequest(request: any, action: 'approve' | 'deny' | 'review') {
+  async function handleProcessRequest(request: any, action: 'approve' | 'deny') {
     if (!firestore) return;
-    let nextStatus = action === 'deny' ? "Negado" : action === 'review' ? "Em Revisão" : (request.status === "Pendente" ? "Aprovado pela Chefia" : "Aprovado");
+    let nextStatus = action === 'deny' ? "Negado" : (request.status === "Pendente" ? "Aprovado pela Chefia" : "Aprovado");
     const response = adminResponseDraft[request.id] || "";
     try {
       await updateDoc(doc(firestore, 'requests', request.id), { status: nextStatus, adminResponse: response.toUpperCase(), updatedAt: serverTimestamp() });
@@ -352,51 +353,51 @@ export default function RequestsPage() {
         <TabsContent value="new" className="mt-6">
            <Card className="card-shadow border-none rounded-2xl overflow-hidden">
             <form onSubmit={handleSendRequest}>
-              <CardHeader className="bg-primary/5 border-b">
-                <CardTitle className="text-lg uppercase font-bold">Formulário de Requerimento</CardTitle>
-                <CardDescription className="text-[10px] uppercase font-bold text-muted-foreground">PREENCHA CONFORME SUA NECESSIDADE.</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6 pt-8">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4 bg-muted/20 border rounded-xl">
-                  <div className="space-y-1">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">SOLICITANTE</Label>
-                    <p className="text-sm font-black uppercase text-slate-900">{employeeData?.name}</p>
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">ESCALA ATUAL</Label>
-                    <p className="text-sm font-black uppercase text-primary">{employeeData?.escala} - {employeeData?.turno}</p>
-                  </div>
+              <CardHeader className="bg-primary/5 border-b py-4">
+                <CardTitle className="text-base uppercase font-bold">Formulário de Requerimento</CardTitle>
+                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1">
+                   <div className="flex items-center gap-1.5">
+                    <User className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-[10px] font-black uppercase text-slate-700">{employeeData?.name}</span>
+                   </div>
+                   <div className="flex items-center gap-1.5">
+                    <ShieldCheck className="h-3 w-3 text-primary/70" />
+                    <span className="text-[10px] font-bold uppercase text-primary">{employeeData?.escala} - {employeeData?.turno}</span>
+                   </div>
                 </div>
-
-                <div className="grid gap-6 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground">TIPO DE SOLICITAÇÃO</Label>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-5">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid gap-1.5">
+                    <Label className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Tipo de Solicitação</Label>
                     <Select value={requestType} onValueChange={setRequestType} required>
-                      <SelectTrigger className="h-11 uppercase text-[11px] font-bold"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+                      <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="FOLGA" className="uppercase text-[11px]">FOLGA (BANCO DE HORAS)</SelectItem>
-                        <SelectItem value="ABONO DE ANIVERSÁRIO" className="uppercase text-[11px]">ABONO DE ANIVERSÁRIO</SelectItem>
-                        <SelectItem value="ABONO TRE" className="uppercase text-[11px]">ABONO TRE</SelectItem>
-                        <SelectItem value="REPROGRAMAÇÃO DE FÉRIAS" className="uppercase text-[11px]">REPROGRAMAÇÃO DE FÉRIAS</SelectItem>
-                        <SelectItem value="ESCALA ESPECIAL" className="uppercase text-[11px]">ESCALA ESPECIAL</SelectItem>
-                        <SelectItem value="TROCA DE ESCALA" className="uppercase text-[11px]">TROCA DE ESCALA</SelectItem>
-                        <SelectItem value="PERMUTA" className="uppercase text-[11px]">PERMUTA</SelectItem>
-                        <SelectItem value="OUTROS" className="uppercase text-[11px]">OUTROS</SelectItem>
+                        <SelectItem value="FOLGA" className="uppercase text-[10px]">FOLGA (BANCO DE HORAS)</SelectItem>
+                        <SelectItem value="ABONO DE ANIVERSÁRIO" className="uppercase text-[10px]">ABONO DE ANIVERSÁRIO</SelectItem>
+                        <SelectItem value="ABONO TRE" className="uppercase text-[10px]">ABONO TRE</SelectItem>
+                        <SelectItem value="REPROGRAMAÇÃO DE FÉRIAS" className="uppercase text-[10px]">REPROGRAMAÇÃO DE FÉRIAS</SelectItem>
+                        <SelectItem value="ESCALA ESPECIAL" className="uppercase text-[10px]">ESCALA ESPECIAL</SelectItem>
+                        <SelectItem value="TROCA DE ESCALA" className="uppercase text-[10px]">TROCA DE ESCALA</SelectItem>
+                        <SelectItem value="PERMUTA" className="uppercase text-[10px]">PERMUTA</SelectItem>
+                        <SelectItem value="OUTROS" className="uppercase text-[10px]">OUTROS</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
                   {requestType === "FOLGA" && (
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">SALDO DISPONÍVEL</Label>
-                      <div className={cn("h-11 flex items-center px-4 rounded-xl border-2 font-black text-[11px] uppercase", hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>
+                    <div className="grid gap-1.5 animate-in fade-in duration-300">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Saldo Banco de Horas</Label>
+                      <div className={cn("h-10 flex items-center px-4 rounded-lg border font-black text-[10px] uppercase", hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>
                         {minutesToHHmm(simulatedRemainingMinutes)}H DISPONÍVEIS
                       </div>
                     </div>
                   )}
+
                   {requestType === "ABONO TRE" && (
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">SALDO TRE DISPONÍVEL</Label>
-                      <div className={cn("h-11 flex items-center px-4 rounded-xl border-2 font-black text-[11px] uppercase", hasInsufficientTreBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>
+                    <div className="grid gap-1.5 animate-in fade-in duration-300">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Saldo TRE</Label>
+                      <div className={cn("h-10 flex items-center px-4 rounded-lg border font-black text-[10px] uppercase", hasInsufficientTreBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>
                         {simulatedRemainingTreDays} DIAS DISPONÍVEIS
                       </div>
                     </div>
@@ -404,35 +405,30 @@ export default function RequestsPage() {
                 </div>
 
                 {requestType === "REPROGRAMAÇÃO DE FÉRIAS" && (
-                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
-                    <div className="bg-slate-50 p-4 rounded-2xl border space-y-4">
-                      <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4" /> PERÍODO ATUAL AGENDADO
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA INÍCIO</Label>
-                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-11 font-bold bg-white" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
+                    <div className="space-y-3">
+                      <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest border-b pb-1">Agendamento Atual</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-1">
+                          <Label className="text-[8px] font-bold uppercase text-muted-foreground">Início</Label>
+                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
-                        <div className="grid gap-2">
-                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA FIM</Label>
-                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-11 font-bold bg-white" />
+                        <div className="grid gap-1">
+                          <Label className="text-[8px] font-bold uppercase text-muted-foreground">Fim</Label>
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                       </div>
                     </div>
-
-                    <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-100 space-y-4">
-                      <h4 className="text-[10px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-2">
-                        <CalendarDays className="h-4 w-4" /> NOVO PERÍODO SOLICITADO
-                      </h4>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="grid gap-2">
-                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA INÍCIO</Label>
-                          <Input type="date" value={newVacationStart} onChange={(e) => setNewVacationStart(e.target.value)} required className="h-11 font-bold bg-white border-blue-200" />
+                    <div className="space-y-3">
+                      <p className="text-[8px] font-black uppercase text-blue-600 tracking-widest border-b border-blue-100 pb-1">Novo Período</p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="grid gap-1">
+                          <Label className="text-[8px] font-bold uppercase text-muted-foreground">Início</Label>
+                          <Input type="date" value={newVacationStart} onChange={(e) => setNewVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white border-blue-200" />
                         </div>
-                        <div className="grid gap-2">
-                          <Label className="text-[9px] font-bold uppercase text-muted-foreground">DATA FIM</Label>
-                          <Input type="date" value={newVacationEnd} onChange={(e) => setNewVacationEnd(e.target.value)} required className="h-11 font-bold bg-white border-blue-200" />
+                        <div className="grid gap-1">
+                          <Label className="text-[8px] font-bold uppercase text-muted-foreground">Fim</Label>
+                          <Input type="date" value={newVacationEnd} onChange={(e) => setNewVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white border-blue-200" />
                         </div>
                       </div>
                     </div>
@@ -440,87 +436,72 @@ export default function RequestsPage() {
                 )}
 
                 {requestType === "ABONO DE ANIVERSÁRIO" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATA DE ANIVERSÁRIO</Label>
-                      <Input type="date" value={birthdayDate} onChange={(e) => setBirthdayDate(e.target.value)} required className="h-11 font-bold" />
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid gap-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">Data Aniversário</Label>
+                      <Input type="date" value={birthdayDate} onChange={(e) => setBirthdayDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                     </div>
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATA DA FOLGA</Label>
-                      <Input type="date" value={abonoDate} onChange={(e) => setAbonoDate(e.target.value)} required className="h-11 font-bold" />
+                    <div className="grid gap-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">Data da Folga</Label>
+                      <Input type="date" value={abonoDate} onChange={(e) => setAbonoDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                       {birthdayDate && abonoDate && abonoDate < birthdayDate && (
-                        <p className="text-[10px] text-destructive font-black uppercase flex items-center gap-1">
-                          A folga não pode ser anterior ao aniversário.
-                        </p>
+                        <p className="text-[8px] text-destructive font-black uppercase absolute mt-9">A folga deve ser após o aniversário.</p>
                       )}
                     </div>
                   </div>
                 )}
 
                 {requestType === "PERMUTA" && (
-                  <div className="space-y-6 animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">MINHA ESCALA</Label>
-                        <Input type="date" value={permutaOutDate} onChange={(e) => setPermutaOutDate(e.target.value)} required className="h-11 font-bold" />
+                  <div className="space-y-3 p-3 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="grid gap-1">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Minha Escala (Sai)</Label>
+                        <Input type="date" value={permutaOutDate} onChange={(e) => setPermutaOutDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                       </div>
-                      <div className="grid gap-2">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground">ESCALA DO PARCEIRO</Label>
-                        <Input type="date" value={permutaInDate} onChange={(e) => setPermutaInDate(e.target.value)} required className="h-11 font-bold" />
+                      <div className="grid gap-1">
+                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Escala Parceiro (Sai)</Label>
+                        <Input type="date" value={permutaInDate} onChange={(e) => setPermutaInDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                       </div>
                     </div>
-
-                    <div className="p-4 border border-blue-100 bg-blue-50/30 rounded-2xl space-y-4">
-                      <div className="grid gap-4">
-                        <div className="grid gap-2 relative">
-                          <Label className="text-[10px] font-bold uppercase text-blue-700">PARCEIRO DA TROCA</Label>
-                          <div className="relative">
-                            <Input 
-                              placeholder="BUSCAR PARCEIRO..."
-                              value={permutaPartnerTerm}
-                              onChange={(e) => { setPermutaPartnerTerm(e.target.value.toUpperCase()); setPermutaPartnerShow(true); setPermutaPartnerId(""); setPermutaPartnerData(null); }}
-                              onFocus={() => setPermutaPartnerShow(true)}
-                              className="h-11 border-blue-200 uppercase text-[11px] font-bold pr-10 bg-white"
-                            />
-                            {permutaPartnerId && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
-                            {permutaPartnerShow && permutaPartnerTerm && (
-                              <div className="absolute z-[65] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-2xl max-h-48 overflow-y-auto">
-                                {allEmployees?.filter(e => e.uid !== user?.uid && (normalizeStr(e.name).includes(permutaPartnerTerm) || normalizeStr(e.qra).includes(permutaPartnerTerm))).map(c => (
-                                  <button key={c.id} type="button" onMouseDown={() => { setPermutaPartnerId(c.uid); setPermutaPartnerData(c); setPermutaPartnerTerm(`${c.name} (${c.qra}) - ${c.escala} / ${c.turno}`); setPermutaPartnerShow(false); }} className="w-full px-4 py-3 text-left hover:bg-blue-50 text-[10px] uppercase border-b last:border-0 flex flex-col">
-                                    <span className="font-black">{c.name} ({c.qra})</span>
-                                    <span className="text-muted-foreground">{c.escala} / {c.turno}</span>
-                                  </button>
-                                ))}
-                              </div>
-                            )}
+                    <div className="grid gap-1 relative">
+                      <Label className="text-[9px] font-black uppercase text-blue-700">Parceiro da Troca</Label>
+                      <div className="relative">
+                        <Input 
+                          placeholder="BUSCAR NOME OU QRA..."
+                          value={permutaPartnerTerm}
+                          onChange={(e) => { setPermutaPartnerTerm(e.target.value.toUpperCase()); setPermutaPartnerShow(true); setPermutaPartnerId(""); setPermutaPartnerData(null); }}
+                          onFocus={() => setPermutaPartnerShow(true)}
+                          className="h-9 border-blue-100 uppercase text-[10px] font-bold bg-white pr-8"
+                        />
+                        {permutaPartnerId && <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-600" />}
+                        {permutaPartnerShow && permutaPartnerTerm && (
+                          <div className="absolute z-[65] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-2xl max-h-40 overflow-y-auto">
+                            {allEmployees?.filter(e => e.uid !== user?.uid && (normalizeStr(e.name).includes(permutaPartnerTerm) || normalizeStr(e.qra).includes(permutaPartnerTerm))).map(c => (
+                              <button key={c.id} type="button" onMouseDown={() => { setPermutaPartnerId(c.uid); setPermutaPartnerData(c); setPermutaPartnerTerm(`${c.name} (${c.qra})`); setPermutaPartnerShow(false); }} className="w-full px-3 py-2 text-left hover:bg-blue-50 text-[9px] uppercase border-b last:border-0 flex flex-col">
+                                <span className="font-black">{c.name} ({c.qra})</span>
+                                <span className="text-muted-foreground">{c.escala} / {c.turno}</span>
+                              </button>
+                            ))}
                           </div>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="grid gap-2">
-                            <Label className="text-[9px] font-bold uppercase text-muted-foreground">PARCEIRO SAI</Label>
-                            <Input value={formatDateBR(permutaInDate)} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
-                          </div>
-                          <div className="grid gap-2">
-                            <Label className="text-[9px] font-bold uppercase text-muted-foreground">PARCEIRO ENTRA</Label>
-                            <Input value={formatDateBR(permutaOutDate)} readOnly className="h-11 bg-muted/30 font-bold border-dashed cursor-not-allowed" />
-                          </div>
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
                 )}
 
                 {["FOLGA", "ABONO TRE", "ESCALA ESPECIAL"].includes(requestType) && (
-                   <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">DATAS SOLICITADAS ({multiDates.length})</Label>
-                      <Button type="button" variant="outline" size="sm" onClick={() => setMultiDates([...multiDates, ""])} className="h-8 text-[10px] font-bold uppercase">+ DATA</Button>
+                   <div className="space-y-2 p-3 bg-muted/20 border rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">Datas Desejadas ({multiDates.filter(d => d).length})</Label>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setMultiDates([...multiDates, ""])} className="h-6 text-[8px] font-black uppercase text-primary hover:bg-primary/10">
+                        <Plus className="h-3 w-3 mr-1" /> ADICIONAR
+                      </Button>
                     </div>
-                    <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+                    <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
                       {multiDates.map((date, index) => (
-                        <div key={index} className="flex gap-2">
-                          <Input type="date" value={date} onChange={(e) => { const nd = [...multiDates]; nd[index] = e.target.value; setMultiDates(nd); }} required className="h-11" />
-                          {multiDates.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => setMultiDates(multiDates.filter((_, i) => i !== index))} className="h-11 text-destructive"><Trash2 className="h-4 w-4" /></Button>}
+                        <div key={index} className="flex gap-1 group">
+                          <Input type="date" value={date} onChange={(e) => { const nd = [...multiDates]; nd[index] = e.target.value; setMultiDates(nd); }} required className="h-8 text-[10px] font-bold" />
+                          {multiDates.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => setMultiDates(multiDates.filter((_, i) => i !== index))} className="h-8 w-8 text-destructive/50 hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>}
                         </div>
                       ))}
                     </div>
@@ -528,56 +509,62 @@ export default function RequestsPage() {
                 )}
 
                 {requestType === "TROCA DE ESCALA" && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">DE (DATA ORIGINAL)</Label>
-                      <Input type="date" value={swapFromDate} onChange={(e) => setSwapFromDate(e.target.value)} required className="h-11 font-bold" />
+                  <div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid gap-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">De (Data Original)</Label>
+                      <Input type="date" value={swapFromDate} onChange={(e) => setSwapFromDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                     </div>
-                    <div className="grid gap-2">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">PARA (NOVA DATA)</Label>
-                      <Input type="date" value={swapToDate} onChange={(e) => setSwapToDate(e.target.value)} required className="h-11 font-bold" />
+                    <div className="grid gap-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">Para (Nova Data)</Label>
+                      <Input type="date" value={swapToDate} onChange={(e) => setSwapToDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                     </div>
                   </div>
                 )}
 
-                <div className="grid gap-2">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">JUSTIFICATIVA</Label>
-                  <Textarea name="description" placeholder="..." className="min-h-[100px] uppercase text-xs p-4 rounded-xl" required />
+                <div className="grid gap-1.5">
+                  <Label className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Justificativa / Observações</Label>
+                  <Textarea name="description" placeholder="DETALHE O MOTIVO DA SOLICITAÇÃO..." className="min-h-[70px] uppercase text-[11px] p-3 rounded-xl bg-muted/10 border-muted focus:bg-white transition-colors" required />
                 </div>
 
-                <div className="space-y-4 pt-4 border-t">
-                  <Label className="text-[10px] font-bold uppercase text-muted-foreground">CHEFIA IMEDIATA (PARA CIÊNCIA)</Label>
-                  {chefiaRows.map((row, index) => (
-                    <div key={index} className="flex gap-2 relative">
-                      <div className="relative flex-1">
-                        <Input 
-                          placeholder="BUSCAR CHEFIA..."
-                          value={row.term}
-                          onChange={(e) => updateChefiaRow(index, { term: e.target.value.toUpperCase(), uid: "" })}
-                          onFocus={() => updateChefiaRow(index, { show: true })}
-                          className="h-11 border-muted uppercase text-[10px] pr-10"
-                        />
-                        {row.uid && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
-                        {row.show && row.term && (
-                          <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-xl max-h-40 overflow-y-auto">
-                            {allEmployees?.filter(e => ["INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(normalizeStr(e.role || "")) && (normalizeStr(e.name).includes(row.term) || normalizeStr(e.qra).includes(row.term))).map(c => (
-                              <button key={c.id} type="button" onMouseDown={() => updateChefiaRow(index, { uid: c.uid, term: `${c.name} (${c.qra})`, show: false })} className="w-full px-4 py-2 text-left hover:bg-muted text-[10px] uppercase border-b last:border-0">
-                                {c.name} ({c.qra}) - {c.role}
-                              </button>
-                            ))}
-                          </div>
-                        )}
+                <div className="pt-3 border-t space-y-3">
+                  <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                    <ShieldCheck className="h-3.5 w-3.5" /> Chefia Imediata (Ciência)
+                  </Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {chefiaRows.map((row, index) => (
+                      <div key={index} className="flex gap-1.5 relative">
+                        <div className="relative flex-1">
+                          <Input 
+                            placeholder="BUSCAR CHEFIA..."
+                            value={row.term}
+                            onChange={(e) => updateChefiaRow(index, { term: e.target.value.toUpperCase(), uid: "" })}
+                            onFocus={() => updateChefiaRow(index, { show: true })}
+                            className="h-9 border-muted uppercase text-[9px] font-bold pr-8"
+                          />
+                          {row.uid && <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-600" />}
+                          {row.show && row.term && (
+                            <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-xl max-h-32 overflow-y-auto">
+                              {allEmployees?.filter(e => ["INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(normalizeStr(e.role || "")) && (normalizeStr(e.name).includes(row.term) || normalizeStr(e.qra).includes(row.term))).map(c => (
+                                <button key={c.id} type="button" onMouseDown={() => updateChefiaRow(index, { uid: c.uid, term: `${c.name} (${c.qra})`, show: false })} className="w-full px-3 py-1.5 text-left hover:bg-muted text-[9px] uppercase border-b last:border-0">
+                                  {c.name} ({c.qra})
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        {chefiaRows.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeChefiaRow(index)} className="h-9 w-9 text-destructive/50 hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>}
                       </div>
-                      <Button type="button" variant="ghost" size="icon" onClick={() => removeChefiaRow(index)} className="h-11 text-destructive"><Trash2 className="h-4 w-4" /></Button>
-                    </div>
-                  ))}
-                  <Button type="button" variant="outline" size="sm" onClick={addChefiaRow} className="text-[10px] font-bold uppercase">+ CHEFIA</Button>
+                    ))}
+                  </div>
+                  <Button type="button" variant="ghost" size="sm" onClick={addChefiaRow} className="h-7 text-[8px] font-black uppercase text-primary px-2 hover:bg-primary/5">
+                    <Plus className="h-3 w-3 mr-1" /> Adicionar Chefia
+                  </Button>
                 </div>
               </CardContent>
-              <CardFooter className="border-t p-6 bg-muted/5">
-                <Button type="submit" disabled={loading || hasInsufficientBalance || hasInsufficientTreBalance || hasInvalidAbonoDate} className="w-full h-11 uppercase font-bold text-xs tracking-widest shadow-lg">
+              <CardFooter className="border-t p-4 bg-muted/5">
+                <Button type="submit" disabled={loading || hasInsufficientBalance || hasInsufficientTreBalance || hasInvalidAbonoDate} className="w-full h-11 uppercase font-black text-xs tracking-widest shadow-xl shadow-blue-100 transition-all active:scale-[0.98]">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                  ENVIAR SOLICITAÇÃO
+                  Finalizar e Enviar
                 </Button>
               </CardFooter>
             </form>
@@ -646,7 +633,6 @@ export default function RequestsPage() {
                   return (
                     <Card key={req.id} className="card-shadow border-primary/10 rounded-xl overflow-hidden">
                       <div className="flex flex-col sm:flex-row">
-                        {/* Sidebar do Card com Identificação */}
                         <div className="sm:w-56 bg-muted/5 p-5 border-b sm:border-b-0 sm:border-r space-y-4 shrink-0">
                           <div className="space-y-1">
                             <p className="text-sm font-black uppercase text-slate-900 leading-tight">{req.employeeName}</p>
@@ -659,7 +645,6 @@ export default function RequestsPage() {
                           <Badge className="w-full justify-center bg-amber-100 text-amber-700 border-none uppercase text-[9px] font-black h-6">{req.status}</Badge>
                         </div>
 
-                        {/* Conteúdo Principal do Card */}
                         <div className="flex-1 flex flex-col min-w-0">
                           <CardContent className="p-5 flex-1 space-y-5">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
