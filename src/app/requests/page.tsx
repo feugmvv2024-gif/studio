@@ -271,7 +271,7 @@ export default function RequestsPage() {
     } else if (requestType === "TROCA DE ESCALA") {
       finalDate = `DE: ${formatDateBR(swapFromDate)} | PARA: ${formatDateBR(swapToDate)}`;
     } else if (requestType === "PERMUTA") {
-      finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: ${formatDateBR(permutaMyOriginalDate)}->${formatDateBR(permutaMyNewDate)} | PARCEIRO: ${formatDateBR(permutaMyNewDate)}->${formatDateBR(permutaMyOriginalDate)}`;
+      finalDate = `EU: ${formatDateBR(permutaMyOriginalDate)}->${formatDateBR(permutaMyNewDate)} | PERMUTA COM ${permutaPartnerData?.name || "N/A"}: ${formatDateBR(permutaMyNewDate)}->${formatDateBR(permutaMyOriginalDate)}`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -735,7 +735,7 @@ export default function RequestsPage() {
 
                         <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
                           <Label className="text-[8px] font-black uppercase text-muted-foreground mb-1 block">Justificativa Enviada:</Label>
-                          <p className="text-[11px] text-slate-600 uppercase leading-relaxed italic">
+                          <p className="text-11px] text-slate-600 uppercase leading-relaxed italic">
                             "{req.description}"
                           </p>
                         </div>
