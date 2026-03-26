@@ -14,7 +14,8 @@ import {
   CalendarDays,
   User,
   FileText,
-  MessageSquare
+  MessageSquare,
+  X
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -343,7 +344,7 @@ export default function RequestsPage() {
   if (authLoading) return <div className="flex h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col gap-2">
         <h2 className="text-3xl font-bold tracking-tight uppercase text-primary">REQUERIMENTOS</h2>
         <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">CENTRAL DE SOLICITAÇÕES OPERACIONAIS GMVV.</p>
@@ -650,7 +651,7 @@ export default function RequestsPage() {
               <div className="grid gap-4">
                 <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-blue-600" />
-                  <p className="text-[10px] font-bold uppercase text-blue-800 tracking-tight">PEDIDOS AGUARDANDO SEU PARECER OU DECISÃO DO RH.</p>
+                  <p className="text-[11px] font-bold uppercase text-blue-800 tracking-tight">PEDIDOS AGUARDANDO SEU PARECER OU DECISÃO DO RH.</p>
                 </div>
                 {filteredManagementRequests?.length === 0 && (
                   <div className="text-center py-16 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest border-2 border-dashed rounded-2xl">
@@ -670,78 +671,78 @@ export default function RequestsPage() {
                     <Card key={req.id} className="card-shadow border-primary/10 rounded-xl overflow-hidden">
                       <div className="flex flex-col sm:flex-row">
                         {/* Sidebar do Card com Identificação */}
-                        <div className="sm:w-48 bg-muted/5 p-4 border-b sm:border-b-0 sm:border-r space-y-3 shrink-0">
+                        <div className="sm:w-56 bg-muted/5 p-5 border-b sm:border-b-0 sm:border-r space-y-4 shrink-0">
                           <div className="space-y-1">
-                            <p className="text-[11px] font-black uppercase text-slate-900 leading-tight">{req.employeeName}</p>
-                            <p className="text-[10px] font-bold text-primary uppercase">QRA: {req.employeeQra}</p>
+                            <p className="text-sm font-black uppercase text-slate-900 leading-tight">{req.employeeName}</p>
+                            <p className="text-[11px] font-bold text-primary uppercase">QRA: {req.employeeQra}</p>
                           </div>
-                          <div className="space-y-1">
-                            <Badge variant="outline" className="text-[8px] uppercase font-bold border-primary/20 text-primary bg-primary/5">{req.type}</Badge>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase">{req.escala} / {req.turno}</p>
+                          <div className="space-y-2">
+                            <Badge variant="outline" className="text-[9px] uppercase font-bold border-primary/20 text-primary bg-primary/5 px-2 py-0.5">{req.type}</Badge>
+                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">{req.escala} / {req.turno}</p>
                           </div>
-                          <Badge className="w-full justify-center bg-amber-100 text-amber-700 border-none uppercase text-[8px] font-black">{req.status}</Badge>
+                          <Badge className="w-full justify-center bg-amber-100 text-amber-700 border-none uppercase text-[9px] font-black h-6">{req.status}</Badge>
                         </div>
 
                         {/* Conteúdo Principal do Card */}
                         <div className="flex-1 flex flex-col min-w-0">
-                          <CardContent className="p-4 flex-1 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <Label className="text-[9px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-1.5">
-                                  <CalendarDays className="h-3 w-3" /> Data(s) Solicitada(s)
+                          <CardContent className="p-5 flex-1 space-y-5">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-1.5">
+                                  <CalendarDays className="h-3.5 w-3.5" /> Data(s) Solicitada(s)
                                 </Label>
-                                <p className="text-[11px] font-black uppercase text-blue-900 truncate">
+                                <p className="text-[12px] font-black uppercase text-blue-900 leading-relaxed">
                                   {req.date}
                                 </p>
                               </div>
-                              <div className="space-y-1">
-                                <Label className="text-[9px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                                  <ShieldCheck className="h-3 w-3" /> Chefia para Ciência
+                              <div className="space-y-1.5">
+                                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                  <ShieldCheck className="h-3.5 w-3.5" /> Chefia para Ciência
                                 </Label>
-                                <p className="text-[10px] font-bold uppercase text-slate-700 truncate">
+                                <p className="text-[11px] font-bold uppercase text-slate-700 leading-relaxed">
                                   {req.chefiaImediata}
                                 </p>
                               </div>
                             </div>
 
-                            <div className="space-y-1 bg-slate-50 p-2 rounded-lg border border-slate-100">
-                              <Label className="text-[8px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                                <FileText className="h-3 w-3" /> Justificativa
+                            <div className="space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-100">
+                              <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
+                                <FileText className="h-3.5 w-3.5" /> Justificativa
                               </Label>
-                              <p className="text-[10px] uppercase text-slate-600 leading-relaxed italic">
+                              <p className="text-[11px] uppercase text-slate-600 leading-relaxed italic">
                                 "{req.description}"
                               </p>
                             </div>
 
-                            <div className="space-y-2 pt-2 border-t">
+                            <div className="space-y-3 pt-2 border-t">
                               <div className="flex items-center justify-between">
-                                <Label className="text-[9px] font-black uppercase text-primary flex items-center gap-1.5">
-                                  <MessageSquare className="h-3 w-3" /> Parecer Administrativo
+                                <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5">
+                                  <MessageSquare className="h-3.5 w-3.5" /> Parecer Administrativo
                                 </Label>
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  className="h-6 gap-1.5 text-[8px] font-bold uppercase text-primary hover:bg-primary/5" 
+                                  className="h-7 gap-1.5 text-[9px] font-bold uppercase text-primary hover:bg-primary/5" 
                                   onClick={() => handleAskIA(req)} 
                                   disabled={aiLoadingId === req.id}
                                 >
-                                  {aiLoadingId === req.id ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Sparkles className="h-2.5 w-2.5" />} IA Draft
+                                  {aiLoadingId === req.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} IA Draft
                                 </Button>
                               </div>
                               <Textarea 
                                 value={adminResponseDraft[req.id] || ""} 
                                 onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))} 
                                 placeholder="DIGITE O PARECER OU RESPOSTA..." 
-                                className="min-h-[60px] uppercase text-[10px] p-2 rounded-lg bg-blue-50/10 border-blue-100 resize-none" 
+                                className="min-h-[70px] uppercase text-[11px] p-3 rounded-lg bg-blue-50/10 border-blue-100 resize-none leading-relaxed" 
                               />
                             </div>
                           </CardContent>
 
-                          <CardFooter className="bg-muted/5 p-3 border-t flex items-center justify-end gap-2">
+                          <CardFooter className="bg-muted/5 p-4 border-t flex items-center justify-end gap-3">
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="uppercase text-[9px] font-black text-red-600 h-8 px-4" 
+                              className="uppercase text-[10px] font-black text-red-600 h-9 px-5 hover:bg-red-50" 
                               onClick={() => handleProcessRequest(req, 'deny')}
                             >
                               NEGAR
@@ -749,10 +750,10 @@ export default function RequestsPage() {
                             <Button 
                               size="sm" 
                               disabled={!canAct} 
-                              className="uppercase text-[9px] font-black h-8 px-6 bg-blue-600 hover:bg-blue-700 shadow-md" 
+                              className="uppercase text-[10px] font-black h-9 px-8 bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95" 
                               onClick={() => handleProcessRequest(req, 'approve')}
                             >
-                              {label} <ChevronRight className="ml-1 h-3 w-3" />
+                              {label} <ChevronRight className="ml-1 h-4 w-4" />
                             </Button>
                           </CardFooter>
                         </div>
