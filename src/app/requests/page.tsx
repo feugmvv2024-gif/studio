@@ -685,16 +685,19 @@ export default function RequestsPage() {
                       <CardContent className="flex-1 p-5 space-y-3">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                           <div className="space-y-1">
-                            <h4 className="font-black uppercase text-base text-slate-900 leading-none">{req.type}</h4>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h4 className="font-black uppercase text-base text-slate-900 leading-none">{req.type}</h4>
+                              <span className="text-slate-400 font-bold">-</span>
+                              <div className="bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
+                                <span className="text-[10px] font-black text-blue-700 uppercase">{req.date}</span>
+                              </div>
+                            </div>
                             <div className="flex items-center gap-2">
                               <ShieldCheck className="h-3 w-3 text-muted-foreground" />
                               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                                 {req.escala || "---"} / {req.turno || "---"}
                               </p>
                             </div>
-                          </div>
-                          <div className="bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 h-fit self-start">
-                            <span className="text-[11px] font-black text-blue-700 uppercase">{req.date}</span>
                           </div>
                         </div>
 
