@@ -269,7 +269,7 @@ export default function RequestsPage() {
     } else if (requestType === "ABONO DE ANIVERSÁRIO") {
       finalDate = `ANIV: ${formatDateBR(birthdayDate)} | FOLGA: ${formatDateBR(abonoDate)}`;
     } else if (requestType === "TROCA DE ESCALA") {
-      finalDate = `DE: ${formatDateBR(swapFromDate)} PARA: ${formatDateBR(swapToDate)}`;
+      finalDate = `DE: ${formatDateBR(swapFromDate)} | PARA: ${formatDateBR(swapToDate)}`;
     } else if (requestType === "PERMUTA") {
       finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: ${formatDateBR(permutaMyOriginalDate)}->${formatDateBR(permutaMyNewDate)} | PARCEIRO: ${formatDateBR(permutaMyNewDate)}->${formatDateBR(permutaMyOriginalDate)}`;
     } else {
@@ -375,14 +375,16 @@ export default function RequestsPage() {
                       <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <span className="text-3xl font-black uppercase text-slate-900 tracking-tighter block leading-none">{employeeData?.name} ({employeeData?.qra})</span>
+                      <span className="text-2xl sm:text-3xl font-black uppercase text-slate-900 tracking-tighter block leading-none">
+                        {employeeData?.name} ({employeeData?.qra})
+                      </span>
                       <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Identificação Funcional NRH</p>
                     </div>
                    </div>
                    <div className="bg-white/50 px-4 py-1.5 rounded-xl border border-primary/10 flex items-center gap-3">
                     <ShieldCheck className="h-4 w-4 text-primary" />
                     <div className="text-right">
-                      <span className="text-lg font-black uppercase text-primary tracking-tight leading-none block">{employeeData?.escala}</span>
+                      <span className="text-base sm:text-lg font-black uppercase text-primary tracking-tight leading-none block">{employeeData?.escala}</span>
                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{employeeData?.turno}</span>
                     </div>
                    </div>
@@ -433,11 +435,11 @@ export default function RequestsPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
                           <Label className="text-[8px] font-bold uppercase text-muted-foreground">Início</Label>
-                          <Input type="date" value={currentVacationStart} onChange={(e) => currentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                         <div className="grid gap-1">
                           <Label className="text-[8px] font-bold uppercase text-muted-foreground">Fim</Label>
-                          <Input type="date" value={currentVacationEnd} onChange={(e) => currentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                       </div>
                     </div>
@@ -670,6 +672,8 @@ export default function RequestsPage() {
                 // Conta datas para exibição de débito
                 const dateCount = req.date ? req.date.split(',').length : 0;
 
+                const isSpecialType = ["REPROGRAMAÇÃO DE FÉRIAS", "PERMUTA", "TROCA DE ESCALA"].includes(req.type);
+
                 return (
                   <Card key={req.id} className="card-shadow border-none rounded-xl overflow-hidden hover:shadow-md transition-all group">
                     <div className="flex flex-col sm:flex-row min-h-[120px]">
@@ -680,7 +684,7 @@ export default function RequestsPage() {
                         isDenied ? 'bg-red-600' : 
                         isAwaitingRH ? 'bg-blue-600' : 'bg-orange-500'
                       )}>
-                        <span className="font-black uppercase text-[11px] tracking-tight text-center leading-tight mb-2">
+                        <span className="font-black uppercase text-sm tracking-tight text-center leading-tight mb-2">
                           {req.status}
                         </span>
                         {isApproved ? <CheckCircle2 className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
@@ -689,15 +693,30 @@ export default function RequestsPage() {
                       {/* Conteúdo Principal */}
                       <CardContent className="flex-1 p-5 space-y-3">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h4 className="font-black uppercase text-base text-slate-900 leading-none">{req.type}</h4>
-                              <span className="text-slate-400 font-bold">-</span>
-                              <div className="bg-blue-50 px-2 py-0.5 rounded border border-blue-100">
-                                <span className="text-[10px] font-black text-blue-700 uppercase">{req.date}</span>
+                          <div className="space-y-1 w-full">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap">
+                              <div className="flex items-center gap-2 h-6">
+                                <h4 className="font-black uppercase text-base text-slate-900 leading-none">{req.type}</h4>
+                                <span className="text-slate-400 font-bold">-</span>
                               </div>
+                              
+                              {isSpecialType ? (
+                                <div className="flex flex-col gap-1.5 w-full sm:w-auto pt-0.5">
+                                  {req.date.split('|').map((part: string, i: number) => (
+                                    <div key={i} className="bg-blue-50 px-2 py-1 rounded border border-blue-100 w-fit">
+                                      <span className="text-[10px] font-black text-blue-700 uppercase">
+                                        - {part.trim()}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="bg-blue-50 px-2 py-0.5 rounded border border-blue-100 h-fit self-center">
+                                  <span className="text-[10px] font-black text-blue-700 uppercase">{req.date}</span>
+                                </div>
+                              )}
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2 mt-1">
                               <ShieldCheck className="h-3 w-3 text-muted-foreground" />
                               <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                                 {req.escala || "---"} / {req.turno || "---"}
