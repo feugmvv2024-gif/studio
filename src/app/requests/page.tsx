@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -723,7 +722,6 @@ export default function RequestsPage() {
                       </CardContent>
                       <CardFooter className="bg-muted/5 p-4 border-t flex flex-wrap gap-2 justify-end">
                         <Button variant="ghost" size="sm" className="uppercase text-[10px] font-black text-red-600 h-10 px-6" onClick={() => handleProcessRequest(req, 'deny')}>NEGAR PEDIDO</Button>
-                        <Button variant="outline" size="sm" className="uppercase text-[10px] font-black text-slate-600 h-10 px-6" onClick={() => handleProcessRequest(req, 'review')}>EM REVISÃO</Button>
                         <Button size="sm" disabled={!canAct} className="uppercase text-[10px] font-black h-10 px-8 bg-blue-600 hover:bg-blue-700 shadow-lg disabled:opacity-30" onClick={() => handleProcessRequest(req, 'approve')}>
                           {label} <ChevronRight className="ml-2 h-4 w-4" />
                         </Button>
