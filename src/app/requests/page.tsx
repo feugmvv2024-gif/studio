@@ -92,8 +92,8 @@ export default function RequestsPage() {
   const [swapToDate, setSwapToDate] = React.useState("");
   
   // Estados Permuta
-  const [permutaOutDate, setPermutaOutDate] = React.useState("");
-  const [permutaInDate, setPermutaInDate] = React.useState("");
+  const [permutaMyOriginalDate, setPermutaMyOriginalDate] = React.useState("");
+  const [permutaMyNewDate, setPermutaMyNewDate] = React.useState("");
   const [permutaPartnerId, setPermutaPartnerId] = React.useState("");
   const [permutaPartnerTerm, setPermutaPartnerTerm] = React.useState("");
   const [permutaPartnerShow, setPermutaPartnerShow] = React.useState(false);
@@ -257,7 +257,7 @@ export default function RequestsPage() {
     } else if (requestType === "TROCA DE ESCALA") {
       finalDate = `DE: ${formatDateBR(swapFromDate)} PARA: ${formatDateBR(swapToDate)}`;
     } else if (requestType === "PERMUTA") {
-      finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU SAI: ${formatDateBR(permutaOutDate)} | PARCEIRO SAI: ${formatDateBR(permutaInDate)}`;
+      finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: ${formatDateBR(permutaMyOriginalDate)}->${formatDateBR(permutaMyNewDate)} | PARCEIRO: ${formatDateBR(permutaMyNewDate)}->${formatDateBR(permutaMyOriginalDate)}`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -295,8 +295,8 @@ export default function RequestsPage() {
     setChefiaRows([{ id: "", uid: "", term: "", show: false }]);
     setPermutaPartnerData(null);
     setPermutaPartnerTerm("");
-    setPermutaOutDate("");
-    setPermutaInDate("");
+    setPermutaMyOriginalDate("");
+    setPermutaMyNewDate("");
     setBirthdayDate("");
     setAbonoDate("");
     setCurrentVacationStart("");
@@ -354,28 +354,27 @@ export default function RequestsPage() {
         <TabsContent value="new" className="mt-6">
            <Card className="card-shadow border-none rounded-2xl overflow-hidden">
             <form onSubmit={handleSendRequest}>
-              <CardHeader className="bg-primary/5 border-b py-4">
-                <CardTitle className="text-sm uppercase font-black text-muted-foreground mb-3">Identificação do Solicitante</CardTitle>
+              <CardHeader className="bg-primary/5 border-b py-3 px-6">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                    <div className="flex items-center gap-3">
-                    <div className="bg-white p-2 rounded-xl border shadow-sm">
+                    <div className="bg-white p-2 rounded-xl border shadow-sm shrink-0">
                       <User className="h-6 w-6 text-primary" />
                     </div>
                     <div>
-                      <span className="text-2xl font-black uppercase text-slate-900 tracking-tighter">{employeeData?.name} ({employeeData?.qra})</span>
-                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Servidor vinculado ao NRH-GMVV</p>
+                      <span className="text-3xl font-black uppercase text-slate-900 tracking-tighter block leading-none">{employeeData?.name} ({employeeData?.qra})</span>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Identificação Funcional NRH</p>
                     </div>
                    </div>
-                   <div className="bg-white/50 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-3">
-                    <ShieldCheck className="h-5 w-5 text-primary" />
-                    <div>
+                   <div className="bg-white/50 px-4 py-1.5 rounded-xl border border-primary/10 flex items-center gap-3">
+                    <ShieldCheck className="h-4 w-4 text-primary" />
+                    <div className="text-right">
                       <span className="text-lg font-black uppercase text-primary tracking-tight leading-none block">{employeeData?.escala}</span>
                       <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{employeeData?.turno}</span>
                     </div>
                    </div>
                 </div>
               </CardHeader>
-              <CardContent className="space-y-4 pt-5">
+              <CardContent className="space-y-4 pt-5 px-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="grid gap-1.5">
                     <Label className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Tipo de Solicitação</Label>
@@ -415,7 +414,7 @@ export default function RequestsPage() {
 
                 {requestType === "REPROGRAMAÇÃO DE FÉRIAS" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <p className="text-[8px] font-black uppercase text-muted-foreground tracking-widest border-b pb-1">Agendamento Atual</p>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
@@ -428,7 +427,7 @@ export default function RequestsPage() {
                         </div>
                       </div>
                     </div>
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       <p className="text-[8px] font-black uppercase text-blue-600 tracking-widest border-b border-blue-100 pb-1">Novo Período</p>
                       <div className="grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
@@ -461,26 +460,44 @@ export default function RequestsPage() {
                 )}
 
                 {requestType === "PERMUTA" && (
-                  <div className="space-y-3 p-3 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="grid gap-1">
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Minha Escala (Sai)</Label>
-                        <Input type="date" value={permutaOutDate} onChange={(e) => setPermutaOutDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Escala Parceiro (Sai)</Label>
-                        <Input type="date" value={permutaInDate} onChange={(e) => setPermutaInDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                  <div className="space-y-4 p-4 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
+                    {/* MINHA ESCALA */}
+                    <div className="space-y-2">
+                      <Label className="text-[9px] font-black uppercase text-blue-800 tracking-widest block border-b pb-1">Minha Escala</Label>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="grid gap-1">
+                          <Label className="text-[8px] font-bold uppercase text-muted-foreground">De (Data Original)</Label>
+                          <Input 
+                            type="date" 
+                            value={permutaMyOriginalDate} 
+                            onChange={(e) => setPermutaMyOriginalDate(e.target.value)} 
+                            required 
+                            className="h-9 text-[10px] font-bold bg-white border-blue-200" 
+                          />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label className="text-[8px] font-bold uppercase text-muted-foreground">Para (Nova Data)</Label>
+                          <Input 
+                            type="date" 
+                            value={permutaMyNewDate} 
+                            onChange={(e) => setPermutaMyNewDate(e.target.value)} 
+                            required 
+                            className="h-9 text-[10px] font-bold bg-white border-blue-200" 
+                          />
+                        </div>
                       </div>
                     </div>
-                    <div className="grid gap-1 relative">
-                      <Label className="text-[9px] font-black uppercase text-blue-700">Parceiro da Troca</Label>
-                      <div className="relative">
+
+                    {/* PARCEIRO */}
+                    <div className="grid gap-1.5 relative">
+                      <Label className="text-[9px] font-black uppercase text-slate-800 tracking-widest block border-b pb-1">Parceiro da Troca</Label>
+                      <div className="relative mt-1">
                         <Input 
                           placeholder="BUSCAR NOME OU QRA..."
                           value={permutaPartnerTerm}
                           onChange={(e) => { setPermutaPartnerTerm(e.target.value.toUpperCase()); setPermutaPartnerShow(true); setPermutaPartnerId(""); setPermutaPartnerData(null); }}
                           onFocus={() => setPermutaPartnerShow(true)}
-                          className="h-9 border-blue-100 uppercase text-[10px] font-bold bg-white pr-8"
+                          className="h-9 border-muted uppercase text-[10px] font-bold bg-white pr-8"
                         />
                         {permutaPartnerId && <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-600" />}
                         {permutaPartnerShow && permutaPartnerTerm && (
@@ -495,14 +512,39 @@ export default function RequestsPage() {
                         )}
                       </div>
                     </div>
+
+                    {/* ESCALA PARCEIRO (INVERTIDA AUTOMATICAMENTE) */}
+                    <div className="space-y-2 pt-2">
+                      <Label className="text-[9px] font-black uppercase text-purple-700 tracking-widest block border-b pb-1">Escala do Parceiro (Automático)</Label>
+                      <div className="grid grid-cols-2 gap-3 opacity-80">
+                        <div className="grid gap-1">
+                          <Label className="text-[8px] font-bold uppercase text-muted-foreground">De (Data Original)</Label>
+                          <Input 
+                            type="date" 
+                            value={permutaMyNewDate} 
+                            readOnly 
+                            className="h-9 text-[10px] font-bold bg-purple-50 border-purple-100 cursor-not-allowed" 
+                          />
+                        </div>
+                        <div className="grid gap-1">
+                          <Label className="text-[8px] font-bold uppercase text-muted-foreground">Para (Nova Data)</Label>
+                          <Input 
+                            type="date" 
+                            value={permutaMyOriginalDate} 
+                            readOnly 
+                            className="h-9 text-[10px] font-bold bg-purple-50 border-purple-100 cursor-not-allowed" 
+                          />
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
                 {["FOLGA", "ABONO TRE", "ESCALA ESPECIAL"].includes(requestType) && (
-                   <div className="space-y-2 p-3 bg-muted/20 border rounded-xl">
-                    <div className="flex items-center justify-between mb-2">
+                   <div className="space-y-2 p-3 bg-muted/10 border rounded-xl">
+                    <div className="flex items-center justify-between mb-1">
                       <Label className="text-[9px] font-bold uppercase text-muted-foreground">Datas Desejadas ({multiDates.filter(d => d).length})</Label>
-                      <Button type="button" variant="ghost" size="sm" onClick={() => setMultiDates([...multiDates, ""])} className="h-6 text-[8px] font-black uppercase text-primary hover:bg-primary/10">
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setMultiDates([...multiDates, ""])} className="h-5 text-[8px] font-black uppercase text-primary px-2 hover:bg-primary/10">
                         <Plus className="h-3 w-3 mr-1" /> ADICIONAR
                       </Button>
                     </div>
@@ -532,15 +574,15 @@ export default function RequestsPage() {
 
                 <div className="grid gap-1.5">
                   <Label className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Justificativa / Observações</Label>
-                  <Textarea name="description" placeholder="DETALHE O MOTIVO DA SOLICITAÇÃO..." className="min-h-[70px] uppercase text-[11px] p-3 rounded-xl bg-muted/10 border-muted focus:bg-white transition-colors" required />
+                  <Textarea name="description" placeholder="DETALHE O MOTIVO DA SOLICITAÇÃO..." className="min-h-[60px] uppercase text-[11px] p-3 rounded-xl bg-muted/5 border-muted focus:bg-white transition-colors" required />
                 </div>
 
-                <div className="pt-3 border-t space-y-3">
+                <div className="pt-3 border-t space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
                       <ShieldCheck className="h-3.5 w-3.5" /> Chefia Imediata (Ciência)
                     </Label>
-                    <Button type="button" variant="ghost" size="sm" onClick={addChefiaRow} className="h-6 text-[8px] font-black uppercase text-primary px-2 hover:bg-primary/5">
+                    <Button type="button" variant="ghost" size="sm" onClick={addChefiaRow} className="h-5 text-[8px] font-black uppercase text-primary px-2 hover:bg-primary/5">
                       <Plus className="h-3 w-3 mr-1" /> Adicionar Outra
                     </Button>
                   </div>
@@ -553,7 +595,7 @@ export default function RequestsPage() {
                             value={row.term}
                             onChange={(e) => updateChefiaRow(index, { term: e.target.value.toUpperCase(), uid: "" })}
                             onFocus={() => updateChefiaRow(index, { show: true })}
-                            className="h-9 border-muted uppercase text-[9px] font-bold pr-8"
+                            className="h-8 border-muted uppercase text-[9px] font-bold pr-8"
                           />
                           {row.uid && <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-600" />}
                           {row.show && row.term && (
@@ -566,7 +608,7 @@ export default function RequestsPage() {
                             </div>
                           )}
                         </div>
-                        {chefiaRows.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeChefiaRow(index)} className="h-9 w-9 text-destructive/50 hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>}
+                        {chefiaRows.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeChefiaRow(index)} className="h-8 w-8 text-destructive/50 hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>}
                       </div>
                     ))}
                   </div>
@@ -644,7 +686,7 @@ export default function RequestsPage() {
                   return (
                     <Card key={req.id} className="card-shadow border-primary/10 rounded-xl overflow-hidden">
                       <div className="flex flex-col sm:flex-row">
-                        <div className="sm:w-56 bg-muted/5 p-5 border-b sm:border-b-0 sm:border-r space-y-4 shrink-0">
+                        <div className="sm:w-56 bg-muted/5 p-4 border-b sm:border-b-0 sm:border-r space-y-4 shrink-0">
                           <div className="space-y-1">
                             <p className="text-sm font-black uppercase text-slate-900 leading-tight">{req.employeeName}</p>
                             <p className="text-[11px] font-bold text-primary uppercase">QRA: {req.employeeQra}</p>
@@ -657,55 +699,53 @@ export default function RequestsPage() {
                         </div>
 
                         <div className="flex-1 flex flex-col min-w-0">
-                          <CardContent className="p-5 flex-1 space-y-5">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                              <div className="space-y-1.5">
+                          <CardContent className="p-4 flex-1 space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="space-y-1">
                                 <Label className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-1.5">
-                                  <CalendarDays className="h-3.5 w-3.5" /> Data(s) Solicitada(s)
+                                  <CalendarDays className="h-3 w-3" /> Data(s) Solicitada(s)
                                 </Label>
-                                <p className="text-[12px] font-black uppercase text-blue-900 leading-relaxed">
+                                <p className="text-[11px] font-black uppercase text-blue-900 leading-relaxed">
                                   {req.date}
                                 </p>
                               </div>
-                              <div className="space-y-1.5">
+                              <div className="space-y-1">
                                 <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                                  <ShieldCheck className="h-3.5 w-3.5" /> Chefia para Ciência
+                                  <ShieldCheck className="h-3 w-3" /> Chefia para Ciência
                                 </Label>
-                                <p className="text-[11px] font-bold uppercase text-slate-700 leading-relaxed">
+                                <p className="text-[10px] font-bold uppercase text-slate-700 leading-relaxed">
                                   {req.chefiaImediata}
                                 </p>
                               </div>
                             </div>
 
-                            <div className="space-y-1.5 bg-slate-50 p-3 rounded-lg border border-slate-100">
-                              <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5">
-                                <FileText className="h-3.5 w-3.5" /> Justificativa
+                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                              <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                                <FileText className="h-3 w-3" /> Justificativa
                               </Label>
-                              <p className="text-[11px] uppercase text-slate-600 leading-relaxed italic">
+                              <p className="text-[10px] uppercase text-slate-600 leading-relaxed italic">
                                 "{req.description}"
                               </p>
                             </div>
 
-                            <div className="space-y-3 pt-2 border-t">
-                              <div className="flex items-center justify-between">
-                                <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5">
-                                  <MessageSquare className="h-3.5 w-3.5" /> Parecer Administrativo
-                                </Label>
-                              </div>
+                            <div className="pt-2 border-t">
+                              <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5 mb-2">
+                                <MessageSquare className="h-3 w-3" /> Parecer Administrativo
+                              </Label>
                               <Textarea 
                                 value={adminResponseDraft[req.id] || ""} 
                                 onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))} 
                                 placeholder="DIGITE O PARECER OU RESPOSTA..." 
-                                className="min-h-[70px] uppercase text-[11px] p-3 rounded-lg bg-blue-50/10 border-blue-100 resize-none leading-relaxed" 
+                                className="min-h-[50px] uppercase text-[10px] p-2 rounded-lg bg-blue-50/10 border-blue-100 resize-none leading-relaxed" 
                               />
                             </div>
                           </CardContent>
 
-                          <CardFooter className="bg-muted/5 p-4 border-t flex items-center justify-end gap-3">
+                          <CardFooter className="bg-muted/5 p-3 border-t flex items-center justify-end gap-3">
                             <Button 
                               variant="ghost" 
                               size="sm" 
-                              className="uppercase text-[10px] font-black text-red-600 h-9 px-5 hover:bg-red-50" 
+                              className="uppercase text-[10px] font-black text-red-600 h-8 px-4 hover:bg-red-50" 
                               onClick={() => handleProcessRequest(req, 'deny')}
                             >
                               NEGAR
@@ -713,10 +753,10 @@ export default function RequestsPage() {
                             <Button 
                               size="sm" 
                               disabled={!canAct} 
-                              className="uppercase text-[10px] font-black h-9 px-8 bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95" 
+                              className="uppercase text-[10px] font-black h-8 px-6 bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95" 
                               onClick={() => handleProcessRequest(req, 'approve')}
                             >
-                              {label} <ChevronRight className="ml-1 h-4 w-4" />
+                              {label} <ChevronRight className="ml-1 h-3 w-3" />
                             </Button>
                           </CardFooter>
                         </div>
