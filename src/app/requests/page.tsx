@@ -433,11 +433,11 @@ export default function RequestsPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
                           <Label className="text-[8px] font-bold uppercase text-muted-foreground">Início</Label>
-                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                          <Input type="date" value={currentVacationStart} onChange={(e) => currentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                         <div className="grid gap-1">
                           <Label className="text-[8px] font-bold uppercase text-muted-foreground">Fim</Label>
-                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => currentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                       </div>
                     </div>
@@ -660,31 +660,62 @@ export default function RequestsPage() {
                   NENHUMA SOLICITAÇÃO ENCONTRADA.
                 </div>
               )}
-              {myRequests?.map(req => (
-                <Card key={req.id} className="card-shadow border-none rounded-2xl overflow-hidden hover:bg-slate-50 transition-all group">
-                  <CardContent className="p-6 flex flex-col sm:flex-row justify-between gap-4">
-                    <div className="flex gap-4">
-                      <div className={cn("p-3 rounded-2xl shrink-0 h-fit", req.status === 'Aprovado' ? 'bg-green-100 text-green-700' : req.status === 'Negado' ? 'bg-red-100 text-red-700' : 'bg-blue-100 text-blue-700')}>
-                        {req.status === 'Aprovado' ? <CheckCircle2 className="h-6 w-6" /> : <Clock className="h-6 w-6" />}
+              {myRequests?.map(req => {
+                const isApproved = req.status === 'Aprovado';
+                const isDenied = req.status === 'Negado';
+                const isAwaitingRH = req.status === 'Aprovado pela Chefia';
+                
+                return (
+                  <Card key={req.id} className="card-shadow border-none rounded-xl overflow-hidden hover:shadow-md transition-all group">
+                    <div className="flex flex-col sm:flex-row min-h-[120px]">
+                      {/* Bloco Lateral de Status */}
+                      <div className={cn(
+                        "w-full sm:w-32 flex flex-col items-center justify-center p-4 shrink-0 text-white",
+                        isApproved ? 'bg-green-600' : 
+                        isDenied ? 'bg-red-600' : 
+                        isAwaitingRH ? 'bg-blue-600' : 'bg-orange-500'
+                      )}>
+                        <span className="font-black uppercase text-[11px] tracking-tight text-center leading-tight mb-2">
+                          {req.status}
+                        </span>
+                        {isApproved ? <CheckCircle2 className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
                       </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2">
-                          <span className="font-black uppercase text-sm">{req.type}</span>
-                          <Badge variant="secondary" className="text-[8px] uppercase">{req.status}</Badge>
+
+                      {/* Conteúdo Principal */}
+                      <CardContent className="flex-1 p-5 space-y-3">
+                        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                          <div className="space-y-1">
+                            <h4 className="font-black uppercase text-base text-slate-900 leading-none">{req.type}</h4>
+                            <div className="flex items-center gap-2">
+                              <ShieldCheck className="h-3 w-3 text-muted-foreground" />
+                              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                                {req.escala || "---"} / {req.turno || "---"}
+                              </p>
+                            </div>
+                          </div>
+                          <div className="bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-100 h-fit self-start">
+                            <span className="text-[11px] font-black text-blue-700 uppercase">{req.date}</span>
+                          </div>
                         </div>
-                        <p className="text-[10px] font-bold text-primary uppercase">{req.date}</p>
-                        <p className="text-xs text-muted-foreground uppercase mt-2 italic">"{req.description}"</p>
+
+                        <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
+                          <Label className="text-[8px] font-black uppercase text-muted-foreground mb-1 block">Justificativa Enviada:</Label>
+                          <p className="text-[11px] text-slate-600 uppercase leading-relaxed italic">
+                            "{req.description}"
+                          </p>
+                        </div>
+
                         {req.adminResponse && (
-                          <div className="bg-slate-100 p-2 rounded-lg mt-3 border-l-4 border-primary">
+                          <div className="bg-blue-50/30 p-3 rounded-lg border-l-4 border-primary animate-in slide-in-from-left-1">
                             <p className="text-[9px] font-black uppercase text-primary mb-1">Resposta RH/Chefia:</p>
-                            <p className="text-[10px] uppercase font-medium">{req.adminResponse}</p>
+                            <p className="text-[11px] uppercase font-bold text-slate-800 leading-snug">{req.adminResponse}</p>
                           </div>
                         )}
-                      </div>
+                      </CardContent>
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>
