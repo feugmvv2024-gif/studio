@@ -10,12 +10,9 @@ import {
   ShieldCheck,
   Check,
   ChevronRight,
-  Sparkles,
   CalendarDays,
-  User,
   FileText,
-  MessageSquare,
-  X
+  MessageSquare
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -48,7 +45,6 @@ import { useFirestore, useCollection, useAuth } from '@/firebase';
 import { collection, addDoc, query, orderBy, where, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils"
-import { operationalRequestResponseAssistant } from "@/ai/flows/operational-request-response-assistant"
 
 const hhmmToMinutes = (hhmm: string) => {
   if (!hhmm || !hhmm.includes(':')) return 0;
@@ -101,7 +97,6 @@ export default function RequestsPage() {
   const [permutaPartnerData, setPermutaPartnerData] = React.useState<any>(null);
 
   const [chefiaRows, setChefiaRows] = React.useState([{ id: "", uid: "", term: "", show: false }]);
-  const [aiLoadingId, setAiLoadingId] = React.useState<string | null>(null);
   const [adminResponseDraft, setAdminResponseDraft] = React.useState<{ [key: string]: string }>({});
 
   // Consultas
@@ -319,25 +314,6 @@ export default function RequestsPage() {
       toast({ title: "SOLICITAÇÃO PROCESSADA" });
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO PROCESSAR" });
-    }
-  }
-
-  async function handleAskIA(request: any) {
-    setAiLoadingId(request.id);
-    try {
-      const response = await operationalRequestResponseAssistant({
-        requestType: request.type,
-        requestDetails: request.description,
-        employeeName: request.employeeName,
-        currentStatus: request.status,
-        adminNotes: "Analise a pertinência operacional com base nas regras de RH."
-      });
-      setAdminResponseDraft(prev => ({ ...prev, [request.id]: response.suggestedResponse }));
-      toast({ title: "SUGESTÃO DA IA GERADA" });
-    } catch (err) {
-      toast({ variant: "destructive", title: "IA INDISPONÍVEL" });
-    } finally {
-      setAiLoadingId(null);
     }
   }
 
@@ -719,15 +695,6 @@ export default function RequestsPage() {
                                 <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5">
                                   <MessageSquare className="h-3.5 w-3.5" /> Parecer Administrativo
                                 </Label>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="h-7 gap-1.5 text-[9px] font-bold uppercase text-primary hover:bg-primary/5" 
-                                  onClick={() => handleAskIA(req)} 
-                                  disabled={aiLoadingId === req.id}
-                                >
-                                  {aiLoadingId === req.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} IA Draft
-                                </Button>
                               </div>
                               <Textarea 
                                 value={adminResponseDraft[req.id] || ""} 
