@@ -94,8 +94,6 @@ export default function RequestsPage() {
   // Estados Permuta
   const [permutaOutDate, setPermutaOutDate] = React.useState("");
   const [permutaInDate, setPermutaInDate] = React.useState("");
-  const [permutaMyEntraDate, setPermutaMyEntraDate] = React.useState("");
-  const [permutaPartnerEntraDate, setPermutaPartnerEntraDate] = React.useState("");
   const [permutaPartnerId, setPermutaPartnerId] = React.useState("");
   const [permutaPartnerTerm, setPermutaPartnerTerm] = React.useState("");
   const [permutaPartnerShow, setPermutaPartnerShow] = React.useState(false);
@@ -259,7 +257,7 @@ export default function RequestsPage() {
     } else if (requestType === "TROCA DE ESCALA") {
       finalDate = `DE: ${formatDateBR(swapFromDate)} PARA: ${formatDateBR(swapToDate)}`;
     } else if (requestType === "PERMUTA") {
-      finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU: SAI ${formatDateBR(permutaOutDate)} ENTRA ${formatDateBR(permutaMyEntraDate)} | PARCEIRO: SAI ${formatDateBR(permutaInDate)} ENTRA ${formatDateBR(permutaPartnerEntraDate)}`;
+      finalDate = `PERMUTA COM ${permutaPartnerData?.name || "N/A"} | EU SAI: ${formatDateBR(permutaOutDate)} | PARCEIRO SAI: ${formatDateBR(permutaInDate)}`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -299,8 +297,6 @@ export default function RequestsPage() {
     setPermutaPartnerTerm("");
     setPermutaOutDate("");
     setPermutaInDate("");
-    setPermutaMyEntraDate("");
-    setPermutaPartnerEntraDate("");
     setBirthdayDate("");
     setAbonoDate("");
     setCurrentVacationStart("");
@@ -359,15 +355,23 @@ export default function RequestsPage() {
            <Card className="card-shadow border-none rounded-2xl overflow-hidden">
             <form onSubmit={handleSendRequest}>
               <CardHeader className="bg-primary/5 border-b py-4">
-                <CardTitle className="text-base uppercase font-bold">Formulário de Requerimento</CardTitle>
-                <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-2">
-                   <div className="flex items-center gap-2">
-                    <User className="h-5 w-5 text-muted-foreground" />
-                    <span className="text-xl font-black uppercase text-slate-800 tracking-tight">{employeeData?.name}</span>
+                <CardTitle className="text-sm uppercase font-black text-muted-foreground mb-3">Identificação do Solicitante</CardTitle>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                   <div className="flex items-center gap-3">
+                    <div className="bg-white p-2 rounded-xl border shadow-sm">
+                      <User className="h-6 w-6 text-primary" />
+                    </div>
+                    <div>
+                      <span className="text-2xl font-black uppercase text-slate-900 tracking-tighter">{employeeData?.name} ({employeeData?.qra})</span>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Servidor vinculado ao NRH-GMVV</p>
+                    </div>
                    </div>
-                   <div className="flex items-center gap-2">
-                    <ShieldCheck className="h-5 w-5 text-primary/70" />
-                    <span className="text-xl font-black uppercase text-primary tracking-tight">{employeeData?.escala} - {employeeData?.turno}</span>
+                   <div className="bg-white/50 px-4 py-2 rounded-2xl border border-primary/10 flex items-center gap-3">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
+                    <div>
+                      <span className="text-lg font-black uppercase text-primary tracking-tight leading-none block">{employeeData?.escala}</span>
+                      <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest">{employeeData?.turno}</span>
+                    </div>
                    </div>
                 </div>
               </CardHeader>
@@ -491,16 +495,6 @@ export default function RequestsPage() {
                         )}
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                      <div className="grid gap-1">
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Minha Escala (Entra)</Label>
-                        <Input type="date" value={permutaMyEntraDate} onChange={(e) => setPermutaMyEntraDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
-                      </div>
-                      <div className="grid gap-1">
-                        <Label className="text-[9px] font-bold uppercase text-muted-foreground">Escala Parceiro (Entra)</Label>
-                        <Input type="date" value={permutaPartnerEntraDate} onChange={(e) => setPermutaPartnerEntraDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
-                      </div>
-                    </div>
                   </div>
                 )}
 
@@ -542,9 +536,14 @@ export default function RequestsPage() {
                 </div>
 
                 <div className="pt-3 border-t space-y-3">
-                  <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                    <ShieldCheck className="h-3.5 w-3.5" /> Chefia Imediata (Ciência)
-                  </Label>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
+                      <ShieldCheck className="h-3.5 w-3.5" /> Chefia Imediata (Ciência)
+                    </Label>
+                    <Button type="button" variant="ghost" size="sm" onClick={addChefiaRow} className="h-6 text-[8px] font-black uppercase text-primary px-2 hover:bg-primary/5">
+                      <Plus className="h-3 w-3 mr-1" /> Adicionar Outra
+                    </Button>
+                  </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {chefiaRows.map((row, index) => (
                       <div key={index} className="flex gap-1.5 relative">
@@ -571,15 +570,12 @@ export default function RequestsPage() {
                       </div>
                     ))}
                   </div>
-                  <Button type="button" variant="ghost" size="sm" onClick={addChefiaRow} className="h-7 text-[8px] font-black uppercase text-primary px-2 hover:bg-primary/5">
-                    <Plus className="h-3 w-3 mr-1" /> Adicionar Chefia
-                  </Button>
                 </div>
               </CardContent>
               <CardFooter className="border-t p-4 bg-muted/5">
                 <Button type="submit" disabled={loading || hasInsufficientBalance || hasInsufficientTreBalance || hasInvalidAbonoDate} className="w-full h-11 uppercase font-black text-xs tracking-widest shadow-xl shadow-blue-100 transition-all active:scale-[0.98]">
                   {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                  Finalizar e Enviar
+                  Finalizar e Enviar Solicitação
                 </Button>
               </CardFooter>
             </form>
