@@ -45,7 +45,7 @@ import {
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { useFirestore, useCollection, useAuth } from '@/firebase';
-import { collection, addDoc, query, orderBy, where, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, query, orderBy, where, serverTimestamp, updateDoc, doc, getDoc } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils"
 
@@ -352,16 +352,21 @@ export default function RequestsPage() {
     
     if (!nextStatus) return;
 
-    const currentResponse = request.adminResponse || "";
-    const rawNewResponse = adminResponseDraft[request.id] || "CIENTE/DE ACORDO";
-    const formattedNewResponse = `${actorPrefix}: ${rawNewResponse.toUpperCase().trim()}`;
-    
-    const finalResponse = currentResponse 
-      ? `${currentResponse} | ${formattedNewResponse}` 
-      : formattedNewResponse;
-
     try {
-      await updateDoc(doc(firestore, 'requests', request.id), { 
+      // BUSCA O DOCUMENTO MAIS RECENTE PARA GARANTIR QUE O HISTÓRICO NÃO SEJA SOBRESCRITO
+      const docRef = doc(firestore, 'requests', request.id);
+      const docSnap = await getDoc(docRef);
+      const currentData = docSnap.exists() ? docSnap.data() : request;
+      
+      const currentResponse = currentData.adminResponse || "";
+      const rawNewResponse = adminResponseDraft[request.id] || "CIENTE/DE ACORDO";
+      const formattedNewResponse = `${actorPrefix}: ${rawNewResponse.toUpperCase().trim()}`;
+      
+      const finalResponse = currentResponse 
+        ? `${currentResponse} | ${formattedNewResponse}` 
+        : formattedNewResponse;
+
+      await updateDoc(docRef, { 
         status: nextStatus, 
         adminResponse: finalResponse, 
         updatedAt: serverTimestamp() 
@@ -481,11 +486,11 @@ export default function RequestsPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
                           <Label className="text-[8px] font-bold uppercase text-muted-foreground">Início</Label>
-                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                          <Input type="date" value={currentVacationStart} onChange={(e) => currentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                         <div className="grid gap-1">
                           <Label className="text-[8px] font-bold uppercase text-muted-foreground">Fim</Label>
-                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => currentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                       </div>
                     </div>
@@ -784,7 +789,13 @@ export default function RequestsPage() {
                         {req.adminResponse && (
                           <div className="bg-blue-50/30 p-3 rounded-lg border-l-4 border-primary animate-in slide-in-from-left-1">
                             <p className="text-[9px] font-black uppercase text-primary mb-1">Respostas RH/Chefia:</p>
-                            <p className="text-[11px] uppercase font-bold text-slate-800 leading-snug">{req.adminResponse}</p>
+                            <div className="space-y-1.5">
+                              {req.adminResponse.split('|').map((resp: string, i: number) => (
+                                <p key={i} className="text-[11px] uppercase font-bold text-slate-800 leading-snug border-b border-blue-100/50 last:border-0 pb-1 last:pb-0">
+                                  {resp.trim()}
+                                </p>
+                              ))}
+                            </div>
                           </div>
                         )}
                       </CardContent>
@@ -878,7 +889,11 @@ export default function RequestsPage() {
                           {req.adminResponse && (
                             <div className="bg-blue-50/20 p-2 rounded-lg border border-blue-100">
                               <Label className="text-[8px] font-black uppercase text-primary mb-1 block">Histórico de Pareceres:</Label>
-                              <p className="text-[10px] uppercase font-bold text-slate-700 leading-snug">{req.adminResponse}</p>
+                              <div className="space-y-1">
+                                {req.adminResponse.split('|').map((resp: string, i: number) => (
+                                  <p key={i} className="text-[10px] uppercase font-bold text-slate-700 leading-tight">{resp.trim()}</p>
+                                ))}
+                              </div>
                             </div>
                           )}
 
