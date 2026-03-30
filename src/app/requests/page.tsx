@@ -44,7 +44,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { useFirestore, useCollection, useAuth } from '@/firebase';
 import { collection, addDoc, query, orderBy, where, serverTimestamp, updateDoc, doc } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
@@ -111,10 +110,8 @@ export default function RequestsPage() {
 
   const managementQuery = React.useMemo(() => {
     if (!firestore || !user || !employeeData) return null;
-    const role = normalizeStr(employeeData.role || "");
-    const isRH = role.includes("GESTOR DE RH");
-    if (isRH) return query(collection(firestore, 'requests'), where('status', 'in', ['Aprovado pela Chefia', 'Pendente']));
-    return query(collection(firestore, 'requests'), where('chefiaIds', 'array-contains', user.uid), where('status', '==', 'Pendente'));
+    // Buscamos todos os pedidos que possam requerer ação
+    return query(collection(firestore, 'requests'), where('status', 'in', ['Pendente', 'Aguardando Parceiro', 'Aprovado pela Chefia']));
   }, [firestore, user, employeeData]);
 
   const allEmployeesRef = React.useMemo(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
@@ -203,6 +200,7 @@ export default function RequestsPage() {
   const isManagement = React.useMemo(() => {
     if (!employeeData) return false;
     const role = normalizeStr(employeeData.role || "");
+    // Todos podem gerenciar se forem parceiros de permuta, mas chefia tem aba fixa
     return ["INSPETOR GERAL", "INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(role);
   }, [employeeData]);
 
@@ -210,19 +208,26 @@ export default function RequestsPage() {
     if (!managementRequests || !user || !employeeData) return [];
     const role = normalizeStr(employeeData.role || "");
     const isRH = role.includes("GESTOR DE RH");
+    
     return managementRequests.filter(req => {
-      const isChefiaForThis = req.chefiaIds?.includes(user.uid);
-      if (isRH) {
-        if (req.status === "Aprovado pela Chefia") return true;
-        if (req.status === "Pendente" && isChefiaForThis) return true;
-        return false;
+      // 1. Passo do Parceiro
+      if (req.status === "Aguardando Parceiro") {
+        return req.partnerId === user.uid;
       }
-      return req.status === "Pendente" && isChefiaForThis;
+      // 2. Passo da Chefia
+      if (req.status === "Pendente") {
+        return req.chefiaIds?.includes(user.uid);
+      }
+      // 3. Passo do RH
+      if (req.status === "Aprovado pela Chefia") {
+        return isRH;
+      }
+      return false;
     });
   }, [managementRequests, user, employeeData]);
 
   const historyBadgeCount = React.useMemo(() => 
-    myRequests?.filter(req => req.status === "Pendente" || req.status === "Em Revisão").length || 0
+    myRequests?.filter(req => req.status === "Pendente" || req.status === "Em Revisão" || req.status === "Aguardando Parceiro").length || 0
   , [myRequests]);
 
   const managementBadgeCount = React.useMemo(() => 
@@ -257,6 +262,11 @@ export default function RequestsPage() {
       return;
     }
 
+    if (requestType === "PERMUTA" && !permutaPartnerId) {
+      toast({ variant: "destructive", title: "ERRO", description: "SELECIONE O PARCEIRO DA PERMUTA." });
+      return;
+    }
+
     setLoading(true);
     const formData = new FormData(e.currentTarget);
     const description = (formData.get('description') as string || "").toUpperCase();
@@ -285,7 +295,9 @@ export default function RequestsPage() {
       type: requestType,
       date: finalDate,
       description: description,
-      status: "Pendente",
+      status: requestType === "PERMUTA" ? "Aguardando Parceiro" : "Pendente",
+      partnerId: requestType === "PERMUTA" ? permutaPartnerId : null,
+      partnerName: requestType === "PERMUTA" ? (permutaPartnerData?.name || null) : null,
       chefiaImediata: selectedChefias.map(c => c.term).join(" / "),
       chefiaIds: selectedChefias.map(c => c.uid),
       createdAt: serverTimestamp()
@@ -323,10 +335,29 @@ export default function RequestsPage() {
 
   async function handleProcessRequest(request: any, action: 'approve' | 'deny') {
     if (!firestore) return;
-    let nextStatus = action === 'deny' ? "Negado" : (request.status === "Pendente" ? "Aprovado pela Chefia" : "Aprovado");
+    
+    let nextStatus = "";
+    if (action === 'deny') {
+      nextStatus = "Negado";
+    } else {
+      if (request.status === "Aguardando Parceiro") {
+        nextStatus = "Pendente"; // Segue para a chefia
+      } else if (request.status === "Pendente") {
+        nextStatus = "Aprovado pela Chefia"; // Segue para o RH
+      } else if (request.status === "Aprovado pela Chefia") {
+        nextStatus = "Aprovado"; // Finalizado
+      }
+    }
+    
+    if (!nextStatus) return;
+
     const response = adminResponseDraft[request.id] || "";
     try {
-      await updateDoc(doc(firestore, 'requests', request.id), { status: nextStatus, adminResponse: response.toUpperCase(), updatedAt: serverTimestamp() });
+      await updateDoc(doc(firestore, 'requests', request.id), { 
+        status: nextStatus, 
+        adminResponse: response.toUpperCase(), 
+        updatedAt: serverTimestamp() 
+      });
       toast({ title: "SOLICITAÇÃO PROCESSADA" });
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO PROCESSAR" });
@@ -343,7 +374,7 @@ export default function RequestsPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={cn("grid w-full bg-muted/50 p-1 rounded-xl", isManagement ? "grid-cols-3 lg:w-[650px]" : "grid-cols-2 lg:w-[450px]")}>
+        <TabsList className={cn("grid w-full bg-muted/50 p-1 rounded-xl", isManagement || filteredManagementRequests.length > 0 ? "grid-cols-3 lg:w-[650px]" : "grid-cols-2 lg:w-[450px]")}>
           <TabsTrigger value="new" className="rounded-lg uppercase text-[10px] font-bold">NOVA SOLICITAÇÃO</TabsTrigger>
           <TabsTrigger value="history" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
             HISTÓRICO
@@ -353,7 +384,7 @@ export default function RequestsPage() {
               </Badge>
             )}
           </TabsTrigger>
-          {isManagement && (
+          {(isManagement || filteredManagementRequests.length > 0) && (
             <TabsTrigger value="management" className="rounded-lg uppercase text-[10px] font-bold text-primary flex items-center gap-2">
               GESTÃO DE REQUERIMENTOS
               {managementBadgeCount > 0 && (
@@ -477,7 +508,6 @@ export default function RequestsPage() {
 
                 {requestType === "PERMUTA" && (
                   <div className="space-y-4 p-4 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
-                    {/* MINHA ESCALA */}
                     <div className="space-y-2">
                       <Label className="text-[9px] font-black uppercase text-blue-800 tracking-widest block border-b pb-1">Minha Escala</Label>
                       <div className="grid grid-cols-2 gap-3">
@@ -504,7 +534,6 @@ export default function RequestsPage() {
                       </div>
                     </div>
 
-                    {/* PARCEIRO */}
                     <div className="grid gap-1.5 relative">
                       <Label className="text-[9px] font-black uppercase text-slate-800 tracking-widest block border-b pb-1">Parceiro da Troca</Label>
                       <div className="relative mt-1">
@@ -529,7 +558,6 @@ export default function RequestsPage() {
                       </div>
                     </div>
 
-                    {/* ESCALA PARCEIRO (INVERTIDA AUTOMATICAMENTE) */}
                     <div className="space-y-2 pt-2">
                       <Label className="text-[9px] font-black uppercase text-purple-700 tracking-widest block border-b pb-1">Escala do Parceiro (Automático)</Label>
                       <div className="grid grid-cols-2 gap-3 opacity-80">
@@ -554,7 +582,6 @@ export default function RequestsPage() {
                       </div>
                     </div>
 
-                    {/* VALIDAÇÃO DE MÊS */}
                     {hasInvalidPermutaMonth && (
                       <div className="bg-red-50 border border-red-100 rounded-lg p-2.5 flex items-center gap-2 animate-in zoom-in-95">
                         <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
@@ -666,10 +693,10 @@ export default function RequestsPage() {
                 const isApproved = req.status === 'Aprovado';
                 const isDenied = req.status === 'Negado';
                 const isAwaitingRH = req.status === 'Aprovado pela Chefia';
+                const isAwaitingPartner = req.status === 'Aguardando Parceiro';
                 
                 const isFolga = req.type === "FOLGA";
                 const isTre = req.type === "ABONO TRE";
-                // Conta datas para exibição de débito
                 const dateCount = req.date ? req.date.split(',').length : 0;
 
                 const isSpecialType = ["REPROGRAMAÇÃO DE FÉRIAS", "PERMUTA", "TROCA DE ESCALA"].includes(req.type);
@@ -677,20 +704,19 @@ export default function RequestsPage() {
                 return (
                   <Card key={req.id} className="card-shadow border-none rounded-xl overflow-hidden hover:shadow-md transition-all group">
                     <div className="flex flex-col sm:flex-row min-h-[120px]">
-                      {/* Bloco Lateral de Status */}
                       <div className={cn(
                         "w-full sm:w-32 flex flex-col items-center justify-center p-4 shrink-0 text-white",
                         isApproved ? 'bg-green-600' : 
                         isDenied ? 'bg-red-600' : 
-                        isAwaitingRH ? 'bg-blue-600' : 'bg-orange-500'
+                        isAwaitingRH ? 'bg-blue-600' : 
+                        isAwaitingPartner ? 'bg-indigo-500' : 'bg-orange-500'
                       )}>
-                        <span className="font-black uppercase text-sm tracking-tight text-center leading-tight mb-2">
+                        <span className="font-black uppercase text-[10px] tracking-tight text-center leading-tight mb-2">
                           {req.status}
                         </span>
                         {isApproved ? <CheckCircle2 className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
                       </div>
 
-                      {/* Conteúdo Principal */}
                       <CardContent className="flex-1 p-5 space-y-3">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                           <div className="space-y-1 w-full">
@@ -735,7 +761,7 @@ export default function RequestsPage() {
 
                         <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100">
                           <Label className="text-[8px] font-black uppercase text-muted-foreground mb-1 block">Justificativa Enviada:</Label>
-                          <p className="text-11px] text-slate-600 uppercase leading-relaxed italic">
+                          <p className="text-[11px] text-slate-600 uppercase leading-relaxed italic">
                             "{req.description}"
                           </p>
                         </div>
@@ -755,113 +781,123 @@ export default function RequestsPage() {
           )}
         </TabsContent>
 
-        {isManagement && (
-          <TabsContent value="management" className="mt-6 space-y-3">
-            {loadingManagement ? <div className="flex h-32 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
-              <div className="grid gap-4">
-                <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 flex items-center gap-3">
-                  <ShieldCheck className="h-5 w-5 text-blue-600" />
-                  <p className="text-[11px] font-bold uppercase text-blue-800 tracking-tight">PEDIDOS AGUARDANDO SEU PARECER OU DECISÃO DO RH.</p>
-                </div>
-                {filteredManagementRequests?.length === 0 && (
-                  <div className="text-center py-16 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest border-2 border-dashed rounded-2xl">
-                    SUA FILA DE GESTÃO ESTÁ VAZIA.
-                  </div>
-                )}
-                {filteredManagementRequests?.map(req => {
-                  const role = normalizeStr(employeeData?.role || "");
-                  const isRH = role.includes("GESTOR DE RH");
-                  const isPending = req.status === "Pendente";
-                  const isAwaitingRH = req.status === "Aprovado pela Chefia";
-                  const isChefiaForThis = req.chefiaIds?.includes(user?.uid);
-                  const canAct = (isChefiaForThis && isPending) || (isRH && isAwaitingRH);
-                  const label = isAwaitingRH ? "APROVAR DEFINITIVO" : "APROVAR PARECER";
-                  
-                  return (
-                    <Card key={req.id} className="card-shadow border-primary/10 rounded-xl overflow-hidden">
-                      <div className="flex flex-col sm:flex-row">
-                        <div className="sm:w-56 bg-muted/5 p-4 border-b sm:border-b-0 sm:border-r space-y-4 shrink-0">
-                          <div className="space-y-1">
-                            <p className="text-sm font-black uppercase text-slate-900 leading-tight">{req.employeeName}</p>
-                            <p className="text-[11px] font-bold text-primary uppercase">QRA: {req.employeeQra}</p>
-                          </div>
-                          <div className="space-y-2">
-                            <Badge variant="outline" className="text-[9px] uppercase font-bold border-primary/20 text-primary bg-primary/5 px-2 py-0.5">{req.type}</Badge>
-                            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">{req.escala} / {req.turno}</p>
-                          </div>
-                          <Badge className="w-full justify-center bg-amber-100 text-amber-700 border-none uppercase text-[9px] font-black h-6">{req.status}</Badge>
-                        </div>
-
-                        <div className="flex-1 flex flex-col min-w-0">
-                          <CardContent className="p-4 flex-1 space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-1">
-                                <Label className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-1.5">
-                                  <CalendarDays className="h-3 w-3" /> Data(s) Solicitada(s)
-                                </Label>
-                                <p className="text-[11px] font-black uppercase text-blue-900 leading-relaxed">
-                                  {req.date}
-                                </p>
-                              </div>
-                              <div className="space-y-1">
-                                <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                                  <ShieldCheck className="h-3 w-3" /> Chefia para Ciência
-                                </Label>
-                                <p className="text-[10px] font-bold uppercase text-slate-700 leading-relaxed">
-                                  {req.chefiaImediata}
-                                </p>
-                              </div>
-                            </div>
-
-                            <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
-                              <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 mb-1">
-                                <FileText className="h-3 w-3" /> Justificativa
-                              </Label>
-                              <p className="text-[10px] uppercase text-slate-600 leading-relaxed italic">
-                                "{req.description}"
-                              </p>
-                            </div>
-
-                            <div className="pt-2 border-t">
-                              <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5 mb-2">
-                                <MessageSquare className="h-3 w-3" /> Parecer Administrativo
-                              </Label>
-                              <Textarea 
-                                value={adminResponseDraft[req.id] || ""} 
-                                onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))} 
-                                placeholder="DIGITE O PARECER OU RESPOSTA..." 
-                                className="min-h-[50px] uppercase text-[10px] p-2 rounded-lg bg-blue-50/10 border-blue-100 resize-none leading-relaxed" 
-                              />
-                            </div>
-                          </CardContent>
-
-                          <CardFooter className="bg-muted/5 p-3 border-t flex items-center justify-end gap-3">
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              className="uppercase text-[10px] font-black text-red-600 h-8 px-4 hover:bg-red-50" 
-                              onClick={() => handleProcessRequest(req, 'deny')}
-                            >
-                              NEGAR
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              disabled={!canAct} 
-                              className="uppercase text-[10px] font-black h-8 px-6 bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95" 
-                              onClick={() => handleProcessRequest(req, 'approve')}
-                            >
-                              {label} <ChevronRight className="ml-1 h-3 w-3" />
-                            </Button>
-                          </CardFooter>
-                        </div>
-                      </div>
-                    </Card>
-                  );
-                })}
+        <TabsContent value="management" className="mt-6 space-y-3">
+          {loadingManagement ? <div className="flex h-32 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
+            <div className="grid gap-4">
+              <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-blue-600" />
+                <p className="text-[11px] font-bold uppercase text-blue-800 tracking-tight">PEDIDOS AGUARDANDO SEU PARECER OU DECISÃO DO RH.</p>
               </div>
-            )}
-          </TabsContent>
-        )}
+              {filteredManagementRequests?.length === 0 && (
+                <div className="text-center py-16 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest border-2 border-dashed rounded-2xl">
+                  SUA FILA DE GESTÃO ESTÁ VAZIA.
+                </div>
+              )}
+              {filteredManagementRequests?.map(req => {
+                const isAwaitingPartner = req.status === "Aguardando Parceiro";
+                const isPending = req.status === "Pendente";
+                const isAwaitingRH = req.status === "Aprovado pela Chefia";
+                
+                let label = "PROCESSAR";
+                if (isAwaitingPartner) label = "ACEITAR PERMUTA";
+                else if (isPending) label = "DAR PARECER (CHEFIA)";
+                else if (isAwaitingRH) label = "HOMOLOGAR (RH)";
+
+                return (
+                  <Card key={req.id} className="card-shadow border-primary/10 rounded-xl overflow-hidden">
+                    <div className="flex flex-col sm:flex-row">
+                      <div className="sm:w-56 bg-muted/5 p-4 border-b sm:border-b-0 sm:border-r space-y-4 shrink-0">
+                        <div className="space-y-1">
+                          <p className="text-sm font-black uppercase text-slate-900 leading-tight">{req.employeeName}</p>
+                          <p className="text-[11px] font-bold text-primary uppercase">QRA: {req.employeeQra}</p>
+                        </div>
+                        <div className="space-y-2">
+                          <Badge variant="outline" className="text-[9px] uppercase font-bold border-primary/20 text-primary bg-primary/5 px-2 py-0.5">{req.type}</Badge>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">{req.escala} / {req.turno}</p>
+                        </div>
+                        <Badge className={cn(
+                          "w-full justify-center border-none uppercase text-[9px] font-black h-6",
+                          isAwaitingPartner ? "bg-indigo-100 text-indigo-700" : "bg-amber-100 text-amber-700"
+                        )}>{req.status}</Badge>
+                      </div>
+
+                      <div className="flex-1 flex flex-col min-w-0">
+                        <CardContent className="p-4 flex-1 space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-black text-blue-700 uppercase tracking-widest flex items-center gap-1.5">
+                                <CalendarDays className="h-3 w-3" /> Detalhes da Solicitação
+                              </Label>
+                              <div className="space-y-1 mt-1">
+                                {req.date.split('|').map((part: string, i: number) => (
+                                  <p key={i} className="text-[11px] font-black uppercase text-blue-900 leading-tight">
+                                    {part.trim()}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                                <ShieldCheck className="h-3 w-3" /> Envolvidos / Ciência
+                              </Label>
+                              <p className="text-[10px] font-bold uppercase text-slate-700 leading-relaxed">
+                                {req.chefiaImediata}
+                              </p>
+                              {req.partnerName && (
+                                <p className="text-[10px] font-black uppercase text-indigo-600 mt-1">
+                                  PARCEIRO: {req.partnerName}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 p-3 rounded-lg border border-slate-100">
+                            <Label className="text-[9px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 mb-1">
+                              <FileText className="h-3 w-3" /> Justificativa
+                            </Label>
+                            <p className="text-[10px] uppercase text-slate-600 leading-relaxed italic">
+                              "{req.description}"
+                            </p>
+                          </div>
+
+                          <div className="pt-2 border-t">
+                            <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5 mb-2">
+                              <MessageSquare className="h-3 w-3" /> Parecer Administrativo
+                            </Label>
+                            <Textarea 
+                              value={adminResponseDraft[req.id] || ""} 
+                              onChange={(e) => setAdminResponseDraft(prev => ({ ...prev, [req.id]: e.target.value }))} 
+                              placeholder="DIGITE O PARECER OU RESPOSTA..." 
+                              className="min-h-[50px] uppercase text-[10px] p-2 rounded-lg bg-blue-50/10 border-blue-100 resize-none leading-relaxed" 
+                            />
+                          </div>
+                        </CardContent>
+
+                        <CardFooter className="bg-muted/5 p-3 border-t flex items-center justify-end gap-3">
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            className="uppercase text-[10px] font-black text-red-600 h-8 px-4 hover:bg-red-50" 
+                            onClick={() => handleProcessRequest(req, 'deny')}
+                          >
+                            NEGAR
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            className="uppercase text-[10px] font-black h-8 px-6 bg-blue-600 hover:bg-blue-700 shadow-md transition-all active:scale-95" 
+                            onClick={() => handleProcessRequest(req, 'approve')}
+                          >
+                            {label} <ChevronRight className="ml-1 h-3 w-3" />
+                          </Button>
+                        </CardFooter>
+                      </div>
+                    </div>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
+        </TabsContent>
       </Tabs>
     </div>
   )

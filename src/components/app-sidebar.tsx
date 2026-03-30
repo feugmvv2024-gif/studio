@@ -53,16 +53,10 @@ export function AppSidebar() {
   
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'stable' | 'disconnected'>('stable')
 
-  // Lógica de monitoramento de requerimentos pendentes para resposta (Chefia/RH)
+  // Lógica de monitoramento de requerimentos pendentes (Fluxo Multi-Etapas)
   const managementRequestsQuery = React.useMemo(() => {
     if (!firestore || !user || !employeeData) return null;
-    const role = (employeeData.role || "").toUpperCase();
-    const isRH = role.includes("GESTOR DE RH");
-    
-    if (isRH) {
-      return query(collection(firestore, 'requests'), where('status', 'in', ['Aprovado pela Chefia', 'Pendente']));
-    }
-    return query(collection(firestore, 'requests'), where('chefiaIds', 'array-contains', user.uid), where('status', '==', 'Pendente'));
+    return query(collection(firestore, 'requests'), where('status', 'in', ['Pendente', 'Aguardando Parceiro', 'Aprovado pela Chefia']));
   }, [firestore, user, employeeData]);
 
   const { data: managementRequests } = useCollection(managementRequestsQuery);
@@ -73,13 +67,13 @@ export function AppSidebar() {
     const isRH = role.includes("GESTOR DE RH");
     
     return managementRequests.filter(req => {
-      const isChefiaForThis = req.chefiaIds?.includes(user.uid);
-      if (isRH) {
-        if (req.status === "Aprovado pela Chefia") return true;
-        if (req.status === "Pendente" && isChefiaForThis) return true;
-        return false;
-      }
-      return req.status === "Pendente" && isChefiaForThis;
+      // 1. Sou o parceiro aguardando aceite?
+      if (req.status === "Aguardando Parceiro") return req.partnerId === user.uid;
+      // 2. Sou a chefia aguardando parecer?
+      if (req.status === "Pendente") return req.chefiaIds?.includes(user.uid);
+      // 3. Sou o RH aguardando homologação?
+      if (req.status === "Aprovado pela Chefia") return isRH;
+      return false;
     }).length;
   }, [managementRequests, user, employeeData]);
 
