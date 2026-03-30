@@ -110,7 +110,6 @@ export default function RequestsPage() {
 
   const managementQuery = React.useMemo(() => {
     if (!firestore || !user || !employeeData) return null;
-    // Buscamos todos os pedidos que possam requerer ação
     return query(collection(firestore, 'requests'), where('status', 'in', ['Pendente', 'Aguardando Parceiro', 'Aprovado pela Chefia']));
   }, [firestore, user, employeeData]);
 
@@ -200,7 +199,6 @@ export default function RequestsPage() {
   const isManagement = React.useMemo(() => {
     if (!employeeData) return false;
     const role = normalizeStr(employeeData.role || "");
-    // Todos podem gerenciar se forem parceiros de permuta, mas chefia tem aba fixa
     return ["INSPETOR GERAL", "INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(role);
   }, [employeeData]);
 
@@ -210,15 +208,12 @@ export default function RequestsPage() {
     const isRH = role.includes("GESTOR DE RH");
     
     return managementRequests.filter(req => {
-      // 1. Passo do Parceiro
       if (req.status === "Aguardando Parceiro") {
         return req.partnerId === user.uid;
       }
-      // 2. Passo da Chefia
       if (req.status === "Pendente") {
         return req.chefiaIds?.includes(user.uid);
       }
-      // 3. Passo do RH
       if (req.status === "Aprovado pela Chefia") {
         return isRH;
       }
@@ -337,27 +332,47 @@ export default function RequestsPage() {
     if (!firestore) return;
     
     let nextStatus = "";
+    let actorPrefix = "";
+    
+    if (request.status === "Aguardando Parceiro") actorPrefix = "PARCEIRO";
+    else if (request.status === "Pendente") actorPrefix = "CHEFIA";
+    else if (request.status === "Aprovado pela Chefia") actorPrefix = "RH";
+
     if (action === 'deny') {
       nextStatus = "Negado";
     } else {
       if (request.status === "Aguardando Parceiro") {
-        nextStatus = "Pendente"; // Segue para a chefia
+        nextStatus = "Pendente";
       } else if (request.status === "Pendente") {
-        nextStatus = "Aprovado pela Chefia"; // Segue para o RH
+        nextStatus = "Aprovado pela Chefia";
       } else if (request.status === "Aprovado pela Chefia") {
-        nextStatus = "Aprovado"; // Finalizado
+        nextStatus = "Aprovado";
       }
     }
     
     if (!nextStatus) return;
 
-    const response = adminResponseDraft[request.id] || "";
+    const currentResponse = request.adminResponse || "";
+    const rawNewResponse = adminResponseDraft[request.id] || "CIENTE/DE ACORDO";
+    const formattedNewResponse = `${actorPrefix}: ${rawNewResponse.toUpperCase().trim()}`;
+    
+    const finalResponse = currentResponse 
+      ? `${currentResponse} | ${formattedNewResponse}` 
+      : formattedNewResponse;
+
     try {
       await updateDoc(doc(firestore, 'requests', request.id), { 
         status: nextStatus, 
-        adminResponse: response.toUpperCase(), 
+        adminResponse: finalResponse, 
         updatedAt: serverTimestamp() 
       });
+      
+      setAdminResponseDraft(prev => {
+        const next = { ...prev };
+        delete next[request.id];
+        return next;
+      });
+      
       toast({ title: "SOLICITAÇÃO PROCESSADA" });
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO PROCESSAR" });
@@ -768,7 +783,7 @@ export default function RequestsPage() {
 
                         {req.adminResponse && (
                           <div className="bg-blue-50/30 p-3 rounded-lg border-l-4 border-primary animate-in slide-in-from-left-1">
-                            <p className="text-[9px] font-black uppercase text-primary mb-1">Resposta RH/Chefia:</p>
+                            <p className="text-[9px] font-black uppercase text-primary mb-1">Respostas RH/Chefia:</p>
                             <p className="text-[11px] uppercase font-bold text-slate-800 leading-snug">{req.adminResponse}</p>
                           </div>
                         )}
@@ -860,9 +875,16 @@ export default function RequestsPage() {
                             </p>
                           </div>
 
+                          {req.adminResponse && (
+                            <div className="bg-blue-50/20 p-2 rounded-lg border border-blue-100">
+                              <Label className="text-[8px] font-black uppercase text-primary mb-1 block">Histórico de Pareceres:</Label>
+                              <p className="text-[10px] uppercase font-bold text-slate-700 leading-snug">{req.adminResponse}</p>
+                            </div>
+                          )}
+
                           <div className="pt-2 border-t">
                             <Label className="text-[10px] font-black uppercase text-primary flex items-center gap-1.5 mb-2">
-                              <MessageSquare className="h-3 w-3" /> Parecer Administrativo
+                              <MessageSquare className="h-3 w-3" /> Seu Parecer
                             </Label>
                             <Textarea 
                               value={adminResponseDraft[req.id] || ""} 
