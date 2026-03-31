@@ -167,6 +167,8 @@ export default function ProfilePage() {
     );
   }
 
+  const isMarriedOrStable = maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL";
+
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col gap-2">
@@ -208,7 +210,6 @@ export default function ProfilePage() {
                 <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Dados Pessoais & Documentos</h4>
               </div>
               
-              {/* LINHA 1: ADMISSÃO, CPF, NASCIMENTO */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Admissão</Label>
@@ -229,7 +230,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* LINHA 2: CNH */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">CNH (Nº)</Label>
@@ -260,7 +260,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* LINHA 3: TÍTULO DE ELEITOR */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Título de Eleitor (Nº)</Label>
@@ -281,7 +280,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* LINHA 4: EMAIL */}
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email Institucional</Label>
                 <Input value={employeeData.email || ""} readOnly className="bg-muted/30 uppercase font-bold text-xs h-11 cursor-not-allowed border-dashed" />
@@ -299,7 +297,6 @@ export default function ProfilePage() {
                 <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Contato & Localização</h4>
               </div>
 
-              {/* LINHA 1: ENDEREÇO COMPLETO */}
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <MapPin className="h-3 w-3" /> Endereço Residencial Completo
@@ -312,7 +309,6 @@ export default function ProfilePage() {
                 />
               </div>
 
-              {/* LINHA 2: TELEFONES E CONTATO DE EMERGÊNCIA */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
@@ -361,10 +357,11 @@ export default function ProfilePage() {
                 <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Família & Dependentes</h4>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-8">
+                {/* PRIMEIRA LINHA: DADOS DO CONJUGE */}
                 <div className={cn(
                   "grid gap-6",
-                  (maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1"
+                  isMarriedOrStable ? "grid-cols-1 md:grid-cols-4" : "grid-cols-1 md:grid-cols-3"
                 )}>
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Estado Civil</Label>
@@ -382,23 +379,26 @@ export default function ProfilePage() {
                     </Select>
                   </div>
 
-                  {(maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") && (
+                  {isMarriedOrStable && (
                     <div className="md:col-span-2 space-y-1.5 animate-in slide-in-from-left-2 duration-300">
                       <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nome do Cônjuge</Label>
-                      <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value)} className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
+                      <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value.toUpperCase())} className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                     </div>
                   )}
 
-                  {(maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") && (
-                    <div className="md:col-span-3 flex items-center justify-between gap-4 p-4 bg-slate-50 border border-dashed rounded-xl animate-in slide-in-from-top-2 duration-300">
-                      <Label className="text-[10px] font-bold text-muted-foreground uppercase leading-tight tracking-widest">
-                        O cônjuge é servidor da Educação de Vila Velha?
-                      </Label>
-                      <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
+                  {isMarriedOrStable && (
+                    <div className="flex flex-col justify-end gap-2 p-3 bg-slate-50 border border-dashed rounded-xl animate-in slide-in-from-top-2 duration-300">
+                      <div className="flex items-center justify-between gap-4">
+                        <Label className="text-[9px] font-bold text-muted-foreground uppercase leading-tight tracking-tighter">
+                          O cônjuge é servidor da Educação de Vila Velha?
+                        </Label>
+                        <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
+                      </div>
                     </div>
                   )}
                 </div>
 
+                {/* SEGUNDA LINHA: FILHOS E DEPENDENTES */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
