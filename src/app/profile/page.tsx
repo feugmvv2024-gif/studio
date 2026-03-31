@@ -206,7 +206,12 @@ export default function ProfilePage() {
                 <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Dados Pessoais & Documentos</h4>
               </div>
               
+              {/* LINHA 1: ADMISSÃO, CPF, NASCIMENTO */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Admissão</Label>
+                  <Input type="date" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} className="font-bold text-xs h-11 bg-slate-50/50" />
+                </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">CPF</Label>
                   <Input 
@@ -217,20 +222,12 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Título de Eleitor (Nº)</Label>
-                  <Input 
-                    value={voterId} 
-                    onChange={(e) => setVoterId(e.target.value)} 
-                    placeholder="0000 0000 0000" 
-                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
-                  />
-                </div>
-                <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Nascimento</Label>
                   <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
               </div>
 
+              {/* LINHA 2: CNH */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">CNH (Nº)</Label>
@@ -261,15 +258,31 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* LINHA 3: TÍTULO DE ELEITOR */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Admissão</Label>
-                  <Input type="date" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} className="font-bold text-xs h-11 bg-slate-50/50" />
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Título de Eleitor (Nº)</Label>
+                  <Input 
+                    value={voterId} 
+                    onChange={(e) => setVoterId(e.target.value)} 
+                    placeholder="0000 0000 0000" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email Institucional</Label>
-                  <Input value={employeeData.email || ""} readOnly className="bg-muted/30 uppercase font-bold text-xs h-11 cursor-not-allowed border-dashed" />
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zona Eleitoral</Label>
+                  <Input value={voterZone} onChange={(e) => setVoterZone(e.target.value)} placeholder="000" className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Local de Votação (Escola/Sede)</Label>
+                  <Input value={votingLocation} onChange={(e) => setVotingLocation(e.target.value)} placeholder="NOME DA ESCOLA..." className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
+                </div>
+              </div>
+
+              {/* LINHA 4: EMAIL */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email Institucional</Label>
+                <Input value={employeeData.email || ""} readOnly className="bg-muted/30 uppercase font-bold text-xs h-11 cursor-not-allowed border-dashed" />
               </div>
             </div>
 
@@ -399,28 +412,6 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   )}
-                </div>
-              </div>
-            </div>
-
-            <Separator className="bg-slate-100" />
-
-            {/* SEÇÃO 4: DADOS ELEITORAIS (Votação) */}
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="bg-purple-50 p-2 rounded-lg border border-purple-100">
-                  <Vote className="h-5 w-5 text-purple-600" />
-                </div>
-                <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Dados Eleitorais (Votação)</h4>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zona Eleitoral</Label>
-                  <Input value={voterZone} onChange={(e) => setVoterZone(e.target.value)} placeholder="000" className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Local de Votação (Escola/Sede)</Label>
-                  <Input value={votingLocation} onChange={(e) => setVotingLocation(e.target.value)} placeholder="NOME DA ESCOLA..." className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
               </div>
             </div>
