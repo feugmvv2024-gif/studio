@@ -1,7 +1,8 @@
+
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,7 +19,8 @@ import {
   Baby,
   Vote,
   Fingerprint,
-  Info
+  Info,
+  CreditCard
 } from "lucide-react"
 import { useAuth, useFirestore } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
@@ -71,6 +73,9 @@ export default function ProfilePage() {
   const [birthDate, setBirthDate] = React.useState("");
   const [admissionDate, setAdmissionDate] = React.useState("");
   const [cpf, setCpf] = React.useState("");
+  const [cnhNumber, setCnhNumber] = React.useState("");
+  const [cnhCategory, setCnhCategory] = React.useState("");
+  const [cnhExpiration, setCnhExpiration] = React.useState("");
   const [children, setChildren] = React.useState<{ name: string; age: string }[]>([]);
 
   // Inicializa estados com dados do Firestore
@@ -88,6 +93,9 @@ export default function ProfilePage() {
       setBirthDate(employeeData.birthDate || "");
       setAdmissionDate(employeeData.admissionDate || "");
       setCpf(employeeData.cpf || "");
+      setCnhNumber(employeeData.cnhNumber || "");
+      setCnhCategory(employeeData.cnhCategory || "");
+      setCnhExpiration(employeeData.cnhExpiration || "");
       setChildren(employeeData.children || []);
     }
   }, [employeeData]);
@@ -124,12 +132,15 @@ export default function ProfilePage() {
       birthDate,
       admissionDate,
       cpf: cpf.toUpperCase(),
+      cnhNumber: cnhNumber.toUpperCase(),
+      cnhCategory: cnhCategory.toUpperCase(),
+      cnhExpiration,
       children: children.filter(c => c.name.trim() !== ""),
     };
 
     try {
       await updateDoc(doc(firestore, "employees", employeeData.id), updates);
-      toast({ title: "SUCESSO!", description: "DADOS CADASTRAIS ATUALIZADOS." });
+      toast({ title: "SUCESSO!", description: "FICHA FUNCIONAL ATUALIZADA." });
     } catch (error) {
       toast({ variant: "destructive", title: "ERRO AO SALVAR", description: "Tente novamente mais tarde." });
     } finally {
@@ -162,8 +173,7 @@ export default function ProfilePage() {
       </div>
 
       <form onSubmit={handleSave} className="space-y-6">
-        <Card className="card-shadow border-none rounded-2xl overflow-hidden">
-          {/* HEADER DE IDENTIFICAÇÃO */}
+        <Card className="card-shadow border-none rounded-2xl overflow-hidden bg-card">
           <div className="bg-primary/5 border-b p-6 sm:p-8">
             <div className="space-y-4">
               <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-slate-900 leading-none">
@@ -187,7 +197,7 @@ export default function ProfilePage() {
           </div>
 
           <CardContent className="p-6 sm:p-8 space-y-10">
-            {/* SEÇÃO 1: DADOS PESSOAIS */}
+            {/* SEÇÃO 1: DADOS PESSOAIS & DOCUMENTOS */}
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="bg-blue-50 p-2 rounded-lg border border-blue-100">
@@ -207,15 +217,55 @@ export default function ProfilePage() {
                   />
                 </div>
                 <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Título de Eleitor (Nº)</Label>
+                  <Input 
+                    value={voterId} 
+                    onChange={(e) => setVoterId(e.target.value)} 
+                    placeholder="0000 0000 0000" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
+                  />
+                </div>
+                <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Nascimento</Label>
                   <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">CNH (Nº)</Label>
+                  <Input 
+                    value={cnhNumber} 
+                    onChange={(e) => setCnhNumber(e.target.value)} 
+                    placeholder="Nº REGISTRO" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">CNH (Categoria)</Label>
+                  <Input 
+                    value={cnhCategory} 
+                    onChange={(e) => setCnhCategory(e.target.value.toUpperCase())} 
+                    placeholder="EX: AB" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50 text-center" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">CNH (Validade)</Label>
+                  <Input 
+                    type="date" 
+                    value={cnhExpiration} 
+                    onChange={(e) => setCnhExpiration(e.target.value)} 
+                    className="font-bold text-xs h-11 bg-slate-50/50" 
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Admissão</Label>
                   <Input type="date" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} className="font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email Institucional</Label>
                   <Input value={employeeData.email || ""} readOnly className="bg-muted/30 uppercase font-bold text-xs h-11 cursor-not-allowed border-dashed" />
@@ -355,7 +405,7 @@ export default function ProfilePage() {
 
             <Separator className="bg-slate-100" />
 
-            {/* SEÇÃO 4: DADOS ELEITORAIS */}
+            {/* SEÇÃO 4: DADOS ELEITORAIS (Votação) */}
             <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="bg-purple-50 p-2 rounded-lg border border-purple-100">
@@ -363,11 +413,7 @@ export default function ProfilePage() {
                 </div>
                 <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Dados Eleitorais (Votação)</h4>
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Número do Título</Label>
-                  <Input value={voterId} onChange={(e) => setVoterId(e.target.value)} placeholder="0000 0000 0000" className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zona Eleitoral</Label>
                   <Input value={voterZone} onChange={(e) => setVoterZone(e.target.value)} placeholder="000" className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
