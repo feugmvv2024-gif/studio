@@ -390,7 +390,7 @@ export default function ProfilePage() {
                     <div className="flex flex-col justify-end gap-2 p-3 bg-slate-50 border border-dashed rounded-xl animate-in slide-in-from-top-2 duration-300">
                       <div className="flex items-center justify-between gap-4">
                         <Label className="text-[9px] font-bold text-muted-foreground uppercase leading-tight tracking-tighter">
-                          O cônjuge é servidor da Educação de Vila Velha?
+                          {spouseName ? `O(A) ${spouseName} É SERVIDOR(A) DA EDUCAÇÃO DE VILA VELHA?` : "O CÔNJUGE É SERVIDOR DA EDUCAÇÃO DE VILA VELHA?"}
                         </Label>
                         <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
                       </div>
@@ -448,7 +448,7 @@ export default function ProfilePage() {
             <div className="space-y-1">
               <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight leading-none">Compromisso com a Veracidade</p>
               <p className="text-[9px] text-muted-foreground uppercase leading-relaxed font-bold mt-1">
-                Ao gravar estas informações, você declara que os dados fornecidos são verdadeiros e assume a responsabilidade por qualquer inconsistência. Os dados oficiais de Matrícula e Admissão só podem ser alterados pelo RH.
+                Ao gravar estas informações, você declara que os dados fornecidos foram conferidos e assume a responsabilidade por qualquer inconsistência. Os dados oficiais de Matrícula e Admissão são mantidos pelo RH.
               </p>
             </div>
           </div>
