@@ -352,7 +352,6 @@ export default function RequestsPage() {
     if (!nextStatus) return;
 
     try {
-      // BUSCA O DOCUMENTO MAIS RECENTE PARA GARANTIR QUE O HISTÓRICO NÃO SEJA SOBRESCRITO
       const docRef = doc(firestore, 'requests', request.id);
       const docSnap = await getDoc(docRef);
       const currentData = docSnap.exists() ? docSnap.data() : request;
@@ -493,11 +492,11 @@ export default function RequestsPage() {
                       <div className="grid grid-cols-2 gap-2">
                         <div className="grid gap-1">
                           <Label className="text-[8px] font-bold uppercase text-muted-foreground">Início</Label>
-                          <Input type="date" value={currentVacationStart} onChange={(e) => currentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                          <Input type="date" value={currentVacationStart} onChange={(e) => setCurrentVacationStart(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                         <div className="grid gap-1">
                           <Label className="text-[8px] font-bold uppercase text-muted-foreground">Fim</Label>
-                          <Input type="date" value={currentVacationEnd} onChange={(e) => currentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
+                          <Input type="date" value={currentVacationEnd} onChange={(e) => setCurrentVacationEnd(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                         </div>
                       </div>
                     </div>
@@ -543,7 +542,7 @@ export default function RequestsPage() {
                           <Input 
                             type="date" 
                             value={permutaMyOriginalDate} 
-                            onChange={(e) => setUpdateMyOriginalDate(e.target.value)} 
+                            onChange={(e) => setPermutaMyOriginalDate(e.target.value)} 
                             required 
                             className="h-9 text-[10px] font-bold bg-white border-blue-200" 
                           />
@@ -738,7 +737,7 @@ export default function RequestsPage() {
                         isAwaitingRH ? 'bg-blue-600' : 
                         isAwaitingPartner ? 'bg-indigo-500' : 'bg-orange-500'
                       )}>
-                        <span className="font-black uppercase text-[10px] tracking-tight text-center leading-tight mb-2">
+                        <span className="font-black uppercase text-base tracking-tight text-center leading-tight mb-2">
                           {req.status}
                         </span>
                         {isApproved ? <CheckCircle2 className="h-7 w-7" /> : <Clock className="h-7 w-7" />}
