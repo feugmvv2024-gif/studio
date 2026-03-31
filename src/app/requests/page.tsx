@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -358,9 +357,17 @@ export default function RequestsPage() {
       const docSnap = await getDoc(docRef);
       const currentData = docSnap.exists() ? docSnap.data() : request;
       
+      const today = new Date();
+      const formattedDate = new Intl.DateTimeFormat('pt-BR', {
+        timeZone: 'America/Sao_Paulo',
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+      }).format(today);
+
       const currentResponse = currentData.adminResponse || "";
       const rawNewResponse = adminResponseDraft[request.id] || "CIENTE/DE ACORDO";
-      const formattedNewResponse = `${actorPrefix}: ${rawNewResponse.toUpperCase().trim()}`;
+      const formattedNewResponse = `${formattedDate} - ${actorPrefix}: ${rawNewResponse.toUpperCase().trim()}`;
       
       const finalResponse = currentResponse 
         ? `${currentResponse} | ${formattedNewResponse}` 
@@ -536,7 +543,7 @@ export default function RequestsPage() {
                           <Input 
                             type="date" 
                             value={permutaMyOriginalDate} 
-                            onChange={(e) => setPermutaMyOriginalDate(e.target.value)} 
+                            onChange={(e) => setUpdateMyOriginalDate(e.target.value)} 
                             required 
                             className="h-9 text-[10px] font-bold bg-white border-blue-200" 
                           />
