@@ -1,17 +1,14 @@
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { 
   Loader2, 
-  User, 
-  Mail, 
   Phone, 
-  Calendar, 
   MapPin,
   ShieldCheck,
   Save,
@@ -158,31 +155,28 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">FICHA DO SERVIDOR</h2>
-          <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">MANTENHA SEUS DADOS SEMPRE ATUALIZADOS.</p>
-        </div>
+    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+      <div className="flex flex-col gap-2">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">FICHA FUNCIONAL</h2>
+        <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">CADASTRO UNIFICADO DO SERVIDOR.</p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-8">
-        {/* CARD PRINCIPAL (HEADER) */}
-        <Card className="card-shadow border-primary/10 overflow-hidden rounded-2xl">
-          <div className="h-12 bg-primary/5 border-b" />
-          <CardContent className="pt-8 flex flex-col md:flex-row items-center gap-6 pb-8">
-            <div className="flex-1 text-center md:text-left space-y-2">
-              <h3 className="text-2xl font-black uppercase tracking-tight text-slate-900 leading-tight">
+      <form onSubmit={handleSave} className="space-y-6">
+        <Card className="card-shadow border-none rounded-2xl overflow-hidden">
+          {/* HEADER DE IDENTIFICAÇÃO */}
+          <div className="bg-primary/5 border-b p-6 sm:p-8">
+            <div className="space-y-4">
+              <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter text-slate-900 leading-none">
                 {employeeData.name}
               </h3>
-              <div className="flex flex-wrap items-center justify-center md:justify-start gap-2">
-                <Badge variant="outline" className="font-mono text-[10px] font-bold uppercase border-primary/20 text-primary bg-primary/5 px-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="outline" className="font-mono text-[10px] font-bold uppercase border-primary/20 text-primary bg-white px-3 h-6">
                   QRA: {employeeData.qra}
                 </Badge>
-                <Badge variant="secondary" className="font-mono text-[10px] font-bold uppercase px-3">
+                <Badge variant="outline" className="font-mono text-[10px] font-bold uppercase border-slate-200 text-slate-600 bg-white px-3 h-6">
                   MATRÍCULA: {employeeData.matricula}
                 </Badge>
-                <Badge className="bg-green-600 text-white border-none text-[9px] uppercase font-bold px-3">
+                <Badge className="bg-green-600 text-white border-none text-[9px] uppercase font-bold px-3 h-6">
                   {employeeData.status}
                 </Badge>
               </div>
@@ -190,62 +184,57 @@ export default function ProfilePage() {
                 {employeeData.role} • {employeeData.unit}
               </p>
             </div>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* ALINHAMENTO VERTICAL DOS CARDS */}
-        <div className="flex flex-col gap-8">
-          {/* SEÇÃO 1: DADOS PESSOAIS */}
-          <Card className="card-shadow border-none rounded-2xl">
-            <CardHeader className="border-b bg-muted/5">
+          <CardContent className="p-6 sm:p-8 space-y-10">
+            {/* SEÇÃO 1: DADOS PESSOAIS */}
+            <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="bg-blue-50 p-2 rounded-lg border border-blue-100">
                   <Fingerprint className="h-5 w-5 text-blue-600" />
                 </div>
-                <CardTitle className="text-sm uppercase font-black tracking-widest">Dados Pessoais & Documentos</CardTitle>
+                <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Dados Pessoais & Documentos</h4>
               </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">CPF</Label>
                   <Input 
                     value={cpf} 
                     onChange={(e) => setCpf(applyCpfMask(e.target.value))} 
                     placeholder="000.000.000-00" 
-                    className="uppercase font-bold text-xs h-11" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
                   />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Nascimento</Label>
-                  <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="font-bold text-xs h-11" />
+                  <Input type="date" value={birthDate} onChange={(e) => setBirthDate(e.target.value)} className="font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Admissão</Label>
-                  <Input type="date" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} className="font-bold text-xs h-11" />
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email Institucional</Label>
-                  <Input value={employeeData.email || ""} readOnly className="bg-muted/30 uppercase font-bold text-xs h-11 cursor-not-allowed" />
+                  <Input type="date" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} className="font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email Institucional</Label>
+                  <Input value={employeeData.email || ""} readOnly className="bg-muted/30 uppercase font-bold text-xs h-11 cursor-not-allowed border-dashed" />
+                </div>
+              </div>
+            </div>
 
-          {/* SEÇÃO 2: CONTATO E ENDEREÇO */}
-          <Card className="card-shadow border-none rounded-2xl">
-            <CardHeader className="border-b bg-muted/5">
+            <Separator className="bg-slate-100" />
+
+            {/* SEÇÃO 2: CONTATO E ENDEREÇO */}
+            <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="bg-blue-50 p-2 rounded-lg border border-blue-100">
                   <MapPin className="h-5 w-5 text-blue-600" />
                 </div>
-                <CardTitle className="text-sm uppercase font-black tracking-widest">Contato & Localização</CardTitle>
+                <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Contato & Localização</h4>
               </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                     <Phone className="h-3 w-3" /> Telefone Principal
@@ -254,7 +243,7 @@ export default function ProfilePage() {
                     value={phone} 
                     onChange={(e) => setPhone(applyPhoneMask(e.target.value))} 
                     placeholder="(27) 99999-9999" 
-                    className="uppercase font-bold text-xs h-11" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
                   />
                 </div>
                 <div className="space-y-1.5">
@@ -265,7 +254,7 @@ export default function ProfilePage() {
                     value={emergencyPhone} 
                     onChange={(e) => setEmergencyPhone(applyPhoneMask(e.target.value))} 
                     placeholder="(27) 99999-9999" 
-                    className="uppercase font-bold text-xs h-11" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
                   />
                 </div>
               </div>
@@ -273,24 +262,22 @@ export default function ProfilePage() {
                 <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                   <MapPin className="h-3 w-3" /> Endereço Residencial Completo
                 </Label>
-                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="RUA, NÚMERO, BAIRRO, CIDADE..." className="uppercase font-bold text-xs h-11" />
+                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="RUA, NÚMERO, BAIRRO, CIDADE..." className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* SEÇÃO 3: FAMÍLIA E DEPENDENTES */}
-          <Card className="card-shadow border-none rounded-2xl">
-            <CardHeader className="border-b bg-muted/5">
+            <Separator className="bg-slate-100" />
+
+            {/* SEÇÃO 3: FAMÍLIA E DEPENDENTES */}
+            <div className="space-y-8">
               <div className="flex items-center gap-3">
                 <div className="bg-red-50 p-2 rounded-lg border border-red-100">
                   <Heart className="h-5 w-5 text-red-600" />
                 </div>
-                <CardTitle className="text-sm uppercase font-black tracking-widest">Família & Dependentes</CardTitle>
+                <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Família & Dependentes</h4>
               </div>
-            </CardHeader>
-            <CardContent className="p-6 space-y-8">
+
               <div className="space-y-6">
-                {/* ESTADO CIVIL E CÔNJUGE */}
                 <div className={cn(
                   "grid gap-6",
                   (maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") ? "grid-cols-1 md:grid-cols-3" : "grid-cols-1"
@@ -298,7 +285,7 @@ export default function ProfilePage() {
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Estado Civil</Label>
                     <Select value={maritalStatus} onValueChange={setMaritalStatus}>
-                      <SelectTrigger className="h-11 uppercase text-xs font-bold">
+                      <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -314,23 +301,20 @@ export default function ProfilePage() {
                   {(maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") && (
                     <div className="md:col-span-2 space-y-1.5 animate-in slide-in-from-left-2 duration-300">
                       <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nome do Cônjuge</Label>
-                      <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value)} className="uppercase font-bold text-xs h-11" />
+                      <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value)} className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                     </div>
                   )}
 
                   {(maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL") && (
-                    <div className="md:col-span-3 flex items-center justify-between gap-4 p-4 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
+                    <div className="md:col-span-3 flex items-center justify-between gap-4 p-4 bg-slate-50 border border-dashed rounded-xl animate-in slide-in-from-top-2 duration-300">
                       <Label className="text-[10px] font-bold text-muted-foreground uppercase leading-tight tracking-widest">
-                        Cônjuge é servidor da Educação de Vila Velha?
+                        O cônjuge é servidor da Educação de Vila Velha?
                       </Label>
                       <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
                     </div>
                   )}
                 </div>
 
-                <Separator className="bg-muted/50" />
-
-                {/* FILHOS */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -343,13 +327,13 @@ export default function ProfilePage() {
                   </div>
 
                   {children.length === 0 ? (
-                    <div className="p-8 border-2 border-dashed rounded-2xl text-center">
+                    <div className="p-8 border-2 border-dashed rounded-2xl text-center bg-slate-50/30">
                       <p className="text-[10px] text-muted-foreground uppercase font-bold italic">Nenhum filho cadastrado.</p>
                     </div>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                       {children.map((child, index) => (
-                        <div key={index} className="flex gap-2 items-end p-3 border rounded-xl bg-slate-50 animate-in zoom-in-95 duration-200">
+                        <div key={index} className="flex gap-2 items-end p-3 border rounded-xl bg-slate-50/50 animate-in zoom-in-95 duration-200">
                           <div className="flex-1 space-y-1.5">
                             <Label className="text-[8px] font-bold uppercase text-muted-foreground">Nome Completo</Label>
                             <Input value={child.name} onChange={(e) => handleUpdateChild(index, "name", e.target.value)} className="h-9 uppercase text-xs font-bold bg-white" />
@@ -367,48 +351,46 @@ export default function ProfilePage() {
                   )}
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
 
-          {/* SEÇÃO 4: DADOS ELEITORAIS */}
-          <Card className="card-shadow border-none rounded-2xl">
-            <CardHeader className="border-b bg-muted/5">
+            <Separator className="bg-slate-100" />
+
+            {/* SEÇÃO 4: DADOS ELEITORAIS */}
+            <div className="space-y-6">
               <div className="flex items-center gap-3">
                 <div className="bg-purple-50 p-2 rounded-lg border border-purple-100">
                   <Vote className="h-5 w-5 text-purple-600" />
                 </div>
-                <CardTitle className="text-sm uppercase font-black tracking-widest">Dados Eleitorais (Votação)</CardTitle>
+                <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Dados Eleitorais (Votação)</h4>
               </div>
-            </CardHeader>
-            <CardContent className="p-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Número do Título</Label>
-                  <Input value={voterId} onChange={(e) => setVoterId(e.target.value)} placeholder="0000 0000 0000" className="uppercase font-bold text-xs h-11" />
+                  <Input value={voterId} onChange={(e) => setVoterId(e.target.value)} placeholder="0000 0000 0000" className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zona Eleitoral</Label>
-                  <Input value={voterZone} onChange={(e) => setVoterZone(e.target.value)} placeholder="000" className="uppercase font-bold text-xs h-11" />
+                  <Input value={voterZone} onChange={(e) => setVoterZone(e.target.value)} placeholder="000" className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Local de Votação (Escola/Sede)</Label>
-                  <Input value={votingLocation} onChange={(e) => setVotingLocation(e.target.value)} placeholder="NOME DA ESCOLA..." className="uppercase font-bold text-xs h-11" />
+                  <Input value={votingLocation} onChange={(e) => setVotingLocation(e.target.value)} placeholder="NOME DA ESCOLA..." className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </CardContent>
+        </Card>
 
         {/* NOTA DE RODAPÉ E BOTÃO SALVAR */}
-        <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-6 p-6 bg-slate-50 border border-slate-200 rounded-3xl">
+        <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-6 p-6 sm:p-8 bg-slate-100 border border-slate-200 rounded-3xl">
           <div className="flex items-start gap-4 max-w-xl">
-            <div className="bg-white p-2 rounded-xl border shadow-sm">
+            <div className="bg-white p-2 rounded-xl border shadow-sm shrink-0">
               <Info className="h-5 w-5 text-blue-500" />
             </div>
             <div className="space-y-1">
-              <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight">Compromisso com a Veracidade</p>
-              <p className="text-[9px] text-muted-foreground uppercase leading-relaxed font-bold">
-                Ao salvar estas informações, você declara que os dados fornecidos são verdadeiros e assume a responsabilidade por qualquer inconsistência. Os dados oficiais de Matrícula e Admissão só podem ser alterados pelo RH.
+              <p className="text-[11px] font-black uppercase text-slate-900 tracking-tight leading-none">Compromisso com a Veracidade</p>
+              <p className="text-[9px] text-muted-foreground uppercase leading-relaxed font-bold mt-1">
+                Ao gravar estas informações, você declara que os dados fornecidos são verdadeiros e assume a responsabilidade por qualquer inconsistência. Os dados oficiais de Matrícula e Admissão só podem ser alterados pelo RH.
               </p>
             </div>
           </div>
