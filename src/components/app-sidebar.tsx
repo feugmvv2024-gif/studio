@@ -13,6 +13,7 @@ import {
   BarChart3,
   History,
   ShieldCheck,
+  FileText,
 } from "lucide-react"
 
 import {
@@ -43,6 +44,7 @@ const navigation = [
   { name: "Meus Lançamentos", href: "/meus-lancamentos", icon: History },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
+  { name: "Dados Perfil", href: "/dados-perfil", icon: FileText },
   { name: "Configuração", href: "/settings", icon: Settings },
 ]
 
