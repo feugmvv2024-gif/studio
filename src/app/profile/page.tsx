@@ -8,7 +8,6 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Camera, 
   Loader2, 
   User, 
   Mail, 
@@ -173,16 +172,13 @@ export default function ProfilePage() {
         <Card className="card-shadow border-primary/10 overflow-hidden rounded-2xl">
           <div className="h-24 bg-primary/5 border-b" />
           <CardContent className="-mt-12 flex flex-col md:flex-row items-center gap-6 pb-8">
-            <div className="relative group">
+            <div className="relative">
               <Avatar className="h-24 w-24 sm:h-32 sm:w-32 border-4 border-background shadow-xl">
                 <AvatarImage src={employeeData.avatar || `https://picsum.photos/seed/${employeeData.id}/150/150`} />
                 <AvatarFallback className="bg-primary/10 text-primary font-bold text-2xl">
                   {employeeData.name?.charAt(0)}
                 </AvatarFallback>
               </Avatar>
-              <Button type="button" size="icon" variant="secondary" className="absolute bottom-1 right-1 rounded-full h-8 w-8 shadow-lg border-2 border-background hover:scale-110 transition-transform">
-                <Camera className="h-4 w-4" />
-              </Button>
             </div>
             
             <div className="flex-1 text-center md:text-left space-y-2">
