@@ -2,7 +2,6 @@
 
 import * as React from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -170,17 +169,8 @@ export default function ProfilePage() {
       <form onSubmit={handleSave} className="space-y-8">
         {/* CARD PRINCIPAL (HEADER) */}
         <Card className="card-shadow border-primary/10 overflow-hidden rounded-2xl">
-          <div className="h-24 bg-primary/5 border-b" />
-          <CardContent className="-mt-12 flex flex-col md:flex-row items-center gap-6 pb-8">
-            <div className="relative">
-              <Avatar className="h-24 w-24 sm:h-32 sm:w-32 border-4 border-background shadow-xl">
-                <AvatarImage src={employeeData.avatar || `https://picsum.photos/seed/${employeeData.id}/150/150`} />
-                <AvatarFallback className="bg-primary/10 text-primary font-bold text-2xl">
-                  {employeeData.name?.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
-            </div>
-            
+          <div className="h-12 bg-primary/5 border-b" />
+          <CardContent className="pt-8 flex flex-col md:flex-row items-center gap-6 pb-8">
             <div className="flex-1 text-center md:text-left space-y-2">
               <h3 className="text-2xl font-black uppercase tracking-tight text-slate-900 leading-tight">
                 {employeeData.name}
