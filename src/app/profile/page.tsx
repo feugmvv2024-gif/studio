@@ -74,6 +74,7 @@ export default function ProfilePage() {
   const [voterZone, setVoterZone] = React.useState("");
   const [votingLocation, setVotingLocation] = React.useState("");
   const [birthDate, setBirthDate] = React.useState("");
+  const [admissionDate, setAdmissionDate] = React.useState("");
   const [cpf, setCpf] = React.useState("");
   const [children, setChildren] = React.useState<{ name: string; age: string }[]>([]);
 
@@ -90,6 +91,7 @@ export default function ProfilePage() {
       setVoterZone(employeeData.voterZone || "");
       setVotingLocation(employeeData.votingLocation || "");
       setBirthDate(employeeData.birthDate || "");
+      setAdmissionDate(employeeData.admissionDate || "");
       setCpf(employeeData.cpf || "");
       setChildren(employeeData.children || []);
     }
@@ -125,6 +127,7 @@ export default function ProfilePage() {
       voterZone: voterZone.toUpperCase(),
       votingLocation: votingLocation.toUpperCase(),
       birthDate,
+      admissionDate,
       cpf: cpf.toUpperCase(),
       children: children.filter(c => c.name.trim() !== ""),
     };
@@ -235,8 +238,7 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Admissão</Label>
-                  <Input value={employeeData.admissionDate ? employeeData.admissionDate.split('-').reverse().join('/') : ""} readOnly className="bg-muted/30 uppercase font-bold text-xs h-11 cursor-not-allowed" />
-                  <p className="text-[8px] text-muted-foreground italic uppercase">Dado bloqueado para edição.</p>
+                  <Input type="date" value={admissionDate} onChange={(e) => setAdmissionDate(e.target.value)} className="font-bold text-xs h-11" />
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Email Institucional</Label>
