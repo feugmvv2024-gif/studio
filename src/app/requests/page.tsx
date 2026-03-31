@@ -332,10 +332,11 @@ export default function RequestsPage() {
     
     let nextStatus = "";
     let actorPrefix = "";
+    const userQra = (employeeData?.qra || "SISTEMA").toLowerCase();
     
-    if (request.status === "Aguardando Parceiro") actorPrefix = "PARCEIRO";
-    else if (request.status === "Pendente") actorPrefix = "CHEFIA";
-    else if (request.status === "Aprovado pela Chefia") actorPrefix = "RH";
+    if (request.status === "Aguardando Parceiro") actorPrefix = `PARCEIRO (${userQra})`;
+    else if (request.status === "Pendente") actorPrefix = `CHEFIA (${userQra})`;
+    else if (request.status === "Aprovado pela Chefia") actorPrefix = `RH (${userQra})`;
 
     if (action === 'deny') {
       nextStatus = "Negado";
