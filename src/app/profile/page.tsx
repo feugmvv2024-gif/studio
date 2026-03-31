@@ -24,13 +24,6 @@ import {
 import { useAuth, useFirestore } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
 import { useToast } from "@/hooks/use-toast"
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
@@ -64,7 +57,6 @@ export default function ProfilePage() {
   const [emergencyContactName, setEmergencyContactName] = React.useState("");
   const [emergencyPhone, setEmergencyPhone] = React.useState("");
   const [address, setAddress] = React.useState("");
-  const [maritalStatus, setMaritalStatus] = React.useState("");
   const [spouseName, setSpouseName] = React.useState("");
   const [isSpouseEducationEmployee, setIsSpouseEducationEmployee] = React.useState(false);
   const [voterId, setVoterId] = React.useState("");
@@ -85,7 +77,6 @@ export default function ProfilePage() {
       setEmergencyContactName((employeeData.emergencyContactName || "").toUpperCase());
       setEmergencyPhone(employeeData.emergencyPhone || "");
       setAddress((employeeData.address || "").toUpperCase());
-      setMaritalStatus((employeeData.maritalStatus || "SOLTEIRO(A)").toUpperCase());
       setSpouseName((employeeData.spouseName || "").toUpperCase());
       setIsSpouseEducationEmployee(!!employeeData.isSpouseEducationEmployee);
       setVoterId((employeeData.voterId || "").toUpperCase());
@@ -125,7 +116,6 @@ export default function ProfilePage() {
       emergencyContactName: emergencyContactName.toUpperCase(),
       emergencyPhone: emergencyPhone.toUpperCase(),
       address: address.toUpperCase(),
-      maritalStatus: maritalStatus.toUpperCase(),
       spouseName: spouseName.toUpperCase(),
       isSpouseEducationEmployee,
       voterId: voterId.toUpperCase(),
@@ -166,8 +156,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const isMarriedOrStable = maritalStatus === "CASADO(A)" || maritalStatus === "UNIÃO ESTÁVEL";
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
@@ -359,43 +347,20 @@ export default function ProfilePage() {
 
               <div className="space-y-8">
                 {/* PRIMEIRA LINHA: DADOS DO CONJUGE */}
-                <div className={cn(
-                  "grid gap-6",
-                  isMarriedOrStable ? "grid-cols-1 md:grid-cols-4" : "grid-cols-1 md:grid-cols-3"
-                )}>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Estado Civil</Label>
-                    <Select value={maritalStatus} onValueChange={setMaritalStatus}>
-                      <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
-                        <SelectValue placeholder="SELECIONE..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SOLTEIRO(A)" className="uppercase text-xs">SOLTEIRO(A)</SelectItem>
-                        <SelectItem value="CASADO(A)" className="uppercase text-xs">CASADO(A)</SelectItem>
-                        <SelectItem value="UNIÃO ESTÁVEL" className="uppercase text-xs">UNIÃO ESTÁVEL</SelectItem>
-                        <SelectItem value="DIVORCIADO(A)" className="uppercase text-xs">DIVORCIADO(A)</SelectItem>
-                        <SelectItem value="VIÚVO(A)" className="uppercase text-xs">VIÚVO(A)</SelectItem>
-                      </SelectContent>
-                    </Select>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nome do Cônjuge</Label>
+                    <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value.toUpperCase())} className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                   </div>
 
-                  {isMarriedOrStable && (
-                    <div className="md:col-span-2 space-y-1.5 animate-in slide-in-from-left-2 duration-300">
-                      <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nome do Cônjuge</Label>
-                      <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value.toUpperCase())} className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
+                  <div className="flex flex-col justify-end gap-2 p-3 bg-slate-50 border border-dashed rounded-xl">
+                    <div className="flex items-center justify-between gap-4">
+                      <Label className="text-[9px] font-bold text-muted-foreground uppercase leading-tight tracking-tighter">
+                        {spouseName ? `O(A) ${spouseName} É SERVIDOR(A) DA EDUCAÇÃO DE VILA VELHA?` : "O CÔNJUGE É SERVIDOR DA EDUCAÇÃO DE VILA VELHA?"}
+                      </Label>
+                      <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
                     </div>
-                  )}
-
-                  {isMarriedOrStable && (
-                    <div className="flex flex-col justify-end gap-2 p-3 bg-slate-50 border border-dashed rounded-xl animate-in slide-in-from-top-2 duration-300">
-                      <div className="flex items-center justify-between gap-4">
-                        <Label className="text-[9px] font-bold text-muted-foreground uppercase leading-tight tracking-tighter">
-                          {spouseName ? `O(A) ${spouseName} É SERVIDOR(A) DA EDUCAÇÃO DE VILA VELHA?` : "O CÔNJUGE É SERVIDOR DA EDUCAÇÃO DE VILA VELHA?"}
-                        </Label>
-                        <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
-                      </div>
-                    </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* SEGUNDA LINHA: FILHOS E DEPENDENTES */}
