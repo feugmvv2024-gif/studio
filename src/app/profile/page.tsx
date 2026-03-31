@@ -78,24 +78,24 @@ export default function ProfilePage() {
   const [cnhExpiration, setCnhExpiration] = React.useState("");
   const [children, setChildren] = React.useState<{ name: string; age: string }[]>([]);
 
-  // Inicializa estados com dados do Firestore
+  // Inicializa estados com dados do Firestore normalizados para maiúsculas
   React.useEffect(() => {
     if (employeeData) {
       setPhone(employeeData.phone || "");
-      setEmergencyContactName(employeeData.emergencyContactName || "");
+      setEmergencyContactName((employeeData.emergencyContactName || "").toUpperCase());
       setEmergencyPhone(employeeData.emergencyPhone || "");
-      setAddress(employeeData.address || "");
-      setMaritalStatus(employeeData.maritalStatus || "SOLTEIRO(A)");
-      setSpouseName(employeeData.spouseName || "");
+      setAddress((employeeData.address || "").toUpperCase());
+      setMaritalStatus((employeeData.maritalStatus || "SOLTEIRO(A)").toUpperCase());
+      setSpouseName((employeeData.spouseName || "").toUpperCase());
       setIsSpouseEducationEmployee(!!employeeData.isSpouseEducationEmployee);
-      setVoterId(employeeData.voterId || "");
-      setVoterZone(employeeData.voterZone || "");
-      setVotingLocation(employeeData.votingLocation || "");
+      setVoterId((employeeData.voterId || "").toUpperCase());
+      setVoterZone((employeeData.voterZone || "").toUpperCase());
+      setVotingLocation((employeeData.votingLocation || "").toUpperCase());
       setBirthDate(employeeData.birthDate || "");
       setAdmissionDate(employeeData.admissionDate || "");
       setCpf(employeeData.cpf || "");
-      setCnhNumber(employeeData.cnhNumber || "");
-      setCnhCategory(employeeData.cnhCategory || "");
+      setCnhNumber((employeeData.cnhNumber || "").toUpperCase());
+      setCnhCategory((employeeData.cnhCategory || "").toUpperCase());
       setCnhExpiration(employeeData.cnhExpiration || "");
       setChildren(employeeData.children || []);
     }
@@ -367,7 +367,7 @@ export default function ProfilePage() {
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Estado Civil</Label>
                     <Select value={maritalStatus} onValueChange={setMaritalStatus}>
                       <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
-                        <SelectValue />
+                        <SelectValue placeholder="SELECIONE..." />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="SOLTEIRO(A)" className="uppercase text-xs">SOLTEIRO(A)</SelectItem>
