@@ -17,10 +17,9 @@ import {
   Trash2,
   Heart,
   Baby,
-  Vote,
   Fingerprint,
   Info,
-  CreditCard
+  User
 } from "lucide-react"
 import { useAuth, useFirestore } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
@@ -62,6 +61,7 @@ export default function ProfilePage() {
 
   // Estados dos campos
   const [phone, setPhone] = React.useState("");
+  const [emergencyContactName, setEmergencyContactName] = React.useState("");
   const [emergencyPhone, setEmergencyPhone] = React.useState("");
   const [address, setAddress] = React.useState("");
   const [maritalStatus, setMaritalStatus] = React.useState("");
@@ -82,6 +82,7 @@ export default function ProfilePage() {
   React.useEffect(() => {
     if (employeeData) {
       setPhone(employeeData.phone || "");
+      setEmergencyContactName(employeeData.emergencyContactName || "");
       setEmergencyPhone(employeeData.emergencyPhone || "");
       setAddress(employeeData.address || "");
       setMaritalStatus(employeeData.maritalStatus || "SOLTEIRO(A)");
@@ -121,6 +122,7 @@ export default function ProfilePage() {
     setIsSaving(true);
     const updates = {
       phone: phone.toUpperCase(),
+      emergencyContactName: emergencyContactName.toUpperCase(),
       emergencyPhone: emergencyPhone.toUpperCase(),
       address: address.toUpperCase(),
       maritalStatus: maritalStatus.toUpperCase(),
@@ -297,7 +299,21 @@ export default function ProfilePage() {
                 <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Contato & Localização</h4>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              {/* LINHA 1: ENDEREÇO COMPLETO */}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                  <MapPin className="h-3 w-3" /> Endereço Residencial Completo
+                </Label>
+                <Input 
+                  value={address} 
+                  onChange={(e) => setAddress(e.target.value.toUpperCase())} 
+                  placeholder="RUA, NÚMERO, BAIRRO, CIDADE..." 
+                  className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
+                />
+              </div>
+
+              {/* LINHA 2: TELEFONES E CONTATO DE EMERGÊNCIA */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
                     <Phone className="h-3 w-3" /> Telefone Principal
@@ -306,6 +322,17 @@ export default function ProfilePage() {
                     value={phone} 
                     onChange={(e) => setPhone(applyPhoneMask(e.target.value))} 
                     placeholder="(27) 99999-9999" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <User className="h-3 w-3" /> Contato de Emergência (Nome)
+                  </Label>
+                  <Input 
+                    value={emergencyContactName} 
+                    onChange={(e) => setEmergencyContactName(e.target.value.toUpperCase())} 
+                    placeholder="NOME DO CONTATO" 
                     className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
                   />
                 </div>
@@ -320,12 +347,6 @@ export default function ProfilePage() {
                     className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
                   />
                 </div>
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <MapPin className="h-3 w-3" /> Endereço Residencial Completo
-                </Label>
-                <Input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="RUA, NÚMERO, BAIRRO, CIDADE..." className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
               </div>
             </div>
 

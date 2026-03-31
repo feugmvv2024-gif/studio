@@ -21,6 +21,7 @@
         "avatar": { "type": "string" },
         "admissionDate": { "type": "string", "format": "date" },
         "phone": { "type": "string" },
+        "emergencyContactName": { "type": "string" },
         "emergencyPhone": { "type": "string" },
         "address": { "type": "string" },
         "maritalStatus": { "type": "string", "enum": ["SOLTEIRO(A)", "CASADO(A)", "UNIÃO ESTÁVEL", "DIVORCIADO(A)", "VIÚVO(A)"] },
