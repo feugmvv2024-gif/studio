@@ -19,14 +19,16 @@ import {
   Baby,
   Fingerprint,
   Info,
-  User
+  User,
+  Lock,
+  RefreshCw
 } from "lucide-react"
 import { useAuth, useFirestore } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
+import { updatePassword } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
-import { cn } from "@/lib/utils"
 
 const applyCpfMask = (value: string) => {
   const digits = value.replace(/\D/g, "");
@@ -47,12 +49,14 @@ const applyPhoneMask = (value: string) => {
 };
 
 export default function ProfilePage() {
-  const { employeeData, loading: authLoading } = useAuth();
+  const { auth, user, employeeData, loading: authLoading } = useAuth();
   const firestore = useFirestore();
   const { toast } = useToast();
+  
   const [isSaving, setIsSaving] = React.useState(false);
+  const [isChangingPassword, setIsChangingPassword] = React.useState(false);
 
-  // Estados dos campos
+  // Estados dos campos cadastrais
   const [phone, setPhone] = React.useState("");
   const [emergencyContactName, setEmergencyContactName] = React.useState("");
   const [emergencyPhone, setEmergencyPhone] = React.useState("");
@@ -70,7 +74,11 @@ export default function ProfilePage() {
   const [cnhExpiration, setCnhExpiration] = React.useState("");
   const [children, setChildren] = React.useState<{ name: string; age: string }[]>([]);
 
-  // Inicializa estados com dados do Firestore normalizados para maiúsculas
+  // Estados de Senha
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+
+  // Inicializa estados com dados do Firestore
   React.useEffect(() => {
     if (employeeData) {
       setPhone(employeeData.phone || "");
@@ -140,6 +148,40 @@ export default function ProfilePage() {
     }
   };
 
+  const handlePasswordChange = async () => {
+    if (!user) return;
+    
+    if (newPassword.length < 6) {
+      toast({ variant: "destructive", title: "SENHA INVÁLIDA", description: "A senha deve ter pelo menos 6 caracteres." });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({ variant: "destructive", title: "SENHAS DIFERENTES", description: "A confirmação de senha não confere." });
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      await updatePassword(user, newPassword);
+      toast({ title: "SUCESSO!", description: "SUA SENHA FOI ATUALIZADA." });
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      if (error.code === 'auth/requires-recent-login') {
+        toast({ 
+          variant: "destructive", 
+          title: "AÇÃO NECESSÁRIA", 
+          description: "Por segurança, saia do sistema e entre novamente para trocar sua senha." 
+        });
+      } else {
+        toast({ variant: "destructive", title: "ERRO AO TROCAR SENHA", description: "Tente novamente." });
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="flex h-full items-center justify-center min-h-[400px]">
@@ -164,7 +206,7 @@ export default function ProfilePage() {
         <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">CADASTRO UNIFICADO DO SERVIDOR.</p>
       </div>
 
-      <form onSubmit={handleSave} className="space-y-6">
+      <div className="space-y-6">
         <Card className="card-shadow border-none rounded-2xl overflow-hidden bg-card">
           <div className="bg-primary/5 border-b p-6 sm:p-8">
             <div className="space-y-4">
@@ -346,7 +388,6 @@ export default function ProfilePage() {
               </div>
 
               <div className="space-y-8">
-                {/* PRIMEIRA LINHA: DADOS DO CONJUGE */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="md:col-span-2 space-y-1.5">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nome do Cônjuge</Label>
@@ -363,7 +404,6 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
-                {/* SEGUNDA LINHA: FILHOS E DEPENDENTES */}
                 <div className="space-y-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
@@ -401,10 +441,61 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
+
+            <Separator className="bg-slate-100" />
+
+            {/* SEÇÃO 4: SEGURANÇA & ACESSO (TROCA DE SENHA) */}
+            <div className="space-y-6">
+              <div className="flex items-center gap-3">
+                <div className="bg-amber-50 p-2 rounded-lg border border-amber-100">
+                  <Lock className="h-5 w-5 text-amber-600" />
+                </div>
+                <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Segurança & Acesso</h4>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nova Senha</Label>
+                  <Input 
+                    type="password" 
+                    value={newPassword} 
+                    onChange={(e) => setNewPassword(e.target.value)} 
+                    placeholder="MÍNIMO 6 DÍGITOS"
+                    className="h-11 bg-slate-50/50" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Confirmar Nova Senha</Label>
+                  <Input 
+                    type="password" 
+                    value={confirmPassword} 
+                    onChange={(e) => setConfirmPassword(e.target.value)} 
+                    placeholder="REPITA A SENHA"
+                    className="h-11 bg-slate-50/50" 
+                  />
+                </div>
+                <Button 
+                  type="button" 
+                  disabled={isChangingPassword || !newPassword || !confirmPassword}
+                  onClick={handlePasswordChange}
+                  className="h-11 uppercase font-black text-xs tracking-widest bg-slate-800 hover:bg-slate-900 shadow-lg shadow-slate-200"
+                >
+                  {isChangingPassword ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RefreshCw className="h-4 w-4 mr-2" />}
+                  Atualizar Senha
+                </Button>
+              </div>
+              
+              <div className="flex items-start gap-2 bg-amber-50/50 p-3 rounded-xl border border-amber-100">
+                <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-800 font-medium leading-relaxed uppercase">
+                  Por segurança, se você estiver logado há muito tempo, o sistema pode solicitar que você saia e entre novamente antes de permitir a troca da senha.
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        {/* NOTA DE RODAPÉ E BOTÃO SALVAR */}
+        {/* NOTA DE RODAPÉ E BOTÃO SALVAR GERAL */}
         <div className="flex flex-col-reverse md:flex-row items-center justify-between gap-6 p-6 sm:p-8 bg-slate-100 border border-slate-200 rounded-3xl">
           <div className="flex items-start gap-4 max-w-xl">
             <div className="bg-white p-2 rounded-xl border shadow-sm shrink-0">
@@ -419,7 +510,8 @@ export default function ProfilePage() {
           </div>
           
           <Button 
-            type="submit" 
+            onClick={handleSave}
+            type="button" 
             disabled={isSaving} 
             className="w-full md:w-auto h-14 px-12 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
           >
@@ -427,7 +519,7 @@ export default function ProfilePage() {
             GRAVAR ATUALIZAÇÃO CADASTRAL
           </Button>
         </div>
-      </form>
+      </div>
     </div>
   )
 }
