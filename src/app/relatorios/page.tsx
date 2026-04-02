@@ -529,7 +529,7 @@ export default function RelatoriosPage() {
                     </button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
-                    <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Faltas / Ausências</h4>
+                    <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Faltas</h4>
                     <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{absencesFilled ? "SESSÃO PREENCHIDA" : "NENHUMA FALTA REGISTRADA"}</span>
                   </div>
                 </div>
