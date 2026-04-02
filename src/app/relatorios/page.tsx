@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -17,8 +16,6 @@ import {
   UserX,
   ChevronDown,
   ChevronUp,
-  Plane,
-  Stethoscope,
   History,
   Info,
   Star,
@@ -30,7 +27,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from '@/firebase'
-import { collection, query, orderBy, where } from 'firebase/firestore'
+import { collection, query, orderBy } from 'firebase/firestore'
 import { cn } from "@/lib/utils"
 import {
   Select,
@@ -477,8 +474,8 @@ export default function RelatoriosPage() {
               
               <CollapsibleContent className="space-y-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
                 {subinspetorRows.map((row, index) => (
-                  <div key={index} className="flex flex-col md:flex-row gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex-1 w-full">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="w-full">
                       {renderAutocomplete(
                         "Subinspetor", 
                         row.term, 
@@ -492,7 +489,7 @@ export default function RelatoriosPage() {
                         allSelectedIds.filter(id => id !== row.id)
                       )}
                     </div>
-                    <div className="flex-1 w-full space-y-1.5">
+                    <div className="w-full space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         Escala e Turno (Subinspetor)
                       </Label>
@@ -503,7 +500,7 @@ export default function RelatoriosPage() {
                         className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
                       />
                     </div>
-                    {subinspetorRows.length > 1 && (
+                    {subinspetorRows.length > 1 ? (
                       <Button 
                         type="button" 
                         variant="ghost" 
@@ -513,7 +510,7 @@ export default function RelatoriosPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
+                    ) : <div className="w-11" />}
                   </div>
                 ))}
               </CollapsibleContent>
@@ -556,8 +553,8 @@ export default function RelatoriosPage() {
               
               <CollapsibleContent className="space-y-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
                 {faltaRows.map((row, index) => (
-                  <div key={index} className="flex flex-col md:flex-row gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex-1 w-full">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="w-full">
                       {renderAutocomplete(
                         "Servidor (Falta)", 
                         row.term, 
@@ -571,7 +568,7 @@ export default function RelatoriosPage() {
                         allSelectedIds.filter(id => id !== row.id)
                       )}
                     </div>
-                    <div className="flex-1 w-full space-y-1.5">
+                    <div className="w-full space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         Escala e Turno (Servidor)
                       </Label>
@@ -582,7 +579,7 @@ export default function RelatoriosPage() {
                         className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
                       />
                     </div>
-                    {faltaRows.length > 1 && (
+                    {faltaRows.length > 1 ? (
                       <Button 
                         type="button" 
                         variant="ghost" 
@@ -592,7 +589,7 @@ export default function RelatoriosPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
+                    ) : <div className="w-11" />}
                   </div>
                 ))}
               </CollapsibleContent>
@@ -741,8 +738,8 @@ export default function RelatoriosPage() {
               
               <CollapsibleContent className="space-y-6">
                 {especialRows.map((row, index) => (
-                  <div key={index} className="flex flex-col md:flex-row gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
-                    <div className="flex-[2] w-full">
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
+                    <div className="w-full">
                       {renderAutocomplete(
                         "Servidor", 
                         row.term, 
@@ -756,7 +753,7 @@ export default function RelatoriosPage() {
                         allSelectedIds.filter(id => id !== row.id)
                       )}
                     </div>
-                    <div className="flex-1 w-full space-y-1.5">
+                    <div className="w-full space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         Escala e Turno (Original)
                       </Label>
@@ -767,7 +764,7 @@ export default function RelatoriosPage() {
                         className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" 
                       />
                     </div>
-                    <div className="flex-1 w-full space-y-1.5">
+                    <div className="w-full space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         <Timer className="h-3 w-3" /> Período Escala Especial
                       </Label>
@@ -792,7 +789,7 @@ export default function RelatoriosPage() {
                         </SelectContent>
                       </Select>
                     </div>
-                    {especialRows.length > 1 && (
+                    {especialRows.length > 1 ? (
                       <Button 
                         type="button" 
                         variant="ghost" 
@@ -802,7 +799,7 @@ export default function RelatoriosPage() {
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
-                    )}
+                    ) : <div className="w-11" />}
                   </div>
                 ))}
               </CollapsibleContent>
