@@ -272,7 +272,7 @@ export default function RelatoriosPage() {
             {/* LINHA 2: INSPETOR, ESCALA/TURNO */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {renderAutocomplete(
-                "Inspetor Responsável", 
+                "Inspetor / Responsável", 
                 inspetorTerm, 
                 setInspetorTerm, 
                 setInspetorId, 
@@ -297,7 +297,7 @@ export default function RelatoriosPage() {
             {/* LINHA 3: SUBINSPETOR, ESCALA/TURNO */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {renderAutocomplete(
-                "Subinspetor Auxiliar", 
+                "Subinspetor", 
                 subinspetorTerm, 
                 setSubinspetorTerm, 
                 setSubinspetorId, 
