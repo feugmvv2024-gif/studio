@@ -19,7 +19,8 @@ import {
   History,
   Info,
   Star,
-  Timer
+  Timer,
+  Users
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -88,6 +89,7 @@ export default function RelatoriosPage() {
   const [isAbsencesOpen, setIsAbsencesOpen] = React.useState(false)
   const [isAfastadosOpen, setIsAfastadosOpen] = React.useState(false)
   const [isEspecialOpen, setIsEspecialOpen] = React.useState(false)
+  const [isTeamOpen, setIsTeamOpen] = React.useState(false)
 
   // Estados para valores padrão
   const [defaultDate, setDefaultDate] = React.useState("")
@@ -118,6 +120,16 @@ export default function RelatoriosPage() {
   // Estados para Escala Especial (Dinâmico)
   const [especialRows, setEspecialRows] = React.useState([
     { id: "", term: "", info: "", show: false, periodId: "" }
+  ]);
+
+  // Estados para Equipe do Dia
+  const [teamSector, setTeamSector] = React.useState("")
+  const [teamChiefId, setTeamChiefId] = React.useState("")
+  const [teamChiefTerm, setTeamChiefTerm] = React.useState("")
+  const [teamChiefInfo, setTeamChiefInfo] = React.useState("")
+  const [teamChiefShow, setTeamChiefShow] = React.useState(false)
+  const [teamRows, setTeamRows] = React.useState([
+    { id: "", term: "", show: false, type: "" }
   ]);
 
   const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: "", term: "", info: "", show: false }]);
@@ -159,6 +171,19 @@ export default function RelatoriosPage() {
     });
   };
 
+  const addTeamRow = () => setTeamRows([...teamRows, { id: "", term: "", show: false, type: "" }]);
+  const removeTeamRow = (index: number) => {
+    const newRows = teamRows.filter((_, i) => i !== index);
+    setTeamRows(newRows.length ? newRows : [{ id: "", term: "", show: false, type: "" }]);
+  };
+  const updateTeamRow = (index: number, updates: Partial<{id: string, term: string, show: boolean, type: string}>) => {
+    setTeamRows(prev => {
+      const newRows = [...prev];
+      newRows[index] = { ...newRows[index], ...updates };
+      return newRows;
+    });
+  };
+
   // Busca coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
@@ -178,6 +203,7 @@ export default function RelatoriosPage() {
   const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.id), [subinspetorRows]);
   const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.id), [faltaRows]);
   const especialFilled = React.useMemo(() => especialRows.some(r => !!r.id), [especialRows]);
+  const teamFilled = React.useMemo(() => teamSector && teamRows.some(r => !!r.id), [teamSector, teamRows]);
 
   // Lista de Afastados Hoje (Automatizada e Filtrada por Inspetor)
   const absentTodayList = React.useMemo(() => {
@@ -255,7 +281,8 @@ export default function RelatoriosPage() {
     setInfo: (v: string) => void,
     sourceList: any[],
     excludeIds: string[] = [],
-    isOptional?: boolean
+    isOptional?: boolean,
+    displayType: 'full' | 'qra' = 'full'
   ) => {
     const filtered = sourceList.filter(e => 
       (normalizeStr(e.name).includes(normalizeStr(term)) || 
@@ -300,7 +327,7 @@ export default function RelatoriosPage() {
                   key={emp.id}
                   type="button"
                   onClick={() => {
-                    setTerm(`${emp.name} (${emp.qra})`);
+                    setTerm(displayType === 'qra' ? emp.qra : `${emp.name} (${emp.qra})`);
                     setId(emp.id);
                     setInfo(`${emp.escala} / ${emp.turno}`);
                     setShow(false);
@@ -332,7 +359,9 @@ export default function RelatoriosPage() {
     inspetorId,
     ...subinspetorRows.map(r => r.id),
     ...faltaRows.map(r => r.id),
-    ...especialRows.map(r => r.id)
+    ...especialRows.map(r => r.id),
+    teamChiefId,
+    ...teamRows.map(r => r.id)
   ].filter(Boolean);
 
   return (
@@ -802,6 +831,124 @@ export default function RelatoriosPage() {
                     ) : <div className="w-11" />}
                   </div>
                 ))}
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* SEÇÃO EQUIPE DO DIA */}
+            <Collapsible open={isTeamOpen} onOpenChange={setIsTeamOpen} className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className={cn(
+                      "p-2 rounded-xl transition-colors border shadow-sm",
+                      teamFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
+                    )}>
+                      <Users className="h-5 w-5" />
+                    </button>
+                  </CollapsibleTrigger>
+                  <div className="flex flex-col">
+                    <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Equipe do Dia</h4>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{teamFilled ? "SESSÃO PREENCHIDA" : "AGUARDANDO DADOS"}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addTeamRow}
+                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> ADICIONAR INTEGRANTE
+                  </Button>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                      {isTeamOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+              </div>
+              
+              <CollapsibleContent className="space-y-6">
+                {/* Primeira Linha: Setor e Chefia */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
+                    <Select value={teamSector} onValueChange={setTeamSector}>
+                      <SelectTrigger className="h-11 uppercase text-xs font-bold bg-white">
+                        <SelectValue placeholder="SELECIONE O SETOR..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem>
+                        <SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem>
+                        <SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="w-full">
+                    {renderAutocomplete(
+                      "Chefia Responsável", 
+                      teamChiefTerm, 
+                      setTeamChiefTerm, 
+                      setTeamChiefId, 
+                      teamChiefId, 
+                      teamChiefShow, 
+                      setTeamChiefShow,
+                      setTeamChiefInfo,
+                      chefiaList,
+                      allSelectedIds.filter(id => id !== teamChiefId)
+                    )}
+                  </div>
+                </div>
+
+                {/* Linhas Dinâmicas: Posto e Servidor (QRA) */}
+                <div className="space-y-4">
+                  {teamRows.map((row, index) => (
+                    <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Posto / Serviço</Label>
+                        <Select value={row.type} onValueChange={(v) => updateTeamRow(index, { type: v })}>
+                          <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
+                            <SelectValue placeholder="SELECIONE..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem>
+                            <SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem>
+                            <SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem>
+                            <SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="w-full">
+                        {renderAutocomplete(
+                          "Servidor (QRA)", 
+                          row.term, 
+                          (v) => updateTeamRow(index, { term: v }), 
+                          (v) => updateTeamRow(index, { id: v }), 
+                          row.id, 
+                          row.show, 
+                          (v) => updateTeamRow(index, { show: v }),
+                          () => {},
+                          allEmployees || [],
+                          allSelectedIds.filter(id => id !== row.id),
+                          false,
+                          'qra'
+                        )}
+                      </div>
+                      {teamRows.length > 1 ? (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removeTeamRow(index)}
+                          className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      ) : <div className="w-11" />}
+                    </div>
+                  ))}
+                </div>
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
