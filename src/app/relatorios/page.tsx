@@ -20,7 +20,9 @@ import {
   Plane,
   Stethoscope,
   History,
-  Info
+  Info,
+  Star,
+  Timer
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -88,6 +90,7 @@ export default function RelatoriosPage() {
   const [isSubTeamOpen, setIsSubTeamOpen] = React.useState(false)
   const [isAbsencesOpen, setIsAbsencesOpen] = React.useState(false)
   const [isAfastadosOpen, setIsAfastadosOpen] = React.useState(false)
+  const [isEspecialOpen, setIsEspecialOpen] = React.useState(false)
 
   // Estados para valores padrão
   const [defaultDate, setDefaultDate] = React.useState("")
@@ -113,6 +116,11 @@ export default function RelatoriosPage() {
   // Estados para Faltas (Dinâmico)
   const [faltaRows, setFaltaRows] = React.useState([
     { id: "", term: "", info: "", show: false }
+  ]);
+
+  // Estados para Escala Especial (Dinâmico)
+  const [especialRows, setEspecialRows] = React.useState([
+    { id: "", term: "", info: "", show: false, periodId: "" }
   ]);
 
   const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: "", term: "", info: "", show: false }]);
@@ -141,6 +149,19 @@ export default function RelatoriosPage() {
     });
   };
 
+  const addEspecialRow = () => setEspecialRows([...especialRows, { id: "", term: "", info: "", show: false, periodId: "" }]);
+  const removeEspecialRow = (index: number) => {
+    const newRows = especialRows.filter((_, i) => i !== index);
+    setEspecialRows(newRows.length ? newRows : [{ id: "", term: "", info: "", show: false, periodId: "" }]);
+  };
+  const updateEspecialRow = (index: number, updates: Partial<{id: string, term: string, info: string, show: boolean, periodId: string}>) => {
+    setEspecialRows(prev => {
+      const newRows = [...prev];
+      newRows[index] = { ...newRows[index], ...updates };
+      return newRows;
+    });
+  };
+
   // Busca coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
@@ -150,9 +171,16 @@ export default function RelatoriosPage() {
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
   const { data: allLaunches } = useCollection(launchesRef);
 
+  // Períodos filtrados para Escala Especial
+  const specialPeriodsList = React.useMemo(() => {
+    if (!shiftPeriods) return [];
+    return shiftPeriods.filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"));
+  }, [shiftPeriods]);
+
   // Verificação de preenchimento
   const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.id), [subinspetorRows]);
   const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.id), [faltaRows]);
+  const especialFilled = React.useMemo(() => especialRows.some(r => !!r.id), [especialRows]);
 
   // Lista de Afastados Hoje (Automatizada e Filtrada por Inspetor)
   const absentTodayList = React.useMemo(() => {
@@ -172,10 +200,7 @@ export default function RelatoriosPage() {
       const emp = allEmployees.find(e => e.id === l.employeeId);
       if (!emp) return false;
 
-      // Regra 1: Mesmo Turno e Escala do Inspetor selecionado
       const isSameShiftAndSchedule = emp.escala === selectedInspetor.escala && emp.turno === selectedInspetor.turno;
-      
-      // Regra 2: Somente escala ORDINÁRIO (não entra ADMINISTRATIVO nem outros)
       const isOrdinario = normalizeStr(emp.escala || "") === "ORDINARIO";
 
       return isSameShiftAndSchedule || isOrdinario;
@@ -309,7 +334,8 @@ export default function RelatoriosPage() {
   const allSelectedIds = [
     inspetorId,
     ...subinspetorRows.map(r => r.id),
-    ...faltaRows.map(r => r.id)
+    ...faltaRows.map(r => r.id),
+    ...especialRows.map(r => r.id)
   ].filter(Boolean);
 
   return (
@@ -675,6 +701,110 @@ export default function RelatoriosPage() {
                     </Table>
                   </div>
                 )}
+              </CollapsibleContent>
+            </Collapsible>
+
+            {/* SEÇÃO ESCALA ESPECIAL DINÂMICA */}
+            <Collapsible open={isEspecialOpen} onOpenChange={setIsEspecialOpen} className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className={cn(
+                      "p-1.5 rounded-lg transition-colors border",
+                      especialFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
+                    )}>
+                      <Star className="h-4 w-4" />
+                    </button>
+                  </CollapsibleTrigger>
+                  <div className="flex flex-col">
+                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Escala Especial</h4>
+                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">{especialFilled ? "PREENCHIDO" : "PENDENTE"}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addEspecialRow}
+                    className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> ADICIONAR SERVIDOR
+                  </Button>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                      {isEspecialOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+              </div>
+              
+              <CollapsibleContent className="space-y-6">
+                {especialRows.map((row, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
+                    <div className="flex gap-2 items-end">
+                      {renderAutocomplete(
+                        "Servidor", 
+                        row.term, 
+                        (v) => updateEspecialRow(index, { term: v }), 
+                        (v) => updateEspecialRow(index, { id: v }), 
+                        row.id, 
+                        row.show, 
+                        (v) => updateEspecialRow(index, { show: v }),
+                        (v) => updateEspecialRow(index, { info: v }),
+                        allEmployees || [],
+                        allSelectedIds.filter(id => id !== row.id)
+                      )}
+                      {especialRows.length > 1 && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removeEspecialRow(index)}
+                          className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                        Escala e Turno (Original)
+                      </Label>
+                      <Input 
+                        value={row.info}
+                        readOnly 
+                        placeholder="--"
+                        className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" 
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                        <Timer className="h-3 w-3" /> Período Escala Especial
+                      </Label>
+                      <Select 
+                        value={row.periodId} 
+                        onValueChange={(v) => updateEspecialRow(index, { periodId: v })}
+                      >
+                        <SelectTrigger className="h-11 uppercase text-xs font-bold bg-white">
+                          <SelectValue placeholder="SELECIONE O HORÁRIO..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {specialPeriodsList.map((p: any) => (
+                            <SelectItem key={p.id} value={p.id} className="uppercase text-[10px] font-bold">
+                              {p.escalaName} ({p.startTime} ÀS {p.endTime})
+                            </SelectItem>
+                          ))}
+                          {specialPeriodsList.length === 0 && (
+                            <div className="px-2 py-4 text-center text-[10px] font-bold text-muted-foreground italic uppercase">
+                              Nenhum período de Escala Especial configurado.
+                            </div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                ))}
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
