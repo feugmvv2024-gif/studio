@@ -20,7 +20,8 @@ import {
   Info,
   Star,
   Timer,
-  Users
+  Users,
+  LayoutGrid
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -51,6 +52,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -78,6 +80,9 @@ const formatDateBR = (dateStr: string) => {
   if (!dateStr) return "---";
   return dateStr.split('-').reverse().join('/');
 };
+
+// Geradores de ID para estado local
+const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export default function RelatoriosPage() {
   const { toast } = useToast()
@@ -109,35 +114,44 @@ export default function RelatoriosPage() {
 
   // Estados para Subinspetores (Dinâmico)
   const [subinspetorRows, setSubinspetorRows] = React.useState([
-    { id: "", term: "", info: "", show: false }
+    { id: generateId(), term: "", info: "", show: false, empId: "" }
   ]);
 
   // Estados para Faltas (Dinâmico)
   const [faltaRows, setFaltaRows] = React.useState([
-    { id: "", term: "", info: "", show: false }
+    { id: generateId(), term: "", info: "", show: false, empId: "" }
   ]);
 
   // Estados para Escala Especial (Dinâmico)
   const [especialRows, setEspecialRows] = React.useState([
-    { id: "", term: "", info: "", show: false, periodId: "" }
+    { id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }
   ]);
 
-  // Estados para Equipe do Dia
-  const [teamSector, setTeamSector] = React.useState("")
-  const [teamChiefId, setTeamChiefId] = React.useState("")
-  const [teamChiefTerm, setTeamChiefTerm] = React.useState("")
-  const [teamChiefInfo, setTeamChiefInfo] = React.useState("")
-  const [teamChiefShow, setTeamChiefShow] = React.useState(false)
-  const [teamRows, setTeamRows] = React.useState([
-    { id: "", term: "", show: false, type: "" }
+  // --- NOVA ESTRUTURA: EQUIPE DO DIA (Setores -> Postos -> Membros) ---
+  const [sectorBlocks, setSectorBlocks] = React.useState<any[]>([
+    {
+      id: generateId(),
+      sectorType: "",
+      chiefData: { id: "", uid: "", term: "", info: "", show: false },
+      posts: [
+        {
+          id: generateId(),
+          type: "",
+          members: [
+            { id: generateId(), empId: "", term: "", show: false }
+          ]
+        }
+      ]
+    }
   ]);
 
-  const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: "", term: "", info: "", show: false }]);
+  // Auxiliares Subinspetores
+  const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: generateId(), term: "", info: "", show: false, empId: "" }]);
   const removeSubinspetorRow = (index: number) => {
     const newRows = subinspetorRows.filter((_, i) => i !== index);
-    setSubinspetorRows(newRows.length ? newRows : [{ id: "", term: "", info: "", show: false }]);
+    setSubinspetorRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
   };
-  const updateSubinspetorRow = (index: number, updates: Partial<{id: string, term: string, info: string, show: boolean}>) => {
+  const updateSubinspetorRow = (index: number, updates: any) => {
     setSubinspetorRows(prev => {
       const newRows = [...prev];
       newRows[index] = { ...newRows[index], ...updates };
@@ -145,12 +159,13 @@ export default function RelatoriosPage() {
     });
   };
 
-  const addFaltaRow = () => setFaltaRows([...faltaRows, { id: "", term: "", info: "", show: false }]);
+  // Auxiliares Faltas
+  const addFaltaRow = () => setFaltaRows([...faltaRows, { id: generateId(), term: "", info: "", show: false, empId: "" }]);
   const removeFaltaRow = (index: number) => {
     const newRows = faltaRows.filter((_, i) => i !== index);
-    setFaltaRows(newRows.length ? newRows : [{ id: "", term: "", info: "", show: false }]);
+    setFaltaRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
   };
-  const updateFaltaRow = (index: number, updates: Partial<{id: string, term: string, info: string, show: boolean}>) => {
+  const updateFaltaRow = (index: number, updates: any) => {
     setFaltaRows(prev => {
       const newRows = [...prev];
       newRows[index] = { ...newRows[index], ...updates };
@@ -158,12 +173,13 @@ export default function RelatoriosPage() {
     });
   };
 
-  const addEspecialRow = () => setEspecialRows([...especialRows, { id: "", term: "", info: "", show: false, periodId: "" }]);
+  // Auxiliares Escala Especial
+  const addEspecialRow = () => setEspecialRows([...especialRows, { id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
   const removeEspecialRow = (index: number) => {
     const newRows = especialRows.filter((_, i) => i !== index);
-    setEspecialRows(newRows.length ? newRows : [{ id: "", term: "", info: "", show: false, periodId: "" }]);
+    setEspecialRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
   };
-  const updateEspecialRow = (index: number, updates: Partial<{id: string, term: string, info: string, show: boolean, periodId: string}>) => {
+  const updateEspecialRow = (index: number, updates: any) => {
     setEspecialRows(prev => {
       const newRows = [...prev];
       newRows[index] = { ...newRows[index], ...updates };
@@ -171,16 +187,69 @@ export default function RelatoriosPage() {
     });
   };
 
-  const addTeamRow = () => setTeamRows([...teamRows, { id: "", term: "", show: false, type: "" }]);
-  const removeTeamRow = (index: number) => {
-    const newRows = teamRows.filter((_, i) => i !== index);
-    setTeamRows(newRows.length ? newRows : [{ id: "", term: "", show: false, type: "" }]);
+  // --- FUNÇÕES DE MANIPULAÇÃO DA EQUIPE (SECTOR BLOCKS) ---
+  const addSectorBlock = () => {
+    setSectorBlocks([...sectorBlocks, {
+      id: generateId(),
+      sectorType: "",
+      chiefData: { id: "", uid: "", term: "", info: "", show: false },
+      posts: [{ id: generateId(), type: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }]
+    }]);
   };
-  const updateTeamRow = (index: number, updates: Partial<{id: string, term: string, show: boolean, type: string}>) => {
-    setTeamRows(prev => {
-      const newRows = [...prev];
-      newRows[index] = { ...newRows[index], ...updates };
-      return newRows;
+
+  const removeSectorBlock = (index: number) => {
+    const newBlocks = sectorBlocks.filter((_, i) => i !== index);
+    setSectorBlocks(newBlocks.length ? newBlocks : []);
+  };
+
+  const updateSectorBlock = (index: number, updates: any) => {
+    setSectorBlocks(prev => {
+      const newBlocks = [...prev];
+      newBlocks[index] = { ...newBlocks[index], ...updates };
+      return newBlocks;
+    });
+  };
+
+  const addPostToSector = (sectorIndex: number) => {
+    const newBlocks = [...sectorBlocks];
+    newBlocks[sectorIndex].posts.push({
+      id: generateId(),
+      type: "",
+      members: [{ id: generateId(), empId: "", term: "", show: false }]
+    });
+    setSectorBlocks(newBlocks);
+  };
+
+  const removePostFromSector = (sectorIndex: number, postIndex: number) => {
+    const newBlocks = [...sectorBlocks];
+    newBlocks[sectorIndex].posts = newBlocks[sectorIndex].posts.filter((_: any, i: number) => i !== postIndex);
+    setSectorBlocks(newBlocks);
+  };
+
+  const addMemberToPost = (sectorIndex: number, postIndex: number) => {
+    const newBlocks = [...sectorBlocks];
+    if (newBlocks[sectorIndex].posts[postIndex].members.length >= 15) {
+      toast({ variant: "destructive", title: "LIMITE ATINGIDO", description: "MÁXIMO DE 15 SERVIDORES POR POSTO." });
+      return;
+    }
+    newBlocks[sectorIndex].posts[postIndex].members.push({ id: generateId(), empId: "", term: "", show: false });
+    setSectorBlocks(newBlocks);
+  };
+
+  const removeMemberFromPost = (sectorIndex: number, postIndex: number, memberIndex: number) => {
+    const newBlocks = [...sectorBlocks];
+    newBlocks[sectorIndex].posts[postIndex].members = newBlocks[sectorIndex].posts[postIndex].members.filter((_: any, i: number) => i !== memberIndex);
+    setSectorBlocks(newBlocks);
+  };
+
+  const updateMemberInPost = (sectorIndex: number, postIndex: number, memberIndex: number, updates: any) => {
+    setSectorBlocks(prev => {
+      const newBlocks = [...prev];
+      newBlocks[sectorIndex].posts[postIndex].members[memberIndex] = {
+        ...newBlocks[sectorIndex].posts[postIndex].members[memberIndex],
+        ...updates
+      };
+      return newBlocks;
     });
   };
 
@@ -198,12 +267,6 @@ export default function RelatoriosPage() {
     if (!shiftPeriods) return [];
     return shiftPeriods.filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"));
   }, [shiftPeriods]);
-
-  // Verificação de preenchimento
-  const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.id), [subinspetorRows]);
-  const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.id), [faltaRows]);
-  const especialFilled = React.useMemo(() => especialRows.some(r => !!r.id), [especialRows]);
-  const teamFilled = React.useMemo(() => teamSector && teamRows.some(r => !!r.id), [teamSector, teamRows]);
 
   // Lista de Afastados Hoje (Automatizada e Filtrada por Inspetor)
   const absentTodayList = React.useMemo(() => {
@@ -236,6 +299,30 @@ export default function RelatoriosPage() {
     }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [allLaunches, allEmployees, inspetorId]);
 
+  // IDs selecionados para exclusão global
+  const allSelectedIds = React.useMemo(() => {
+    const ids = [inspetorId];
+    subinspetorRows.forEach(r => r.empId && ids.push(r.empId));
+    faltaRows.forEach(r => r.empId && ids.push(r.empId));
+    especialRows.forEach(r => r.empId && ids.push(r.empId));
+    
+    sectorBlocks.forEach(s => {
+      if (s.chiefData.id) ids.push(s.chiefData.id);
+      s.posts.forEach((p: any) => {
+        p.members.forEach((m: any) => {
+          if (m.empId) ids.push(m.empId);
+        });
+      });
+    });
+    
+    return ids.filter(Boolean);
+  }, [inspetorId, subinspetorRows, faltaRows, especialRows, sectorBlocks]);
+
+  // Verificação de preenchimento
+  const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.empId), [subinspetorRows]);
+  const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.empId), [faltaRows]);
+  const especialFilled = React.useMemo(() => especialRows.some(r => !!r.empId), [especialRows]);
+  const teamFilled = React.useMemo(() => sectorBlocks.some(s => s.sectorType && s.posts.some((p: any) => p.members.some((m: any) => !!m.empId))), [sectorBlocks]);
   const afastadosFilled = absentTodayList.length > 0;
 
   // Filtra chefia
@@ -250,23 +337,14 @@ export default function RelatoriosPage() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    
     if (!inspetorId || !selectedEscalaId) {
-      toast({
-        variant: "destructive",
-        title: "DADOS INCOMPLETOS",
-        description: "POR FAVOR, SELECIONE O INSPETOR E A ESCALA."
-      })
+      toast({ variant: "destructive", title: "DADOS INCOMPLETOS", description: "POR FAVOR, SELECIONE O INSPETOR E A ESCALA." })
       return
     }
-
     setLoading(true)
     setTimeout(() => {
       setLoading(false)
-      toast({
-        title: "RELATÓRIO ENVIADO",
-        description: "AS INFORMAÇÕES FORAM REGISTRADAS COM SUCESSO NO SISTEMA."
-      })
+      toast({ title: "RELATÓRIO ENVIADO", description: "AS INFORMAÇÕES FORAM REGISTRADAS COM SUCESSO." })
     }, 1000)
   }
 
@@ -287,7 +365,7 @@ export default function RelatoriosPage() {
     const filtered = sourceList.filter(e => 
       (normalizeStr(e.name).includes(normalizeStr(term)) || 
       normalizeStr(e.qra).includes(normalizeStr(term))) &&
-      !excludeIds.includes(e.id)
+      (!excludeIds.includes(e.id) || e.id === id)
     );
 
     return (
@@ -301,9 +379,10 @@ export default function RelatoriosPage() {
             className="h-11 uppercase font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors pr-10" 
             value={term}
             onChange={(e) => {
-              setTerm(e.target.value.toUpperCase());
+              const val = e.target.value.toUpperCase();
+              setTerm(val);
               setShow(true);
-              if (!e.target.value) {
+              if (!val) {
                 setId("");
                 setInfo("");
               }
@@ -343,9 +422,7 @@ export default function RelatoriosPage() {
               ))
             ) : (
               <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">
-                {sourceList.some(e => normalizeStr(e.name).includes(normalizeStr(term)) && excludeIds.includes(e.id)) 
-                  ? "Servidor já selecionado no formulário." 
-                  : "Nenhum servidor encontrado."}
+                Servidor indisponível ou não encontrado.
               </div>
             )}
           </div>
@@ -354,15 +431,6 @@ export default function RelatoriosPage() {
       </div>
     );
   };
-
-  const allSelectedIds = [
-    inspetorId,
-    ...subinspetorRows.map(r => r.id),
-    ...faltaRows.map(r => r.id),
-    ...especialRows.map(r => r.id),
-    teamChiefId,
-    ...teamRows.map(r => r.id)
-  ].filter(Boolean);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
@@ -489,7 +557,7 @@ export default function RelatoriosPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={addSubinspetorRow}
-                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"
                   >
                     <Plus className="h-3.5 w-3.5" /> ADICIONAR SUBINSPETOR
                   </Button>
@@ -501,21 +569,21 @@ export default function RelatoriosPage() {
                 </div>
               </div>
               
-              <CollapsibleContent className="space-y-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+              <CollapsibleContent className="space-y-4">
                 {subinspetorRows.map((row, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div key={row.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="w-full">
                       {renderAutocomplete(
                         "Subinspetor", 
                         row.term, 
                         (v) => updateSubinspetorRow(index, { term: v }), 
-                        (v) => updateSubinspetorRow(index, { id: v }), 
-                        row.id, 
+                        (v) => updateSubinspetorRow(index, { empId: v }), 
+                        row.empId, 
                         row.show, 
                         (v) => updateSubinspetorRow(index, { show: v }),
                         (v) => updateSubinspetorRow(index, { info: v }),
                         chefiaList,
-                        allSelectedIds.filter(id => id !== row.id)
+                        allSelectedIds.filter(id => id !== row.empId)
                       )}
                     </div>
                     <div className="w-full space-y-1.5">
@@ -529,23 +597,21 @@ export default function RelatoriosPage() {
                         className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
                       />
                     </div>
-                    {subinspetorRows.length > 1 ? (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeSubinspetorRow(index)}
-                        className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : <div className="w-11" />}
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => removeSubinspetorRow(index)}
+                      className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO FALTAS DINÂMICAS */}
+            {/* SEÇÃO FALTAS */}
             <Collapsible open={isAbsencesOpen} onOpenChange={setIsAbsencesOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
@@ -568,7 +634,7 @@ export default function RelatoriosPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={addFaltaRow}
-                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50 transition-all active:scale-95"
+                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50"
                   >
                     <Plus className="h-3.5 w-3.5" /> ADICIONAR FALTA
                   </Button>
@@ -580,21 +646,21 @@ export default function RelatoriosPage() {
                 </div>
               </div>
               
-              <CollapsibleContent className="space-y-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
+              <CollapsibleContent className="space-y-4">
                 {faltaRows.map((row, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                  <div key={row.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="w-full">
                       {renderAutocomplete(
                         "Servidor (Falta)", 
                         row.term, 
                         (v) => updateFaltaRow(index, { term: v }), 
-                        (v) => updateFaltaRow(index, { id: v }), 
-                        row.id, 
+                        (v) => updateFaltaRow(index, { empId: v }), 
+                        row.empId, 
                         row.show, 
                         (v) => updateFaltaRow(index, { show: v }),
                         (v) => updateFaltaRow(index, { info: v }),
                         allEmployees || [],
-                        allSelectedIds.filter(id => id !== row.id)
+                        allSelectedIds.filter(id => id !== row.empId)
                       )}
                     </div>
                     <div className="w-full space-y-1.5">
@@ -608,23 +674,21 @@ export default function RelatoriosPage() {
                         className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
                       />
                     </div>
-                    {faltaRows.length > 1 ? (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeFaltaRow(index)}
-                        className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : <div className="w-11" />}
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => removeFaltaRow(index)}
+                      className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO AFASTAMENTOS E FOLGAS (AUTOMATIZADA E FILTRADA) */}
+            {/* SEÇÃO AFASTAMENTOS E FOLGAS */}
             <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
@@ -641,96 +705,68 @@ export default function RelatoriosPage() {
                     <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{afastadosFilled ? "REGISTROS ENCONTRADOS" : "NENHUM REGISTRO NO SISTEMA"}</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <div className="bg-slate-100 px-3 py-1 rounded-full flex items-center gap-2 border">
-                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
-                    <span className="text-[8px] font-black uppercase text-slate-600">Sincronizado com RH</span>
-                  </div>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                      {isAfastadosOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </CollapsibleTrigger>
-                </div>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                    {isAfastadosOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                  </Button>
+                </CollapsibleTrigger>
               </div>
               
               <CollapsibleContent className="space-y-4">
-                {!inspetorId ? (
-                  <div className="text-center py-12 border-2 border-dashed rounded-xl bg-slate-50/50">
-                    <p className="uppercase text-[10px] font-black text-blue-600 tracking-widest">
-                      SELECIONE UM INSPETOR PARA FILTRAR OS AFASTAMENTOS DO TURNO.
-                    </p>
-                  </div>
-                ) : (
-                  <div className="overflow-x-auto border rounded-xl bg-white shadow-sm overflow-hidden">
-                    <Table>
-                      <TableHeader className="bg-slate-50/50">
+                <div className="overflow-x-auto border rounded-xl bg-white shadow-sm overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-50/50">
+                      <TableRow>
+                        <TableHead className="font-bold uppercase text-[9px]">QRA / NOME</TableHead>
+                        <TableHead className="font-bold uppercase text-[9px]">ESCALA / TURNO</TableHead>
+                        <TableHead className="font-bold uppercase text-[9px]">SETOR</TableHead>
+                        <TableHead className="font-bold uppercase text-[9px]">TIPO</TableHead>
+                        <TableHead className="font-bold uppercase text-[9px] text-center">DATA FIM</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {absentTodayList.length === 0 ? (
                         <TableRow>
-                          <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">QRA / NOME</TableHead>
-                          <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">ESCALA / TURNO</TableHead>
-                          <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">SETOR</TableHead>
-                          <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">TIPO</TableHead>
-                          <TableHead className="font-bold uppercase text-[9px] text-center">DATA FIM</TableHead>
+                          <TableCell colSpan={5} className="text-center py-12">
+                            <span className="uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">NENHUM REGISTRO PARA ESTE TURNO HOJE.</span>
+                          </TableCell>
                         </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {absentTodayList.map((item) => (
-                          <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                      ) : (
+                        absentTodayList.map((item) => (
+                          <TableRow key={item.id} className="hover:bg-slate-50/50">
                             <TableCell className="py-3">
                               <div className="flex flex-col">
                                 <span className="font-black uppercase text-[12px] text-slate-900 leading-tight">{item.employeeQra}</span>
                                 <span className="text-[10px] uppercase text-muted-foreground font-medium">{item.employeeName}</span>
                               </div>
                             </TableCell>
-                            <TableCell className="text-[11px] font-bold uppercase text-slate-700">
-                              {item.escala} / {item.turno}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant="secondary" className="text-[9px] uppercase font-bold bg-slate-100 text-slate-600 px-2 py-0 border-none">
-                                {item.unit}
-                              </Badge>
-                            </TableCell>
+                            <TableCell className="text-[11px] font-bold uppercase text-slate-700">{item.escala} / {item.turno}</TableCell>
+                            <TableCell><Badge variant="secondary" className="text-[9px] uppercase font-bold bg-slate-100 text-slate-600 px-2 py-0">{item.unit}</Badge></TableCell>
                             <TableCell>
                               <Badge className={cn(
-                                "text-[9px] uppercase font-black whitespace-nowrap border-none px-3 h-6",
+                                "text-[9px] uppercase font-black border-none px-3 h-6",
                                 normalizeStr(item.type).includes("FERIAS") ? "bg-blue-600 text-white" :
                                 normalizeStr(item.type).includes("LICENCA") ? "bg-purple-600 text-white" :
                                 normalizeStr(item.type).includes("ATESTADO") ? "bg-red-600 text-white" :
                                 "bg-orange-500 text-white"
-                              )}>
-                                {item.type}
-                              </Badge>
+                              )}>{item.type}</Badge>
                             </TableCell>
                             <TableCell className="text-center">
                               <div className="flex items-center justify-center gap-1.5">
                                 <Calendar className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-[11px] font-black font-mono text-slate-900">
-                                  {formatDateBR(item.endDate)}
-                                </span>
+                                <span className="text-[11px] font-black font-mono text-slate-900">{formatDateBR(item.endDate)}</span>
                               </div>
                             </TableCell>
                           </TableRow>
-                        ))}
-                        {absentTodayList.length === 0 && (
-                          <TableRow>
-                            <TableCell colSpan={5} className="text-center py-12">
-                              <div className="flex flex-col items-center gap-2">
-                                <Info className="h-6 w-6 text-muted-foreground opacity-20" />
-                                <span className="uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
-                                  NENHUM REGISTRO DE AFASTAMENTO PARA ESTE TURNO OU ORDINÁRIOS HOJE.
-                                </span>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
-                )}
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO ESCALA ESPECIAL DINÂMICA */}
+            {/* SEÇÃO ESCALA ESPECIAL */}
             <Collapsible open={isEspecialOpen} onOpenChange={setIsEspecialOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
@@ -753,7 +789,7 @@ export default function RelatoriosPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={addEspecialRow}
-                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"
                   >
                     <Plus className="h-3.5 w-3.5" /> ADICIONAR SERVIDOR
                   </Button>
@@ -767,40 +803,30 @@ export default function RelatoriosPage() {
               
               <CollapsibleContent className="space-y-6">
                 {especialRows.map((row, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
+                  <div key={row.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
                     <div className="w-full">
                       {renderAutocomplete(
                         "Servidor", 
                         row.term, 
                         (v) => updateEspecialRow(index, { term: v }), 
-                        (v) => updateEspecialRow(index, { id: v }), 
-                        row.id, 
+                        (v) => updateEspecialRow(index, { empId: v }), 
+                        row.empId, 
                         row.show, 
                         (v) => updateEspecialRow(index, { show: v }),
                         (v) => updateEspecialRow(index, { info: v }),
                         allEmployees || [],
-                        allSelectedIds.filter(id => id !== row.id)
+                        allSelectedIds.filter(id => id !== row.empId)
                       )}
                     </div>
                     <div className="w-full space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                        Escala e Turno (Original)
-                      </Label>
-                      <Input 
-                        value={row.info}
-                        readOnly 
-                        placeholder="--"
-                        className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" 
-                      />
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">Escala e Turno (Original)</Label>
+                      <Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" />
                     </div>
                     <div className="w-full space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-2">
                         <Timer className="h-3 w-3" /> Período Escala Especial
                       </Label>
-                      <Select 
-                        value={row.periodId} 
-                        onValueChange={(v) => updateEspecialRow(index, { periodId: v })}
-                      >
+                      <Select value={row.periodId} onValueChange={(v) => updateEspecialRow(index, { periodId: v })}>
                         <SelectTrigger className="h-11 uppercase text-[9px] font-bold bg-white">
                           <SelectValue placeholder="SELECIONE O HORÁRIO..." />
                         </SelectTrigger>
@@ -810,31 +836,24 @@ export default function RelatoriosPage() {
                               {p.escalaName} ({p.startTime} ÀS {p.endTime})
                             </SelectItem>
                           ))}
-                          {specialPeriodsList.length === 0 && (
-                            <div className="px-2 py-4 text-center text-[10px] font-bold text-muted-foreground italic uppercase">
-                              Nenhum período de Escala Especial configurado.
-                            </div>
-                          )}
                         </SelectContent>
                       </Select>
                     </div>
-                    {especialRows.length > 1 ? (
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeEspecialRow(index)}
-                        className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    ) : <div className="w-11" />}
+                    <Button 
+                      type="button" 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => removeEspecialRow(index)}
+                      className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 ))}
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO EQUIPE DO DIA */}
+            {/* SEÇÃO EQUIPE DO DIA (ESTRUTURA HIERÁRQUICA) */}
             <Collapsible open={isTeamOpen} onOpenChange={setIsTeamOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
@@ -856,10 +875,10 @@ export default function RelatoriosPage() {
                     type="button" 
                     variant="outline" 
                     size="sm" 
-                    onClick={addTeamRow}
-                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                    onClick={addSectorBlock}
+                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"
                   >
-                    <Plus className="h-3.5 w-3.5" /> ADICIONAR INTEGRANTE
+                    <Plus className="h-3.5 w-3.5" /> ADICIONAR NOVO BLOCO (SETOR)
                   </Button>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
@@ -869,86 +888,161 @@ export default function RelatoriosPage() {
                 </div>
               </div>
               
-              <CollapsibleContent className="space-y-6">
-                {/* Primeira Linha: Setor e Chefia */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-4 bg-slate-50/30 rounded-xl border border-dashed border-slate-200">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
-                    <Select value={teamSector} onValueChange={setTeamSector}>
-                      <SelectTrigger className="h-11 uppercase text-xs font-bold bg-white">
-                        <SelectValue placeholder="SELECIONE O SETOR..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem>
-                        <SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem>
-                        <SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="w-full">
-                    {renderAutocomplete(
-                      "Chefia Responsável", 
-                      teamChiefTerm, 
-                      setTeamChiefTerm, 
-                      setTeamChiefId, 
-                      teamChiefId, 
-                      teamChiefShow, 
-                      setTeamChiefShow,
-                      setTeamChiefInfo,
-                      chefiaList,
-                      allSelectedIds.filter(id => id !== teamChiefId)
-                    )}
-                  </div>
-                </div>
+              <CollapsibleContent className="space-y-10">
+                {sectorBlocks.map((sector, sIdx) => (
+                  <div key={sector.id} className="relative p-6 rounded-2xl border-2 border-slate-100 bg-slate-50/20 space-y-8 animate-in zoom-in-95 duration-300">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 bg-white px-4 py-1.5 rounded-full border shadow-sm">
+                        <LayoutGrid className="h-4 w-4 text-primary" />
+                        <span className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Bloco de Setor #{sIdx + 1}</span>
+                      </div>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeSectorBlock(sIdx)}
+                        className="h-8 w-8 text-destructive hover:bg-red-50 rounded-full"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
 
-                {/* Linhas Dinâmicas: Posto e Servidor (QRA) */}
-                <div className="space-y-4">
-                  {teamRows.map((row, index) => (
-                    <div key={index} className="grid grid-cols-1 md:grid-cols-[1fr_2fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                    {/* CABEÇALHO DO SETOR: Tipo e Chefia */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-4 rounded-xl border border-dashed">
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Posto / Serviço</Label>
-                        <Select value={row.type} onValueChange={(v) => updateTeamRow(index, { type: v })}>
+                        <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
+                        <Select value={sector.sectorType} onValueChange={(v) => updateSectorBlock(sIdx, { sectorType: v })}>
                           <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
-                            <SelectValue placeholder="SELECIONE..." />
+                            <SelectValue placeholder="SELECIONE O SETOR..." />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem>
-                            <SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem>
-                            <SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem>
-                            <SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem>
+                            <SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem>
+                            <SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem>
+                            <SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="w-full">
                         {renderAutocomplete(
-                          "Servidor (QRA)", 
-                          row.term, 
-                          (v) => updateTeamRow(index, { term: v }), 
-                          (v) => updateTeamRow(index, { id: v }), 
-                          row.id, 
-                          row.show, 
-                          (v) => updateTeamRow(index, { show: v }),
-                          () => {},
-                          allEmployees || [],
-                          allSelectedIds.filter(id => id !== row.id),
-                          false,
-                          'qra'
+                          "Chefia Responsável", 
+                          sector.chiefData.term, 
+                          (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, term: v } }), 
+                          (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, id: v } }), 
+                          sector.chiefData.id, 
+                          sector.chiefData.show, 
+                          (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, show: v } }),
+                          (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, info: v } }),
+                          chefiaList,
+                          allSelectedIds.filter(id => id !== sector.chiefData.id)
                         )}
                       </div>
-                      {teamRows.length > 1 ? (
+                    </div>
+
+                    {/* LISTA DE POSTOS DENTRO DO SETOR */}
+                    <div className="space-y-6">
+                      <div className="flex items-center justify-between border-b pb-2">
+                        <h5 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Postos e Integrantes</h5>
                         <Button 
                           type="button" 
                           variant="ghost" 
-                          size="icon" 
-                          onClick={() => removeTeamRow(index)}
-                          className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
+                          size="sm" 
+                          onClick={() => addPostToSector(sIdx)}
+                          className="h-6 text-[9px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Plus className="h-3 w-3" /> ADICIONAR POSTO
                         </Button>
-                      ) : <div className="w-11" />}
+                      </div>
+
+                      {sector.posts.map((post: any, pIdx: number) => (
+                        <div key={post.id} className="space-y-4 bg-white/50 p-4 rounded-xl border border-slate-100 shadow-sm">
+                          <div className="flex flex-col md:flex-row items-stretch md:items-end gap-4">
+                            <div className="flex-1 space-y-1.5">
+                              <Label className="text-[9px] font-bold uppercase text-muted-foreground">Posto / Serviço</Label>
+                              <Select value={post.type} onValueChange={(v) => {
+                                const newPosts = [...sector.posts];
+                                newPosts[pIdx].type = v;
+                                updateSectorBlock(sIdx, { posts: newPosts });
+                              }}>
+                                <SelectTrigger className="h-10 uppercase text-xs font-bold bg-slate-50/50">
+                                  <SelectValue placeholder="SELECIONE O POSTO..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem>
+                                  <SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem>
+                                  <SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem>
+                                  <SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Button 
+                                type="button" 
+                                variant="outline" 
+                                size="sm" 
+                                onClick={() => addMemberToPost(sIdx, pIdx)}
+                                className="h-10 text-[9px] font-black uppercase border-dashed border-primary/30 text-primary hover:bg-primary/5"
+                              >
+                                <Plus className="h-3.5 w-3.5 mr-1" /> SERVIDOR ({post.members.length}/15)
+                              </Button>
+                              {sector.posts.length > 1 && (
+                                <Button 
+                                  type="button" 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => removePostFromSector(sIdx, pIdx)}
+                                  className="h-10 w-10 text-destructive hover:bg-red-50"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* GRID DE INTEGRANTES DO POSTO */}
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                            {post.members.map((member: any, mIdx: number) => (
+                              <div key={member.id} className="flex gap-2 items-end animate-in fade-in slide-in-from-left-2 duration-200">
+                                <div className="flex-1">
+                                  {renderAutocomplete(
+                                    `Servidor ${mIdx + 1}`, 
+                                    member.term, 
+                                    (v) => updateMemberInPost(sIdx, pIdx, mIdx, { term: v }), 
+                                    (v) => updateMemberInPost(sIdx, pIdx, mIdx, { empId: v }), 
+                                    member.empId, 
+                                    member.show, 
+                                    (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }),
+                                    () => {},
+                                    allEmployees || [],
+                                    allSelectedIds.filter(id => id !== member.empId),
+                                    false,
+                                    'qra'
+                                  )}
+                                </div>
+                                {post.members.length > 1 && (
+                                  <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    onClick={() => removeMemberFromPost(sIdx, pIdx, mIdx)}
+                                    className="h-11 w-11 text-destructive/50 hover:text-destructive hover:bg-red-50 rounded-xl"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
+
+                {sectorBlocks.length === 0 && (
+                  <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-slate-50/50">
+                    <p className="uppercase text-[10px] font-black text-muted-foreground tracking-widest">Nenhuma equipe configurada para este relatório.</p>
+                  </div>
+                )}
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
