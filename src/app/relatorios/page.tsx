@@ -130,8 +130,6 @@ export default function RelatoriosPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    const hasValidSub = subinspetorRows.some(r => r.id);
-
     if (!inspetorId || !selectedEscalaId) {
       toast({
         variant: "destructive",
