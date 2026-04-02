@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   Briefcase,
   Plus,
-  Trash2
+  Trash2,
+  UserX
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -78,15 +79,31 @@ export default function RelatoriosPage() {
     { id: "", term: "", info: "", show: false }
   ]);
 
+  // Estados para Faltas (Dinâmico - Múltiplos)
+  const [faltaRows, setFaltaRows] = React.useState([
+    { id: "", term: "", info: "", show: false }
+  ]);
+
   const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: "", term: "", info: "", show: false }]);
-  
   const removeSubinspetorRow = (index: number) => {
     const newRows = subinspetorRows.filter((_, i) => i !== index);
     setSubinspetorRows(newRows.length ? newRows : [{ id: "", term: "", info: "", show: false }]);
   };
-
   const updateSubinspetorRow = (index: number, updates: Partial<{id: string, term: string, info: string, show: boolean}>) => {
     setSubinspetorRows(prev => {
+      const newRows = [...prev];
+      newRows[index] = { ...newRows[index], ...updates };
+      return newRows;
+    });
+  };
+
+  const addFaltaRow = () => setFaltaRows([...faltaRows, { id: "", term: "", info: "", show: false }]);
+  const removeFaltaRow = (index: number) => {
+    const newRows = faltaRows.filter((_, i) => i !== index);
+    setFaltaRows(newRows.length ? newRows : [{ id: "", term: "", info: "", show: false }]);
+  };
+  const updateFaltaRow = (index: number, updates: Partial<{id: string, term: string, info: string, show: boolean}>) => {
+    setFaltaRows(prev => {
       const newRows = [...prev];
       newRows[index] = { ...newRows[index], ...updates };
       return newRows;
@@ -115,11 +132,11 @@ export default function RelatoriosPage() {
     
     const hasValidSub = subinspetorRows.some(r => r.id);
 
-    if (!inspetorId || !hasValidSub || !selectedEscalaId) {
+    if (!inspetorId || !selectedEscalaId) {
       toast({
         variant: "destructive",
         title: "DADOS INCOMPLETOS",
-        description: "POR FAVOR, SELECIONE O INSPETOR, PELO MENOS UM SUBINSPETOR E A ESCALA."
+        description: "POR FAVOR, SELECIONE O INSPETOR E A ESCALA."
       })
       return
     }
@@ -143,11 +160,11 @@ export default function RelatoriosPage() {
     show: boolean, 
     setShow: (v: boolean) => void,
     setInfo: (v: string) => void,
-    excludeIds: string[] = [], // IDs para excluir da busca
+    sourceList: any[],
+    excludeIds: string[] = [],
     isOptional?: boolean
   ) => {
-    // Filtra por termo digitado E exclui IDs já selecionados
-    const filtered = chefiaList.filter(e => 
+    const filtered = sourceList.filter(e => 
       (normalizeStr(e.name).includes(normalizeStr(term)) || 
       normalizeStr(e.qra).includes(normalizeStr(term))) &&
       !excludeIds.includes(e.id)
@@ -206,9 +223,9 @@ export default function RelatoriosPage() {
               ))
             ) : (
               <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">
-                {chefiaList.some(e => normalizeStr(e.name).includes(normalizeStr(term)) && excludeIds.includes(e.id)) 
-                  ? "Oficial já selecionado no formulário." 
-                  : "Nenhum oficial encontrado."}
+                {sourceList.some(e => normalizeStr(e.name).includes(normalizeStr(term)) && excludeIds.includes(e.id)) 
+                  ? "Servidor já selecionado no formulário." 
+                  : "Nenhum servidor encontrado."}
               </div>
             )}
           </div>
@@ -217,6 +234,13 @@ export default function RelatoriosPage() {
       </div>
     );
   };
+
+  // Coleta todos os IDs selecionados para evitar duplicidade global
+  const allSelectedIds = [
+    inspetorId,
+    ...subinspetorRows.map(r => r.id),
+    ...faltaRows.map(r => r.id)
+  ].filter(Boolean);
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
@@ -304,7 +328,8 @@ export default function RelatoriosPage() {
                 showInspetorSuggestions, 
                 setShowInspetorSuggestions,
                 setInspetorInfo,
-                subinspetorRows.map(r => r.id).filter(Boolean) // Exclui quem já está nos subs
+                chefiaList,
+                allSelectedIds.filter(id => id !== inspetorId)
               )}
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
@@ -352,7 +377,8 @@ export default function RelatoriosPage() {
                         row.show, 
                         (v) => updateSubinspetorRow(index, { show: v }),
                         (v) => updateSubinspetorRow(index, { info: v }),
-                        [inspetorId, ...subinspetorRows.filter((_, i) => i !== index).map(r => r.id)].filter(Boolean) // Exclui inspetor e outros subs
+                        chefiaList,
+                        allSelectedIds.filter(id => id !== row.id)
                       )}
                       {subinspetorRows.length > 1 && (
                         <Button 
@@ -369,6 +395,70 @@ export default function RelatoriosPage() {
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         Escala e Turno (Subinspetor)
+                      </Label>
+                      <Input 
+                        value={row.info}
+                        readOnly 
+                        placeholder="--"
+                        className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* SEÇÃO FALTAS DINÂMICAS */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="bg-red-50 p-1.5 rounded-lg">
+                    <UserX className="h-4 w-4 text-red-500" />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Faltas / Ausências</h4>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addFaltaRow}
+                  className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50 transition-all active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5" /> ADICIONAR FALTA
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {faltaRows.map((row, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex gap-2 items-end">
+                      {renderAutocomplete(
+                        "Servidor (Falta)", 
+                        row.term, 
+                        (v) => updateFaltaRow(index, { term: v }), 
+                        (v) => updateFaltaRow(index, { id: v }), 
+                        row.id, 
+                        row.show, 
+                        (v) => updateFaltaRow(index, { show: v }),
+                        (v) => updateFaltaRow(index, { info: v }),
+                        allEmployees || [],
+                        allSelectedIds.filter(id => id !== row.id)
+                      )}
+                      {faltaRows.length > 1 && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removeFaltaRow(index)}
+                          className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                        Escala e Turno (Servidor)
                       </Label>
                       <Input 
                         value={row.info}
