@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -10,7 +9,8 @@ import {
   Send,
   Loader2,
   Check,
-  ShieldCheck
+  ShieldCheck,
+  Briefcase
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -20,6 +20,13 @@ import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from '@/firebase'
 import { collection, query, orderBy } from 'firebase/firestore'
 import { cn } from "@/lib/utils"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -48,9 +55,10 @@ export default function RelatoriosPage() {
   const firestore = useFirestore()
   const [loading, setLoading] = React.useState(false)
 
-  // Estados para valores padrão (evita erro de hidratação)
+  // Estados para valores padrão
   const [defaultDate, setDefaultDate] = React.useState("")
   const [defaultTime, setDefaultTime] = React.useState("")
+  const [selectedEscala, setSelectedEscala] = React.useState("")
 
   React.useEffect(() => {
     setDefaultDate(getSaoPauloDate());
@@ -60,22 +68,23 @@ export default function RelatoriosPage() {
   // Estados para Inspetor
   const [inspetorTerm, setInspetorTerm] = React.useState("")
   const [inspetorId, setInspetorId] = React.useState("")
+  const [inspetorInfo, setInspetorInfo] = React.useState("")
   const [showInspetorSuggestions, setShowInspetorSuggestions] = React.useState(false)
 
   // Estados para Subinspetor
   const [subinspetorTerm, setSubinspetorTerm] = React.useState("")
   const [subinspetorId, setSubinspetorId] = React.useState("")
+  const [subinspetorInfo, setSubinspetorInfo] = React.useState("")
   const [showSubinspetorSuggestions, setShowSubinspetorSuggestions] = React.useState(false)
 
-  // Busca servidores
-  const employeesRef = React.useMemo(() => {
-    if (!firestore) return null;
-    return query(collection(firestore, 'employees'), orderBy('name', 'asc'));
-  }, [firestore]);
+  // Busca coleções
+  const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
+  const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
+  const { data: schedules } = useCollection(schedulesRef);
 
-  // Filtra servidores permitidos (Inspetor, Subinspetor, Inspetor Geral, Comandante)
+  // Filtra chefia
   const chefiaList = React.useMemo(() => {
     if (!allEmployees) return [];
     const allowedRoles = ["INSPETOR", "SUBINSPETOR", "INSPETOR GERAL", "COMANDANTE"];
@@ -88,18 +97,16 @@ export default function RelatoriosPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!inspetorId || !subinspetorId) {
+    if (!inspetorId || !subinspetorId || !selectedEscala) {
       toast({
         variant: "destructive",
         title: "DADOS INCOMPLETOS",
-        description: "POR FAVOR, SELECIONE O INSPETOR E O SUBINSPETOR DA LISTA."
+        description: "POR FAVOR, SELECIONE O INSPETOR, O SUBINSPETOR E A ESCALA."
       })
       return
     }
 
     setLoading(true)
-    
-    // Simulação de salvamento
     setTimeout(() => {
       setLoading(false)
       toast({
@@ -116,7 +123,8 @@ export default function RelatoriosPage() {
     setId: (v: string) => void, 
     id: string, 
     show: boolean, 
-    setShow: (v: boolean) => void
+    setShow: (v: boolean) => void,
+    setInfo: (v: string) => void
   ) => {
     const filtered = chefiaList.filter(e => 
       normalizeStr(e.name).includes(normalizeStr(term)) || 
@@ -136,7 +144,10 @@ export default function RelatoriosPage() {
             onChange={(e) => {
               setTerm(e.target.value.toUpperCase());
               setShow(true);
-              if (!e.target.value) setId("");
+              if (!e.target.value) {
+                setId("");
+                setInfo("");
+              }
             }}
             onFocus={() => setShow(true)}
             required
@@ -159,6 +170,7 @@ export default function RelatoriosPage() {
                   onClick={() => {
                     setTerm(`${emp.name} (${emp.qra})`);
                     setId(emp.id);
+                    setInfo(`${emp.escala} / ${emp.turno}`);
                     setShow(false);
                   }}
                   className="w-full px-4 py-3 text-left hover:bg-blue-50 flex flex-col border-b border-slate-100 last:border-0 transition-colors"
@@ -212,19 +224,8 @@ export default function RelatoriosPage() {
           </CardHeader>
           
           <CardContent className="p-6 space-y-8">
-            {/* Linha 1: Inspetor, Data, Horário */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="md:col-span-2">
-                {renderAutocomplete(
-                  "Inspetor Responsável", 
-                  inspetorTerm, 
-                  setInspetorTerm, 
-                  setInspetorId, 
-                  inspetorId, 
-                  showInspetorSuggestions, 
-                  setShowInspetorSuggestions
-                )}
-              </div>
+            {/* LINHA 1: DATA, HORÁRIO, ESCALA */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                   <Calendar className="h-3 w-3" /> Data
@@ -249,10 +250,52 @@ export default function RelatoriosPage() {
                   required
                 />
               </div>
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                  <Briefcase className="h-3 w-3" /> Escala de Serviço
+                </Label>
+                <Select value={selectedEscala} onValueChange={setSelectedEscala} required>
+                  <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
+                    <SelectValue placeholder="SELECIONE A ESCALA..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {schedules?.map((s: any) => (
+                      <SelectItem key={s.id} value={s.name} className="uppercase text-xs font-bold">
+                        {s.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
 
-            {/* Linha 2: Subinspetor */}
-            <div className="grid grid-cols-1 gap-6">
+            {/* LINHA 2: INSPETOR, ESCALA/TURNO */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {renderAutocomplete(
+                "Inspetor Responsável", 
+                inspetorTerm, 
+                setInspetorTerm, 
+                setInspetorId, 
+                inspetorId, 
+                showInspetorSuggestions, 
+                setShowInspetorSuggestions,
+                setInspetorInfo
+              )}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                  Escala e Turno (Inspetor)
+                </Label>
+                <Input 
+                  value={inspetorInfo}
+                  readOnly 
+                  placeholder="--"
+                  className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
+                />
+              </div>
+            </div>
+
+            {/* LINHA 3: SUBINSPETOR, ESCALA/TURNO */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {renderAutocomplete(
                 "Subinspetor Auxiliar", 
                 subinspetorTerm, 
@@ -260,8 +303,20 @@ export default function RelatoriosPage() {
                 setSubinspetorId, 
                 subinspetorId, 
                 showSubinspetorSuggestions, 
-                setShowSubinspetorSuggestions
+                setShowSubinspetorSuggestions,
+                setSubinspetorInfo
               )}
+              <div className="space-y-1.5">
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                  Escala e Turno (Subinspetor)
+                </Label>
+                <Input 
+                  value={subinspetorInfo}
+                  readOnly 
+                  placeholder="--"
+                  className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
+                />
+              </div>
             </div>
           </CardContent>
 
