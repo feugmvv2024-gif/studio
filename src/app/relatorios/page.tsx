@@ -166,7 +166,7 @@ export default function RelatoriosPage() {
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
-  const { data: allLaunches } = useCollection(launchesRef);
+  const { data: allLaunches } = useCollection(allLaunchesRef);
 
   // Períodos filtrados para Escala Especial
   const specialPeriodsList = React.useMemo(() => {
@@ -355,7 +355,7 @@ export default function RelatoriosPage() {
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
                 <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">RELATÓRIO SUBINSPETORIA - NRG GMVV</CardTitle>
-                <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Preenchimento obrigatório para registro de atividade de turno.</CardDescription>
+                <CardDescription className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Preenchimento obrigatório para registro de atividade de turno.</CardDescription>
               </div>
               <div className="bg-white/50 px-4 py-2 rounded-xl border border-primary/10 flex items-center gap-3 shrink-0">
                 <ShieldCheck className="h-5 w-5 text-primary" />
@@ -439,19 +439,19 @@ export default function RelatoriosPage() {
 
             {/* SEÇÃO SUBINSPETORES DINÂMICOS */}
             <Collapsible open={isSubTeamOpen} onOpenChange={setIsSubTeamOpen} className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
                     <button type="button" className={cn(
-                      "p-1.5 rounded-lg transition-colors border",
+                      "p-2 rounded-xl transition-colors border shadow-sm",
                       subTeamFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
                     )}>
-                      <User className="h-4 w-4" />
+                      <User className="h-5 w-5" />
                     </button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
-                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Equipe de Subinspetoria</h4>
-                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">{subTeamFilled ? "PREENCHIDO" : "PENDENTE"}</span>
+                    <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Equipe de Subinspetoria</h4>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{subTeamFilled ? "SESSÃO PREENCHIDA" : "AGUARDANDO DADOS"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -460,7 +460,7 @@ export default function RelatoriosPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={addSubinspetorRow}
-                    className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
                   >
                     <Plus className="h-3.5 w-3.5" /> ADICIONAR SUBINSPETOR
                   </Button>
@@ -518,19 +518,19 @@ export default function RelatoriosPage() {
 
             {/* SEÇÃO FALTAS DINÂMICAS */}
             <Collapsible open={isAbsencesOpen} onOpenChange={setIsAbsencesOpen} className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
                     <button type="button" className={cn(
-                      "p-1.5 rounded-lg transition-colors border",
+                      "p-2 rounded-xl transition-colors border shadow-sm",
                       absencesFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
                     )}>
-                      <UserX className="h-4 w-4" />
+                      <UserX className="h-5 w-5" />
                     </button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
-                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Faltas / Ausências</h4>
-                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">{absencesFilled ? "PREENCHIDO" : "PENDENTE"}</span>
+                    <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Faltas / Ausências</h4>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{absencesFilled ? "SESSÃO PREENCHIDA" : "NENHUMA FALTA REGISTRADA"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -539,7 +539,7 @@ export default function RelatoriosPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={addFaltaRow}
-                    className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50 transition-all active:scale-95"
+                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50 transition-all active:scale-95"
                   >
                     <Plus className="h-3.5 w-3.5" /> ADICIONAR FALTA
                   </Button>
@@ -597,19 +597,19 @@ export default function RelatoriosPage() {
 
             {/* SEÇÃO AFASTAMENTOS E FOLGAS (AUTOMATIZADA E FILTRADA) */}
             <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
                     <button type="button" className={cn(
-                      "p-1.5 rounded-lg transition-colors border",
+                      "p-2 rounded-xl transition-colors border shadow-sm",
                       afastadosFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
                     )}>
-                      <History className="h-4 w-4" />
+                      <History className="h-5 w-5" />
                     </button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
-                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Afastamentos / Folgas (Hoje)</h4>
-                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">{afastadosFilled ? "REGISTROS ENCONTRADOS" : "NENHUM REGISTRO"}</span>
+                    <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Afastamentos / Folgas (Hoje)</h4>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{afastadosFilled ? "REGISTROS ENCONTRADOS" : "NENHUM REGISTRO NO SISTEMA"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -703,19 +703,19 @@ export default function RelatoriosPage() {
 
             {/* SEÇÃO ESCALA ESPECIAL DINÂMICA */}
             <Collapsible open={isEspecialOpen} onOpenChange={setIsEspecialOpen} className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
                     <button type="button" className={cn(
-                      "p-1.5 rounded-lg transition-colors border",
+                      "p-2 rounded-xl transition-colors border shadow-sm",
                       especialFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
                     )}>
-                      <Star className="h-4 w-4" />
+                      <Star className="h-5 w-5" />
                     </button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
-                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Escala Especial</h4>
-                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">{especialFilled ? "PREENCHIDO" : "PENDENTE"}</span>
+                    <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Escala Especial</h4>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{especialFilled ? "SESSÃO PREENCHIDA" : "NENHUM SERVIDOR EM EXTRA"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -724,7 +724,7 @@ export default function RelatoriosPage() {
                     variant="outline" 
                     size="sm" 
                     onClick={addEspecialRow}
-                    className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
                   >
                     <Plus className="h-3.5 w-3.5" /> ADICIONAR SERVIDOR
                   </Button>
