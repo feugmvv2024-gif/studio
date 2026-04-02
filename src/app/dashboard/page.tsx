@@ -157,7 +157,8 @@ export default function Dashboard() {
     return launches.filter(l => {
       const type = normalizeStr(l.type);
       const isActive = l.startDate <= today && l.endDate >= today;
-      return isActive && (type.includes("FOLGA") || type.includes("ABONO") || type.includes("FALTA"));
+      // Inclui TRE DÉBITO como ausência hoje
+      return isActive && (type.includes("FOLGA") || type.includes("ABONO") || type.includes("FALTA") || type.includes("TRE DEBITO"));
     }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [launches]);
 
@@ -209,7 +210,8 @@ export default function Dashboard() {
       const isActive = l.startDate <= today && l.endDate >= today;
       
       if (isActive) {
-        if (type.includes("FOLGA")) { acc.folga++; acc.total++; }
+        // TRE DÉBITO é contabilizado junto com FOLGA
+        if (type.includes("FOLGA") || type.includes("TRE DEBITO")) { acc.folga++; acc.total++; }
         else if (type.includes("ABONO")) { acc.abono++; acc.total++; }
         else if (type.includes("FALTA")) { acc.falta++; acc.total++; }
       }
@@ -287,7 +289,8 @@ export default function Dashboard() {
                   (normalizeStr(item.type || item.status).includes("LICENCA")) ? "bg-purple-600 text-white" :
                   (normalizeStr(item.type || item.status).includes("ATESTADO")) ? "bg-red-600 text-white" :
                   (normalizeStr(item.type || item.status).includes("FALTA")) ? "bg-red-900 text-white" :
-                  "bg-orange-500 text-white"
+                  (normalizeStr(item.type || item.status).includes("TRE DEBITO") || normalizeStr(item.type || item.status).includes("FOLGA")) ? "bg-orange-500 text-white" :
+                  "bg-slate-500 text-white"
                 )}>
                   {item.type || item.status}
                 </Badge>
@@ -398,7 +401,7 @@ export default function Dashboard() {
                 </div>
                 <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-red-100">
                   <div>
-                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FOLGA</p>
+                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FOLGA/TRE</p>
                     <p className="text-[10px] font-black text-red-600">{absentStats.folga}</p>
                   </div>
                   <div>
@@ -421,7 +424,7 @@ export default function Dashboard() {
                 </div>
                 <div>
                   <DialogTitle className="uppercase text-xl sm:text-2xl font-black tracking-tight">DETALHAMENTO: AUSENTES HOJE</DialogTitle>
-                  <p className="text-xs uppercase font-bold text-muted-foreground tracking-widest mt-1">SERVIDORES COM LANÇAMENTO DE FOLGA, ABONO OU FALTA EM ATIVIDADE.</p>
+                  <p className="text-xs uppercase font-bold text-muted-foreground tracking-widest mt-1">SERVIDORES COM LANÇAMENTO DE FOLGA, TRE, ABONO OU FALTA EM ATIVIDADE.</p>
                 </div>
               </div>
             </DialogHeader>
