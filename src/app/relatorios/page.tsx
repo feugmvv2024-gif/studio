@@ -159,7 +159,7 @@ export default function RelatoriosPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
