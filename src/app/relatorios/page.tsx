@@ -371,11 +371,11 @@ export default function RelatoriosPage() {
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                   <Calendar className="h-3 w-3" /> Data
                 </Label>
-                <Input 
+                <input 
                   type="date" 
                   value={defaultDate}
                   onChange={(e) => setDefaultDate(e.target.value)}
-                  className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors" 
+                  className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none" 
                   required
                 />
               </div>
@@ -383,11 +383,11 @@ export default function RelatoriosPage() {
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                   <Clock className="h-3 w-3" /> Horário
                 </Label>
-                <Input 
+                <input 
                   type="time" 
                   value={defaultTime}
                   onChange={(e) => setDefaultTime(e.target.value)}
-                  className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors" 
+                  className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none" 
                   required
                 />
               </div>
@@ -772,12 +772,12 @@ export default function RelatoriosPage() {
                         value={row.periodId} 
                         onValueChange={(v) => updateEspecialRow(index, { periodId: v })}
                       >
-                        <SelectTrigger className="h-11 uppercase text-xs font-bold bg-white">
+                        <SelectTrigger className="h-11 uppercase text-[9px] font-bold bg-white">
                           <SelectValue placeholder="SELECIONE O HORÁRIO..." />
                         </SelectTrigger>
                         <SelectContent>
                           {specialPeriodsList.map((p: any) => (
-                            <SelectItem key={p.id} value={p.id} className="uppercase text-[10px] font-bold">
+                            <SelectItem key={p.id} value={p.id} className="uppercase text-[9px] font-bold">
                               {p.escalaName} ({p.startTime} ÀS {p.endTime})
                             </SelectItem>
                           ))}
