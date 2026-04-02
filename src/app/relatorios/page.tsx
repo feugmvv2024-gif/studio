@@ -10,7 +10,9 @@ import {
   Loader2,
   Check,
   ShieldCheck,
-  Briefcase
+  Briefcase,
+  Plus,
+  Trash2
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -65,17 +67,31 @@ export default function RelatoriosPage() {
     setDefaultTime(getSaoPauloTime());
   }, []);
 
-  // Estados para Inspetor
+  // Estados para Inspetor (Fixo - Responsável Único)
   const [inspetorTerm, setInspetorTerm] = React.useState("")
   const [inspetorId, setInspetorId] = React.useState("")
   const [inspetorInfo, setInspetorInfo] = React.useState("")
   const [showInspetorSuggestions, setShowInspetorSuggestions] = React.useState(false)
 
-  // Estados para Subinspetor
-  const [subinspetorTerm, setSubinspetorTerm] = React.useState("")
-  const [subinspetorId, setSubinspetorId] = React.useState("")
-  const [subinspetorInfo, setSubinspetorInfo] = React.useState("")
-  const [showSubinspetorSuggestions, setShowSubinspetorSuggestions] = React.useState(false)
+  // Estados para Subinspetores (Dinâmico - Múltiplos)
+  const [subinspetorRows, setSubinspetorRows] = React.useState([
+    { id: "", term: "", info: "", show: false }
+  ]);
+
+  const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: "", term: "", info: "", show: false }]);
+  
+  const removeSubinspetorRow = (index: number) => {
+    const newRows = subinspetorRows.filter((_, i) => i !== index);
+    setSubinspetorRows(newRows.length ? newRows : [{ id: "", term: "", info: "", show: false }]);
+  };
+
+  const updateSubinspetorRow = (index: number, updates: Partial<{id: string, term: string, info: string, show: boolean}>) => {
+    setSubinspetorRows(prev => {
+      const newRows = [...prev];
+      newRows[index] = { ...newRows[index], ...updates };
+      return newRows;
+    });
+  };
 
   // Busca coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
@@ -97,11 +113,13 @@ export default function RelatoriosPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!inspetorId || !subinspetorId || !selectedEscalaId) {
+    const hasValidSub = subinspetorRows.some(r => r.id);
+
+    if (!inspetorId || !hasValidSub || !selectedEscalaId) {
       toast({
         variant: "destructive",
         title: "DADOS INCOMPLETOS",
-        description: "POR FAVOR, SELECIONE O INSPETOR, O SUBINSPETOR E A ESCALA."
+        description: "POR FAVOR, SELECIONE O INSPETOR, PELO MENOS UM SUBINSPETOR E A ESCALA."
       })
       return
     }
@@ -124,7 +142,8 @@ export default function RelatoriosPage() {
     id: string, 
     show: boolean, 
     setShow: (v: boolean) => void,
-    setInfo: (v: string) => void
+    setInfo: (v: string) => void,
+    isOptional?: boolean
   ) => {
     const filtered = chefiaList.filter(e => 
       normalizeStr(e.name).includes(normalizeStr(term)) || 
@@ -132,7 +151,7 @@ export default function RelatoriosPage() {
     );
 
     return (
-      <div className="space-y-1.5 relative">
+      <div className="space-y-1.5 relative flex-1">
         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
           <User className="h-3 w-3" /> {label}
         </Label>
@@ -150,7 +169,7 @@ export default function RelatoriosPage() {
               }
             }}
             onFocus={() => setShow(true)}
-            required
+            required={!isOptional}
           />
           {id && (
             <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
@@ -223,7 +242,7 @@ export default function RelatoriosPage() {
             </div>
           </CardHeader>
           
-          <CardContent className="p-6 space-y-8">
+          <CardContent className="p-6 space-y-10">
             {/* LINHA 1: DATA, HORÁRIO, ESCALA */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-1.5">
@@ -269,7 +288,7 @@ export default function RelatoriosPage() {
               </div>
             </div>
 
-            {/* LINHA 2: INSPETOR, ESCALA/TURNO */}
+            {/* LINHA 2: INSPETOR (FIXO) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {renderAutocomplete(
                 "Inspetor / Responsável", 
@@ -294,28 +313,65 @@ export default function RelatoriosPage() {
               </div>
             </div>
 
-            {/* LINHA 3: SUBINSPETOR, ESCALA/TURNO */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {renderAutocomplete(
-                "Subinspetor", 
-                subinspetorTerm, 
-                setSubinspetorTerm, 
-                setSubinspetorId, 
-                subinspetorId, 
-                showSubinspetorSuggestions, 
-                setShowSubinspetorSuggestions,
-                setSubinspetorInfo
-              )}
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                  Escala e Turno (Subinspetor)
-                </Label>
-                <Input 
-                  value={subinspetorInfo}
-                  readOnly 
-                  placeholder="--"
-                  className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
-                />
+            {/* SEÇÃO SUBINSPETORES DINÂMICOS */}
+            <div className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 p-1.5 rounded-lg">
+                    <User className="h-4 w-4 text-slate-500" />
+                  </div>
+                  <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Equipe de Subinspetoria</h4>
+                </div>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={addSubinspetorRow}
+                  className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                >
+                  <Plus className="h-3.5 w-3.5" /> ADICIONAR SUBINSPETOR
+                </Button>
+              </div>
+              
+              <div className="space-y-4">
+                {subinspetorRows.map((row, index) => (
+                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex gap-2 items-end">
+                      {renderAutocomplete(
+                        index === 0 ? "Subinspetor" : `Subinspetor Auxiliar ${index}`, 
+                        row.term, 
+                        (v) => updateSubinspetorRow(index, { term: v }), 
+                        (v) => updateSubinspetorRow(index, { id: v }), 
+                        row.id, 
+                        row.show, 
+                        (v) => updateSubinspetorRow(index, { show: v }),
+                        (v) => updateSubinspetorRow(index, { info: v })
+                      )}
+                      {subinspetorRows.length > 1 && (
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => removeSubinspetorRow(index)}
+                          className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
+                        Escala e Turno (Subinspetor)
+                      </Label>
+                      <Input 
+                        value={row.info}
+                        readOnly 
+                        placeholder="--"
+                        className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </CardContent>
