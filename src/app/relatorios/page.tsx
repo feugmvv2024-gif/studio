@@ -477,8 +477,8 @@ export default function RelatoriosPage() {
               
               <CollapsibleContent className="space-y-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
                 {subinspetorRows.map((row, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex gap-2 items-end">
+                  <div key={index} className="flex flex-col md:flex-row gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 w-full">
                       {renderAutocomplete(
                         "Subinspetor", 
                         row.term, 
@@ -491,19 +491,8 @@ export default function RelatoriosPage() {
                         chefiaList,
                         allSelectedIds.filter(id => id !== row.id)
                       )}
-                      {subinspetorRows.length > 1 && (
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => removeSubinspetorRow(index)}
-                          className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="flex-1 w-full space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         Escala e Turno (Subinspetor)
                       </Label>
@@ -514,6 +503,17 @@ export default function RelatoriosPage() {
                         className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
                       />
                     </div>
+                    {subinspetorRows.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeSubinspetorRow(index)}
+                        className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </CollapsibleContent>
@@ -556,8 +556,8 @@ export default function RelatoriosPage() {
               
               <CollapsibleContent className="space-y-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
                 {faltaRows.map((row, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="flex gap-2 items-end">
+                  <div key={index} className="flex flex-col md:flex-row gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="flex-1 w-full">
                       {renderAutocomplete(
                         "Servidor (Falta)", 
                         row.term, 
@@ -570,19 +570,8 @@ export default function RelatoriosPage() {
                         allEmployees || [],
                         allSelectedIds.filter(id => id !== row.id)
                       )}
-                      {faltaRows.length > 1 && (
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => removeFaltaRow(index)}
-                          className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="flex-1 w-full space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         Escala e Turno (Servidor)
                       </Label>
@@ -593,6 +582,17 @@ export default function RelatoriosPage() {
                         className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
                       />
                     </div>
+                    {faltaRows.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeFaltaRow(index)}
+                        className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </CollapsibleContent>
@@ -741,8 +741,8 @@ export default function RelatoriosPage() {
               
               <CollapsibleContent className="space-y-6">
                 {especialRows.map((row, index) => (
-                  <div key={index} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
-                    <div className="flex gap-2 items-end">
+                  <div key={index} className="flex flex-col md:flex-row gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
+                    <div className="flex-[2] w-full">
                       {renderAutocomplete(
                         "Servidor", 
                         row.term, 
@@ -755,19 +755,8 @@ export default function RelatoriosPage() {
                         allEmployees || [],
                         allSelectedIds.filter(id => id !== row.id)
                       )}
-                      {especialRows.length > 1 && (
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => removeEspecialRow(index)}
-                          className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="flex-1 w-full space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         Escala e Turno (Original)
                       </Label>
@@ -778,7 +767,7 @@ export default function RelatoriosPage() {
                         className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" 
                       />
                     </div>
-                    <div className="space-y-1.5">
+                    <div className="flex-1 w-full space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                         <Timer className="h-3 w-3" /> Período Escala Especial
                       </Label>
@@ -803,6 +792,17 @@ export default function RelatoriosPage() {
                         </SelectContent>
                       </Select>
                     </div>
+                    {especialRows.length > 1 && (
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeEspecialRow(index)}
+                        className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 ))}
               </CollapsibleContent>
