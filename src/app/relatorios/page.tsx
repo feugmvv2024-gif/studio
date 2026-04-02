@@ -344,7 +344,7 @@ export default function RelatoriosPage() {
                   <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex gap-2 items-end">
                       {renderAutocomplete(
-                        index === 0 ? "Subinspetor" : `Subinspetor Auxiliar ${index}`, 
+                        "Subinspetor", 
                         row.term, 
                         (v) => updateSubinspetorRow(index, { term: v }), 
                         (v) => updateSubinspetorRow(index, { id: v }), 
