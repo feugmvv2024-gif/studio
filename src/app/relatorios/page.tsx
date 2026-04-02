@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -15,7 +16,11 @@ import {
   Trash2,
   UserX,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Plane,
+  Stethoscope,
+  History,
+  Info
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -23,7 +28,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from '@/firebase'
-import { collection, query, orderBy } from 'firebase/firestore'
+import { collection, query, orderBy, where } from 'firebase/firestore'
 import { cn } from "@/lib/utils"
 import {
   Select,
@@ -37,6 +42,15 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -60,6 +74,11 @@ const getSaoPauloTime = () => {
   }).format(now);
 };
 
+const formatDateBR = (dateStr: string) => {
+  if (!dateStr) return "---";
+  return dateStr.split('-').reverse().join('/');
+};
+
 export default function RelatoriosPage() {
   const { toast } = useToast()
   const firestore = useFirestore()
@@ -68,6 +87,7 @@ export default function RelatoriosPage() {
   // Estados de Colapso
   const [isSubTeamOpen, setIsSubTeamOpen] = React.useState(false)
   const [isAbsencesOpen, setIsAbsencesOpen] = React.useState(false)
+  const [isAfastadosOpen, setIsAfastadosOpen] = React.useState(false)
 
   // Estados para valores padrão
   const [defaultDate, setDefaultDate] = React.useState("")
@@ -121,16 +141,39 @@ export default function RelatoriosPage() {
     });
   };
 
+  // Busca coleções
+  const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
+  const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
+  const launchesRef = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
+
+  const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
+  const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
+  const { data: allLaunches } = useCollection(launchesRef);
+
   // Verificação de preenchimento
   const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.id), [subinspetorRows]);
   const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.id), [faltaRows]);
 
-  // Busca coleções
-  const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
-  const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
+  // Lista de Afastados Hoje (Automatizada)
+  const absentTodayList = React.useMemo(() => {
+    if (!allLaunches || !allEmployees) return [];
+    const today = getSaoPauloDate();
+    const types = ["FOLGA", "ABONO", "FERIAS", "LICENCA", "ATESTADO", "TRE DEBITO"];
+    
+    return allLaunches.filter(l => {
+      const normType = normalizeStr(l.type || "");
+      const isActive = l.startDate <= today && l.endDate >= today;
+      return isActive && types.some(t => normType.includes(t));
+    }).map(l => {
+      const emp = allEmployees.find(e => e.id === l.employeeId);
+      return {
+        ...l,
+        unit: emp?.unit || "N/A"
+      };
+    }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
+  }, [allLaunches, allEmployees]);
 
-  const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
-  const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
+  const afastadosFilled = absentTodayList.length > 0;
 
   // Filtra chefia
   const chefiaList = React.useMemo(() => {
@@ -513,6 +556,104 @@ export default function RelatoriosPage() {
                 ))}
               </CollapsibleContent>
             </Collapsible>
+
+            {/* SEÇÃO AFASTAMENTOS E FOLGAS (AUTOMATIZADA) */}
+            <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                <div className="flex items-center gap-2">
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className={cn(
+                      "p-1.5 rounded-lg transition-colors border",
+                      afastadosFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
+                    )}>
+                      <History className="h-4 w-4" />
+                    </button>
+                  </CollapsibleTrigger>
+                  <div className="flex flex-col">
+                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Afastamentos / Folgas (Hoje)</h4>
+                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">{afastadosFilled ? "REGISTROS ENCONTRADOS" : "NENHUM REGISTRO"}</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="bg-slate-100 px-3 py-1 rounded-full flex items-center gap-2 border">
+                    <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse" />
+                    <span className="text-[8px] font-black uppercase text-slate-600">Sincronizado com RH</span>
+                  </div>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                      {isAfastadosOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
+              </div>
+              
+              <CollapsibleContent className="space-y-4">
+                <div className="overflow-x-auto border rounded-xl bg-white shadow-sm overflow-hidden">
+                  <Table>
+                    <TableHeader className="bg-slate-50/50">
+                      <TableRow>
+                        <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">QRA / NOME</TableHead>
+                        <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">ESCALA / TURNO</TableHead>
+                        <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">SETOR</TableHead>
+                        <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">TIPO</TableHead>
+                        <TableHead className="font-bold uppercase text-[9px] text-center">DATA FIM</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {absentTodayList.map((item) => (
+                        <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                          <TableCell className="py-3">
+                            <div className="flex flex-col">
+                              <span className="font-black uppercase text-[12px] text-slate-900 leading-tight">{item.employeeQra}</span>
+                              <span className="text-[10px] uppercase text-muted-foreground font-medium">{item.employeeName}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-[11px] font-bold uppercase text-slate-700">
+                            {item.escala} / {item.turno}
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-[9px] uppercase font-bold bg-slate-100 text-slate-600 px-2 py-0 border-none">
+                              {item.unit}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className={cn(
+                              "text-[9px] uppercase font-black whitespace-nowrap border-none px-3 h-6",
+                              normalizeStr(item.type).includes("FERIAS") ? "bg-blue-600 text-white" :
+                              normalizeStr(item.type).includes("LICENCA") ? "bg-purple-600 text-white" :
+                              normalizeStr(item.type).includes("ATESTADO") ? "bg-red-600 text-white" :
+                              "bg-orange-500 text-white"
+                            )}>
+                              {item.type}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Calendar className="h-3 w-3 text-muted-foreground" />
+                              <span className="text-[11px] font-black font-mono text-slate-900">
+                                {formatDateBR(item.endDate)}
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                      {absentTodayList.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-12">
+                            <div className="flex flex-col items-center gap-2">
+                              <Info className="h-6 w-6 text-muted-foreground opacity-20" />
+                              <span className="uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                                NENHUM SERVIDOR COM FOLGA OU AFASTAMENTO HOJE.
+                              </span>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
 
           <CardFooter className="bg-slate-50 border-t p-6">
@@ -528,16 +669,5 @@ export default function RelatoriosPage() {
         </form>
       </Card>
     </div>
-  )
-}
-
-function Badge({ children, className, variant = "default" }: { children: React.ReactNode, className?: string, variant?: string }) {
-  return (
-    <span className={cn(
-      "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-semibold transition-colors",
-      className
-    )}>
-      {children}
-    </span>
   )
 }
