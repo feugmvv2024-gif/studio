@@ -166,7 +166,7 @@ export default function RelatoriosPage() {
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
-  const { data: allLaunches } = useCollection(allLaunchesRef);
+  const { data: allLaunches } = useCollection(launchesRef);
 
   // Períodos filtrados para Escala Especial
   const specialPeriodsList = React.useMemo(() => {
