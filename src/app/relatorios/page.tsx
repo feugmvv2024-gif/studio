@@ -13,7 +13,9 @@ import {
   Briefcase,
   Plus,
   Trash2,
-  UserX
+  UserX,
+  ChevronDown,
+  ChevronUp
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -30,6 +32,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -58,6 +65,10 @@ export default function RelatoriosPage() {
   const firestore = useFirestore()
   const [loading, setLoading] = React.useState(false)
 
+  // Estados de Colapso
+  const [isSubTeamOpen, setIsSubTeamOpen] = React.useState(false)
+  const [isAbsencesOpen, setIsAbsencesOpen] = React.useState(false)
+
   // Estados para valores padrão
   const [defaultDate, setDefaultDate] = React.useState("")
   const [defaultTime, setDefaultTime] = React.useState("")
@@ -68,18 +79,18 @@ export default function RelatoriosPage() {
     setDefaultTime(getSaoPauloTime());
   }, []);
 
-  // Estados para Inspetor (Fixo - Responsável Único)
+  // Estados para Inspetor (Fixo)
   const [inspetorTerm, setInspetorTerm] = React.useState("")
   const [inspetorId, setInspetorId] = React.useState("")
   const [inspetorInfo, setInspetorInfo] = React.useState("")
   const [showInspetorSuggestions, setShowInspetorSuggestions] = React.useState(false)
 
-  // Estados para Subinspetores (Dinâmico - Múltiplos)
+  // Estados para Subinspetores (Dinâmico)
   const [subinspetorRows, setSubinspetorRows] = React.useState([
     { id: "", term: "", info: "", show: false }
   ]);
 
-  // Estados para Faltas (Dinâmico - Múltiplos)
+  // Estados para Faltas (Dinâmico)
   const [faltaRows, setFaltaRows] = React.useState([
     { id: "", term: "", info: "", show: false }
   ]);
@@ -109,6 +120,10 @@ export default function RelatoriosPage() {
       return newRows;
     });
   };
+
+  // Verificação de preenchimento
+  const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.id), [subinspetorRows]);
+  const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.id), [faltaRows]);
 
   // Busca coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
@@ -233,7 +248,6 @@ export default function RelatoriosPage() {
     );
   };
 
-  // Coleta todos os IDs selecionados para evitar duplicidade global
   const allSelectedIds = [
     inspetorId,
     ...subinspetorRows.map(r => r.id),
@@ -343,26 +357,41 @@ export default function RelatoriosPage() {
             </div>
 
             {/* SEÇÃO SUBINSPETORES DINÂMICOS */}
-            <div className="space-y-6">
+            <Collapsible open={isSubTeamOpen} onOpenChange={setIsSubTeamOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2">
-                  <div className="bg-slate-100 p-1.5 rounded-lg">
-                    <User className="h-4 w-4 text-slate-500" />
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className={cn(
+                      "p-1.5 rounded-lg transition-colors border",
+                      subTeamFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
+                    )}>
+                      <User className="h-4 w-4" />
+                    </button>
+                  </CollapsibleTrigger>
+                  <div className="flex flex-col">
+                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Equipe de Subinspetoria</h4>
+                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">{subTeamFilled ? "PREENCHIDO" : "PENDENTE"}</span>
                   </div>
-                  <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Equipe de Subinspetoria</h4>
                 </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={addSubinspetorRow}
-                  className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
-                >
-                  <Plus className="h-3.5 w-3.5" /> ADICIONAR SUBINSPETOR
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addSubinspetorRow}
+                    className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5 transition-all active:scale-95"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> ADICIONAR SUBINSPETOR
+                  </Button>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                      {isSubTeamOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
               </div>
               
-              <div className="space-y-4">
+              <CollapsibleContent className="space-y-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
                 {subinspetorRows.map((row, index) => (
                   <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex gap-2 items-end">
@@ -403,30 +432,45 @@ export default function RelatoriosPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
 
             {/* SEÇÃO FALTAS DINÂMICAS */}
-            <div className="space-y-6">
+            <Collapsible open={isAbsencesOpen} onOpenChange={setIsAbsencesOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2">
-                  <div className="bg-red-50 p-1.5 rounded-lg">
-                    <UserX className="h-4 w-4 text-red-500" />
+                  <CollapsibleTrigger asChild>
+                    <button type="button" className={cn(
+                      "p-1.5 rounded-lg transition-colors border",
+                      absencesFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
+                    )}>
+                      <UserX className="h-4 w-4" />
+                    </button>
+                  </CollapsibleTrigger>
+                  <div className="flex flex-col">
+                    <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest leading-none">Faltas / Ausências</h4>
+                    <span className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">{absencesFilled ? "PREENCHIDO" : "PENDENTE"}</span>
                   </div>
-                  <h4 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Faltas / Ausências</h4>
                 </div>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={addFaltaRow}
-                  className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50 transition-all active:scale-95"
-                >
-                  <Plus className="h-3.5 w-3.5" /> ADICIONAR FALTA
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={addFaltaRow}
+                    className="h-8 text-[9px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50 transition-all active:scale-95"
+                  >
+                    <Plus className="h-3.5 w-3.5" /> ADICIONAR FALTA
+                  </Button>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
+                      {isAbsencesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                    </Button>
+                  </CollapsibleTrigger>
+                </div>
               </div>
               
-              <div className="space-y-4">
+              <CollapsibleContent className="space-y-4 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0">
                 {faltaRows.map((row, index) => (
                   <div key={index} className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end animate-in fade-in slide-in-from-top-2 duration-300">
                     <div className="flex gap-2 items-end">
@@ -467,8 +511,8 @@ export default function RelatoriosPage() {
                     </div>
                   </div>
                 ))}
-              </div>
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           </CardContent>
 
           <CardFooter className="bg-slate-50 border-t p-6">
