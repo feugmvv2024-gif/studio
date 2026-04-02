@@ -58,7 +58,7 @@ export default function RelatoriosPage() {
   // Estados para valores padrão
   const [defaultDate, setDefaultDate] = React.useState("")
   const [defaultTime, setDefaultTime] = React.useState("")
-  const [selectedEscala, setSelectedEscala] = React.useState("")
+  const [selectedEscalaId, setSelectedEscalaId] = React.useState("")
 
   React.useEffect(() => {
     setDefaultDate(getSaoPauloDate());
@@ -97,7 +97,7 @@ export default function RelatoriosPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     
-    if (!inspetorId || !subinspetorId || !selectedEscala) {
+    if (!inspetorId || !subinspetorId || !selectedEscalaId) {
       toast({
         variant: "destructive",
         title: "DADOS INCOMPLETOS",
@@ -254,13 +254,13 @@ export default function RelatoriosPage() {
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
                   <Briefcase className="h-3 w-3" /> Escala de Serviço
                 </Label>
-                <Select value={selectedEscala} onValueChange={setSelectedEscala} required>
+                <Select value={selectedEscalaId} onValueChange={setSelectedEscalaId} required>
                   <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
                     <SelectValue placeholder="SELECIONE A ESCALA..." />
                   </SelectTrigger>
                   <SelectContent>
                     {shiftPeriods?.map((p: any) => (
-                      <SelectItem key={p.id} value={p.escalaName} className="uppercase text-xs font-bold">
+                      <SelectItem key={p.id} value={p.id} className="uppercase text-xs font-bold">
                         {p.escalaName} ({p.startTime} ÀS {p.endTime})
                       </SelectItem>
                     ))}
