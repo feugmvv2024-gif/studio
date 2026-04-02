@@ -79,10 +79,10 @@ export default function RelatoriosPage() {
 
   // Busca coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
-  const schedulesRef = React.useMemo(() => firestore ? query(collection(firestore, 'schedules'), orderBy('name', 'asc')) : null, [firestore]);
+  const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
-  const { data: schedules } = useCollection(schedulesRef);
+  const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
 
   // Filtra chefia
   const chefiaList = React.useMemo(() => {
@@ -259,9 +259,9 @@ export default function RelatoriosPage() {
                     <SelectValue placeholder="SELECIONE A ESCALA..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {schedules?.map((s: any) => (
-                      <SelectItem key={s.id} value={s.name} className="uppercase text-xs font-bold">
-                        {s.name}
+                    {shiftPeriods?.map((p: any) => (
+                      <SelectItem key={p.id} value={p.escalaName} className="uppercase text-xs font-bold">
+                        {p.escalaName} ({p.startTime} ÀS {p.endTime})
                       </SelectItem>
                     ))}
                   </SelectContent>
