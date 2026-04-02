@@ -154,16 +154,31 @@ export default function RelatoriosPage() {
   const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.id), [subinspetorRows]);
   const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.id), [faltaRows]);
 
-  // Lista de Afastados Hoje (Automatizada)
+  // Lista de Afastados Hoje (Automatizada e Filtrada por Inspetor)
   const absentTodayList = React.useMemo(() => {
-    if (!allLaunches || !allEmployees) return [];
+    if (!allLaunches || !allEmployees || !inspetorId) return [];
+    
+    const selectedInspetor = allEmployees.find(e => e.id === inspetorId);
+    if (!selectedInspetor) return [];
+
     const today = getSaoPauloDate();
     const types = ["FOLGA", "ABONO", "FERIAS", "LICENCA", "ATESTADO", "TRE DEBITO"];
     
     return allLaunches.filter(l => {
       const normType = normalizeStr(l.type || "");
       const isActive = l.startDate <= today && l.endDate >= today;
-      return isActive && types.some(t => normType.includes(t));
+      if (!isActive || !types.some(t => normType.includes(t))) return false;
+
+      const emp = allEmployees.find(e => e.id === l.employeeId);
+      if (!emp) return false;
+
+      // Regra 1: Mesmo Turno e Escala do Inspetor selecionado
+      const isSameShiftAndSchedule = emp.escala === selectedInspetor.escala && emp.turno === selectedInspetor.turno;
+      
+      // Regra 2: Somente escala ORDINÁRIO (não entra ADMINISTRATIVO nem outros)
+      const isOrdinario = normalizeStr(emp.escala || "") === "ORDINARIO";
+
+      return isSameShiftAndSchedule || isOrdinario;
     }).map(l => {
       const emp = allEmployees.find(e => e.id === l.employeeId);
       return {
@@ -171,7 +186,7 @@ export default function RelatoriosPage() {
         unit: emp?.unit || "N/A"
       };
     }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
-  }, [allLaunches, allEmployees]);
+  }, [allLaunches, allEmployees, inspetorId]);
 
   const afastadosFilled = absentTodayList.length > 0;
 
@@ -557,7 +572,7 @@ export default function RelatoriosPage() {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO AFASTAMENTOS E FOLGAS (AUTOMATIZADA) */}
+            {/* SEÇÃO AFASTAMENTOS E FOLGAS (AUTOMATIZADA E FILTRADA) */}
             <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2">
@@ -588,70 +603,78 @@ export default function RelatoriosPage() {
               </div>
               
               <CollapsibleContent className="space-y-4">
-                <div className="overflow-x-auto border rounded-xl bg-white shadow-sm overflow-hidden">
-                  <Table>
-                    <TableHeader className="bg-slate-50/50">
-                      <TableRow>
-                        <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">QRA / NOME</TableHead>
-                        <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">ESCALA / TURNO</TableHead>
-                        <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">SETOR</TableHead>
-                        <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">TIPO</TableHead>
-                        <TableHead className="font-bold uppercase text-[9px] text-center">DATA FIM</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {absentTodayList.map((item) => (
-                        <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                          <TableCell className="py-3">
-                            <div className="flex flex-col">
-                              <span className="font-black uppercase text-[12px] text-slate-900 leading-tight">{item.employeeQra}</span>
-                              <span className="text-[10px] uppercase text-muted-foreground font-medium">{item.employeeName}</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-[11px] font-bold uppercase text-slate-700">
-                            {item.escala} / {item.turno}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-[9px] uppercase font-bold bg-slate-100 text-slate-600 px-2 py-0 border-none">
-                              {item.unit}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge className={cn(
-                              "text-[9px] uppercase font-black whitespace-nowrap border-none px-3 h-6",
-                              normalizeStr(item.type).includes("FERIAS") ? "bg-blue-600 text-white" :
-                              normalizeStr(item.type).includes("LICENCA") ? "bg-purple-600 text-white" :
-                              normalizeStr(item.type).includes("ATESTADO") ? "bg-red-600 text-white" :
-                              "bg-orange-500 text-white"
-                            )}>
-                              {item.type}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <div className="flex items-center justify-center gap-1.5">
-                              <Calendar className="h-3 w-3 text-muted-foreground" />
-                              <span className="text-[11px] font-black font-mono text-slate-900">
-                                {formatDateBR(item.endDate)}
-                              </span>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                      {absentTodayList.length === 0 && (
+                {!inspetorId ? (
+                  <div className="text-center py-12 border-2 border-dashed rounded-xl bg-slate-50/50">
+                    <p className="uppercase text-[10px] font-black text-blue-600 tracking-widest">
+                      SELECIONE UM INSPETOR PARA FILTRAR OS AFASTAMENTOS DO TURNO.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto border rounded-xl bg-white shadow-sm overflow-hidden">
+                    <Table>
+                      <TableHeader className="bg-slate-50/50">
                         <TableRow>
-                          <TableCell colSpan={5} className="text-center py-12">
-                            <div className="flex flex-col items-center gap-2">
-                              <Info className="h-6 w-6 text-muted-foreground opacity-20" />
-                              <span className="uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
-                                NENHUM SERVIDOR COM FOLGA OU AFASTAMENTO HOJE.
-                              </span>
-                            </div>
-                          </TableCell>
+                          <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">QRA / NOME</TableHead>
+                          <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">ESCALA / TURNO</TableHead>
+                          <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">SETOR</TableHead>
+                          <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">TIPO</TableHead>
+                          <TableHead className="font-bold uppercase text-[9px] text-center">DATA FIM</TableHead>
                         </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
+                      </TableHeader>
+                      <TableBody>
+                        {absentTodayList.map((item) => (
+                          <TableRow key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                            <TableCell className="py-3">
+                              <div className="flex flex-col">
+                                <span className="font-black uppercase text-[12px] text-slate-900 leading-tight">{item.employeeQra}</span>
+                                <span className="text-[10px] uppercase text-muted-foreground font-medium">{item.employeeName}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-[11px] font-bold uppercase text-slate-700">
+                              {item.escala} / {item.turno}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-[9px] uppercase font-bold bg-slate-100 text-slate-600 px-2 py-0 border-none">
+                                {item.unit}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge className={cn(
+                                "text-[9px] uppercase font-black whitespace-nowrap border-none px-3 h-6",
+                                normalizeStr(item.type).includes("FERIAS") ? "bg-blue-600 text-white" :
+                                normalizeStr(item.type).includes("LICENCA") ? "bg-purple-600 text-white" :
+                                normalizeStr(item.type).includes("ATESTADO") ? "bg-red-600 text-white" :
+                                "bg-orange-500 text-white"
+                              )}>
+                                {item.type}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <div className="flex items-center justify-center gap-1.5">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                <span className="text-[11px] font-black font-mono text-slate-900">
+                                  {formatDateBR(item.endDate)}
+                                </span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                        {absentTodayList.length === 0 && (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-12">
+                              <div className="flex flex-col items-center gap-2">
+                                <Info className="h-6 w-6 text-muted-foreground opacity-20" />
+                                <span className="uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                                  NENHUM REGISTRO DE AFASTAMENTO PARA ESTE TURNO OU ORDINÁRIOS HOJE.
+                                </span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                )}
               </CollapsibleContent>
             </Collapsible>
           </CardContent>
