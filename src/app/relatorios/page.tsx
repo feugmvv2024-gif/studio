@@ -23,10 +23,39 @@ import { cn } from "@/lib/utils"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
+const getSaoPauloDate = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(now).split('/').reverse().join('-');
+};
+
+const getSaoPauloTime = () => {
+  const now = new Date();
+  return new Intl.DateTimeFormat('pt-BR', {
+    timeZone: 'America/Sao_Paulo',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  }).format(now);
+};
+
 export default function RelatoriosPage() {
   const { toast } = useToast()
   const firestore = useFirestore()
   const [loading, setLoading] = React.useState(false)
+
+  // Estados para valores padrão (evita erro de hidratação)
+  const [defaultDate, setDefaultDate] = React.useState("")
+  const [defaultTime, setDefaultTime] = React.useState("")
+
+  React.useEffect(() => {
+    setDefaultDate(getSaoPauloDate());
+    setDefaultTime(getSaoPauloTime());
+  }, []);
 
   // Estados para Inspetor
   const [inspetorTerm, setInspetorTerm] = React.useState("")
@@ -55,11 +84,6 @@ export default function RelatoriosPage() {
       return allowedRoles.some(allowed => role === allowed);
     });
   }, [allEmployees]);
-
-  // Obtém data e hora atuais para valores padrão
-  const now = new Date()
-  const defaultDate = now.toISOString().split('T')[0]
-  const defaultTime = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -207,7 +231,8 @@ export default function RelatoriosPage() {
                 </Label>
                 <Input 
                   type="date" 
-                  defaultValue={defaultDate}
+                  value={defaultDate}
+                  onChange={(e) => setDefaultDate(e.target.value)}
                   className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors" 
                   required
                 />
@@ -218,7 +243,8 @@ export default function RelatoriosPage() {
                 </Label>
                 <Input 
                   type="time" 
-                  defaultValue={defaultTime}
+                  value={defaultTime}
+                  onChange={(e) => setDefaultTime(e.target.value)}
                   className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors" 
                   required
                 />
