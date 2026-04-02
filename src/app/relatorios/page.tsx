@@ -143,11 +143,14 @@ export default function RelatoriosPage() {
     show: boolean, 
     setShow: (v: boolean) => void,
     setInfo: (v: string) => void,
+    excludeIds: string[] = [], // IDs para excluir da busca
     isOptional?: boolean
   ) => {
+    // Filtra por termo digitado E exclui IDs já selecionados
     const filtered = chefiaList.filter(e => 
-      normalizeStr(e.name).includes(normalizeStr(term)) || 
-      normalizeStr(e.qra).includes(normalizeStr(term))
+      (normalizeStr(e.name).includes(normalizeStr(term)) || 
+      normalizeStr(e.qra).includes(normalizeStr(term))) &&
+      !excludeIds.includes(e.id)
     );
 
     return (
@@ -203,7 +206,9 @@ export default function RelatoriosPage() {
               ))
             ) : (
               <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">
-                Nenhum oficial encontrado.
+                {chefiaList.some(e => normalizeStr(e.name).includes(normalizeStr(term)) && excludeIds.includes(e.id)) 
+                  ? "Oficial já selecionado no formulário." 
+                  : "Nenhum oficial encontrado."}
               </div>
             )}
           </div>
@@ -298,7 +303,8 @@ export default function RelatoriosPage() {
                 inspetorId, 
                 showInspetorSuggestions, 
                 setShowInspetorSuggestions,
-                setInspetorInfo
+                setInspetorInfo,
+                subinspetorRows.map(r => r.id).filter(Boolean) // Exclui quem já está nos subs
               )}
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
@@ -345,7 +351,8 @@ export default function RelatoriosPage() {
                         row.id, 
                         row.show, 
                         (v) => updateSubinspetorRow(index, { show: v }),
-                        (v) => updateSubinspetorRow(index, { info: v })
+                        (v) => updateSubinspetorRow(index, { info: v }),
+                        [inspetorId, ...subinspetorRows.filter((_, i) => i !== index).map(r => r.id)].filter(Boolean) // Exclui inspetor e outros subs
                       )}
                       {subinspetorRows.length > 1 && (
                         <Button 
