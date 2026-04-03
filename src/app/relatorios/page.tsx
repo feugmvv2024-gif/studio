@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -130,7 +131,7 @@ export default function RelatoriosPage() {
     {
       id: generateId(),
       sectorType: "",
-      chiefData: { id: "", uid: "", term: "", info: "", show: false },
+      chiefData: { id: "", term: "", info: "", show: false },
       posts: [
         {
           id: generateId(),
@@ -191,7 +192,7 @@ export default function RelatoriosPage() {
     setSectorBlocks([...sectorBlocks, {
       id: generateId(),
       sectorType: "",
-      chiefData: { id: "", uid: "", term: "", info: "", show: false },
+      chiefData: { id: "", term: "", info: "", show: false },
       posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }]
     }]);
   };
@@ -205,6 +206,18 @@ export default function RelatoriosPage() {
     setSectorBlocks(prev => {
       const newBlocks = [...prev];
       newBlocks[index] = { ...newBlocks[index], ...updates };
+      return newBlocks;
+    });
+  };
+
+  const updateSectorChiefData = (index: number, updates: any) => {
+    setSectorBlocks(prev => {
+      const newBlocks = [...prev];
+      if (!newBlocks[index]) return prev;
+      newBlocks[index] = {
+        ...newBlocks[index],
+        chiefData: { ...newBlocks[index].chiefData, ...updates }
+      };
       return newBlocks;
     });
   };
@@ -253,10 +266,15 @@ export default function RelatoriosPage() {
   const updateMemberInPost = (sectorIndex: number, postIndex: number, memberIndex: number, updates: any) => {
     setSectorBlocks(prev => {
       const newBlocks = [...prev];
-      newBlocks[sectorIndex].posts[postIndex].members[memberIndex] = {
-        ...newBlocks[sectorIndex].posts[postIndex].members[memberIndex],
-        ...updates
-      };
+      const sector = { ...newBlocks[sectorIndex] };
+      const posts = [...sector.posts];
+      const post = { ...posts[postIndex] };
+      const members = [...post.members];
+      members[memberIndex] = { ...members[memberIndex], ...updates };
+      post.members = members;
+      posts[postIndex] = post;
+      sector.posts = posts;
+      newBlocks[sectorIndex] = sector;
       return newBlocks;
     });
   };
@@ -280,7 +298,8 @@ export default function RelatoriosPage() {
   const availableChiefsForSectors = React.useMemo(() => {
     if (!allEmployees) return [];
     const subIdList = subinspetorRows.map(r => r.empId).filter(Boolean);
-    const validChiefIds = [inspetorId, ...subIdList];
+    const validChiefIds = [inspetorId, ...subIdList].filter(Boolean);
+    if (validChiefIds.length === 0) return [];
     return allEmployees.filter(emp => validChiefIds.includes(emp.id));
   }, [allEmployees, subinspetorRows, inspetorId]);
 
@@ -323,8 +342,6 @@ export default function RelatoriosPage() {
     especialRows.forEach(r => r.empId && ids.push(r.empId));
     
     sectorBlocks.forEach(s => {
-      // Chief ID não entra na exclusão de membros operacionais necessariamente,
-      // mas monitoramos para evitar duplicidade de comando.
       if (s.chiefData.id) ids.push(s.chiefData.id);
       s.posts.forEach((p: any) => {
         p.members.forEach((m: any) => {
@@ -387,7 +404,7 @@ export default function RelatoriosPage() {
     );
 
     return (
-      <div className="space-y-1.5 relative flex-1">
+      <div className="space-y-1 relative flex-1">
         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
           <User className="h-3 w-3" /> {label}
         </Label>
@@ -929,12 +946,12 @@ export default function RelatoriosPage() {
                         {renderAutocomplete(
                           "Chefia Responsável", 
                           sector.chiefData.term, 
-                          (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, term: v } }), 
-                          (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, id: v } }), 
+                          (v) => updateSectorChiefData(sIdx, { term: v }), 
+                          (v) => updateSectorChiefData(sIdx, { id: v }), 
                           sector.chiefData.id, 
                           sector.chiefData.show, 
-                          (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, show: v } }),
-                          (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, info: v } }),
+                          (v) => updateSectorChiefData(sIdx, { show: v }),
+                          (v) => updateSectorChiefData(sIdx, { info: v }),
                           availableChiefsForSectors,
                           sectorBlocks.filter((_, i) => i !== sIdx).map(s => s.chiefData.id).filter(Boolean)
                         )}
@@ -977,7 +994,6 @@ export default function RelatoriosPage() {
                                 <Select value={post.type} onValueChange={(v) => {
                                   const newPosts = [...sector.posts];
                                   newPosts[pIdx].type = v;
-                                  // Limpa excesso de membros se mudar para VTR
                                   if (v === "VTR" && newPosts[pIdx].members.length > 4) {
                                     newPosts[pIdx].members = newPosts[pIdx].members.slice(0, 4);
                                   }
