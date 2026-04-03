@@ -135,8 +135,9 @@ export default function RelatoriosPage() {
         {
           id: generateId(),
           type: "",
+          vtrNumber: "",
           members: [
-            { id: generateId(), empId: "", term: "", show: false, vtrNumber: "" }
+            { id: generateId(), empId: "", term: "", show: false }
           ]
         }
       ]
@@ -191,7 +192,7 @@ export default function RelatoriosPage() {
       id: generateId(),
       sectorType: "",
       chiefData: { id: "", uid: "", term: "", info: "", show: false },
-      posts: [{ id: generateId(), type: "", members: [{ id: generateId(), empId: "", term: "", show: false, vtrNumber: "" }] }]
+      posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }]
     }]);
   };
 
@@ -213,7 +214,8 @@ export default function RelatoriosPage() {
     newBlocks[sectorIndex].posts.push({
       id: generateId(),
       type: "",
-      members: [{ id: generateId(), empId: "", term: "", show: false, vtrNumber: "" }]
+      vtrNumber: "",
+      members: [{ id: generateId(), empId: "", term: "", show: false }]
     });
     setSectorBlocks(newBlocks);
   };
@@ -238,7 +240,7 @@ export default function RelatoriosPage() {
       });
       return;
     }
-    post.members.push({ id: generateId(), empId: "", term: "", show: false, vtrNumber: "" });
+    post.members.push({ id: generateId(), empId: "", term: "", show: false });
     setSectorBlocks(newBlocks);
   };
 
@@ -1007,7 +1009,28 @@ export default function RelatoriosPage() {
                             </div>
 
                             {/* INTEGRANTES DO POSTO */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                            <div className={cn(
+                              "grid gap-4 pt-2",
+                              isVTR ? "grid-cols-1 md:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
+                            )}>
+                              {isVTR && (
+                                <div className="space-y-1.5 animate-in zoom-in-95 duration-300">
+                                  <Label className="text-[9px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-1.5">
+                                    <Car className="h-3 w-3" /> VTR nº
+                                  </Label>
+                                  <Input 
+                                    placeholder="EX: 001" 
+                                    className="h-11 uppercase font-bold text-xs bg-blue-50/30 border-blue-100 focus:bg-white"
+                                    value={post.vtrNumber || ""}
+                                    onChange={(e) => {
+                                      const newPosts = [...sector.posts];
+                                      newPosts[pIdx].vtrNumber = e.target.value.toUpperCase();
+                                      updateSectorBlock(sIdx, { posts: newPosts });
+                                    }}
+                                  />
+                                </div>
+                              )}
+
                               {post.members.map((member: any, mIdx: number) => (
                                 <div key={member.id} className={cn(
                                   "flex flex-col gap-2 p-3 rounded-xl border border-slate-100 bg-white/80 shadow-sm animate-in fade-in slide-in-from-left-2 duration-200",
@@ -1042,20 +1065,6 @@ export default function RelatoriosPage() {
                                       </Button>
                                     )}
                                   </div>
-                                  
-                                  {isVTR && (
-                                    <div className="space-y-1.5 animate-in zoom-in-95 duration-300">
-                                      <Label className="text-[9px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-1.5">
-                                        <Car className="h-3 w-3" /> VTR nº
-                                      </Label>
-                                      <Input 
-                                        placeholder="EX: 001" 
-                                        className="h-8 uppercase font-bold text-xs bg-blue-50/30 border-blue-100 focus:bg-white"
-                                        value={member.vtrNumber}
-                                        onChange={(e) => updateMemberInPost(sIdx, pIdx, mIdx, { vtrNumber: e.target.value.toUpperCase() })}
-                                      />
-                                    </div>
-                                  )}
                                 </div>
                               ))}
                             </div>
