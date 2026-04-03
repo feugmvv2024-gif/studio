@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -24,7 +23,8 @@ import {
   Users,
   Car,
   Save,
-  AlertTriangle
+  AlertTriangle,
+  MessageSquare
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -65,6 +65,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
+import { Textarea } from "@/components/ui/textarea"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -111,6 +112,7 @@ export default function RelatoriosPage() {
   const [defaultDate, setDefaultDate] = React.useState("")
   const [defaultTime, setDefaultTime] = React.useState("")
   const [selectedEscalaId, setSelectedEscalaId] = React.useState("")
+  const [observations, setObservations] = React.useState("")
 
   // Estados do Rascunho
   const [isDraftDialogOpen, setIsDraftDialogOpen] = React.useState(false)
@@ -185,7 +187,8 @@ export default function RelatoriosPage() {
       subinspetorRows,
       faltaRows,
       especialRows,
-      sectorBlocks
+      sectorBlocks,
+      observations
     };
     localStorage.setItem('nrg_relatorio_draft', JSON.stringify(draft));
     toast({ 
@@ -206,6 +209,7 @@ export default function RelatoriosPage() {
       setFaltaRows(tempDraft.faltaRows || [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
       setEspecialRows(tempDraft.especialRows || [{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
       setSectorBlocks(tempDraft.sectorBlocks || []);
+      setObservations(tempDraft.observations || "");
       
       setIsDraftDialogOpen(false);
       toast({ title: "RASCUNHO CARREGADO", description: "Os dados foram restaurados." });
@@ -460,6 +464,7 @@ export default function RelatoriosPage() {
       setLoading(false)
       localStorage.removeItem('nrg_relatorio_draft'); // Limpa rascunho ao enviar
       toast({ title: "RELATÓRIO ENVIADO", description: "AS INFORMAÇÕES FORAM REGISTRADAS COM SUCESSO." })
+      setObservations("")
     }, 1000)
   }
 
@@ -1207,6 +1212,26 @@ export default function RelatoriosPage() {
                 )}
               </CollapsibleContent>
             </Collapsible>
+
+            {/* SEÇÃO OBSERVAÇÕES GERAIS */}
+            <div className="space-y-4 pt-4 border-t border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="bg-amber-50 p-2 rounded-xl border border-amber-100 shadow-sm">
+                  <MessageSquare className="h-5 w-5 text-amber-600" />
+                </div>
+                <div className="flex flex-col">
+                  <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Observações Gerais do Turno</h4>
+                  <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">RELATO DE OCORRÊNCIAS E ALTERAÇÕES DO SERVIÇO.</span>
+                </div>
+              </div>
+              
+              <Textarea 
+                placeholder="DESCREVA AQUI AS PRINCIPAIS OCORRÊNCIAS, ALTERAÇÕES DE EFETIVO OU OBSERVAÇÕES RELEVANTES DO TURNO..."
+                className="min-h-[150px] uppercase text-xs p-4 rounded-xl bg-slate-50/30 border-slate-200 focus:bg-white transition-all resize-none leading-relaxed"
+                value={observations}
+                onChange={(e) => setObservations(e.target.value.toUpperCase())}
+              />
+            </div>
           </CardContent>
 
           <CardFooter className="bg-slate-50 border-t p-6 flex flex-col sm:flex-row gap-4">
