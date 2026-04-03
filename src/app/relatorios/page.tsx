@@ -30,7 +30,7 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection } from '@/firebase'
-import { collection, query, orderBy } from 'firebase/firestore'
+import { collection, query, orderBy, where } from 'firebase/firestore'
 import { cn } from "@/lib/utils"
 import {
   Select,
@@ -348,7 +348,12 @@ export default function RelatoriosPage() {
   // Coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
-  const launchesRef = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
+  const launchesRef = React.useMemo(() => {
+    if (!firestore) return null;
+    const today = getSaoPauloDate();
+    // Otimização: Busca apenas lançamentos que interceptam o dia de hoje
+    return query(collection(firestore, 'launches'), where('startDate', '<=', today));
+  }, [firestore]);
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
@@ -401,7 +406,7 @@ export default function RelatoriosPage() {
     return Array.from(new Set(ids));
   }, [inspetorId, subinspetorRows]);
 
-  // Integrantes já escalados na Equipe do Dia (para evitar duplicidade de postos)
+  // Integrantes já escalados na Equipe do Dia
   const teamMemberIds = React.useMemo(() => {
     const ids: string[] = [];
     sectorBlocks.forEach(s => s.posts.forEach((p: any) => p.members.forEach((m: any) => { if (m.empId) ids.push(m.empId); })));
@@ -720,7 +725,18 @@ export default function RelatoriosPage() {
               <CollapsibleContent className="space-y-6">
                 {especialRows.map((row, index) => (
                   <div key={row.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
-                    {renderAutocomplete("Servidor", row.term, (v) => updateEspecialRow(index, { term: v }), (v) => updateEspecialRow(index, { empId: v }), row.empId, row.show, (v) => updateEspecialRow(index, { show: v }), (v) => updateEspecialRow(index, { info: v }), allEmployees || [], [...trulyAbsentIds])}
+                    {renderAutocomplete(
+                      "Servidor", 
+                      row.term, 
+                      (v) => updateEspecialRow(index, { term: v }), 
+                      (v) => updateEspecialRow(index, { empId: v }), 
+                      row.empId, 
+                      row.show, 
+                      (v) => updateEspecialRow(index, { show: v }), 
+                      (v) => updateEspecialRow(index, { info: v }), 
+                      allEmployees || [], 
+                      [...trulyAbsentIds, ...especialRows.map(r => r.empId).filter(id => id !== row.empId)]
+                    )}
                     <div className="w-full space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Escala e Turno</Label><Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" /></div>
                     <div className="w-full space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-2"><Timer className="h-3 w-3" /> Horário Especial</Label>
                       <Select value={row.periodId} onValueChange={(v) => updateEspecialRow(index, { periodId: v })}><SelectTrigger className="h-11 uppercase text-[9px] font-bold bg-white"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
