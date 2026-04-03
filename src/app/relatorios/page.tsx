@@ -282,7 +282,7 @@ export default function RelatoriosPage() {
   // Busca coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
-  const launchesRef = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
+  const allLaunchesRef = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
