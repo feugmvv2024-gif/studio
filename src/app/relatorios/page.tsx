@@ -354,13 +354,13 @@ export default function RelatoriosPage() {
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
   const { data: allLaunches } = useCollection(launchesRef);
 
-  // Períodos filtrados
+  // Períodos filtrados para Escala Especial
   const specialPeriodsList = React.useMemo(() => {
     if (!shiftPeriods) return [];
     return shiftPeriods.filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"));
   }, [shiftPeriods]);
 
-  // Afastados Hoje
+  // Afastados Hoje (Baseado na escala do Inspetor selecionado)
   const absentTodayList = React.useMemo(() => {
     if (!allLaunches || !allEmployees || !inspetorId) return [];
     
@@ -388,30 +388,33 @@ export default function RelatoriosPage() {
     })).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [allLaunches, allEmployees, inspetorId]);
 
-  // Listas de Controle
+  // Listas de Controle de Ausência Real (Somente Faltas e Afastados)
   const trulyAbsentIds = React.useMemo(() => {
     const ids = faltaRows.map(r => r.empId).filter(Boolean);
     absentTodayList.forEach(l => ids.push(l.employeeId));
     return Array.from(new Set(ids));
   }, [faltaRows, absentTodayList]);
 
+  // Equipe de Subinspetoria (Inspetor + Subs)
   const subTeamIds = React.useMemo(() => {
     const ids = [inspetorId, ...subinspetorRows.map(r => r.empId)].filter(Boolean);
     return Array.from(new Set(ids));
   }, [inspetorId, subinspetorRows]);
 
+  // Integrantes já escalados na Equipe do Dia (para evitar duplicidade de postos)
   const teamMemberIds = React.useMemo(() => {
     const ids: string[] = [];
     sectorBlocks.forEach(s => s.posts.forEach((p: any) => p.members.forEach((m: any) => { if (m.empId) ids.push(m.empId); })));
     return Array.from(new Set(ids));
   }, [sectorBlocks]);
 
+  // Chefias disponíveis para os setores (Apenas quem está na Subinspetoria)
   const availableChiefsForSectors = React.useMemo(() => {
     if (!allEmployees) return [];
     return allEmployees.filter(emp => subTeamIds.includes(emp.id));
   }, [allEmployees, subTeamIds]);
 
-  // Verificações
+  // Verificações de Preenchimento
   const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.empId), [subinspetorRows]);
   const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.empId), [faltaRows]);
   const especialFilled = React.useMemo(() => especialRows.some(r => !!r.empId), [especialRows]);
@@ -752,10 +755,17 @@ export default function RelatoriosPage() {
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 bg-white p-3 rounded-xl border border-dashed items-end">
                       <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
                         <Select value={sector.sectorType} onValueChange={(v) => updateSectorBlock(sIdx, { sectorType: v })}><SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                          <SelectContent><SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem><SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem><SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem><SelectItem value="COVV" className="uppercase text-xs font-bold">COVV</SelectItem></SelectContent>
+                          <SelectContent>
+                            <SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem>
+                            <SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem>
+                            <SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem>
+                            <SelectItem value="COVV" className="uppercase text-xs font-bold">COVV</SelectItem>
+                          </SelectContent>
                         </Select>
                       </div>
-                      <div className="w-full">{renderAutocomplete("Chefia Responsável", sector.chiefData.term, (v) => updateSectorChiefData(sIdx, { term: v }), (v) => updateSectorChiefData(sIdx, { id: v }), sector.chiefData.id, sector.chiefData.show, (v) => updateSectorChiefData(sIdx, { show: v }), (v) => updateSectorChiefData(sIdx, { info: v }), availableChiefsForSectors, sectorBlocks.filter((_, i) => i !== sIdx).map(s => s.chiefData.id).filter(Boolean))}</div>
+                      <div className="w-full">
+                        {renderAutocomplete("Chefia Responsável", sector.chiefData.term, (v) => updateSectorChiefData(sIdx, { term: v }), (v) => updateSectorChiefData(sIdx, { id: v }), sector.chiefData.id, sector.chiefData.show, (v) => updateSectorChiefData(sIdx, { show: v }), (v) => updateSectorChiefData(sIdx, { info: v }), availableChiefsForSectors, sectorBlocks.filter((_, i) => i !== sIdx).map(s => s.chiefData.id).filter(Boolean))}
+                      </div>
                       <Button type="button" variant="ghost" size="icon" onClick={() => removeSectorBlock(sIdx)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                     </div>
                     <div className="space-y-2">
@@ -775,23 +785,37 @@ export default function RelatoriosPage() {
                               </div>
                             </div>
                             <div className={cn("grid gap-2 pt-1", isVTR ? "grid-cols-1 md:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
-                              {isVTR && (<div className="space-y-1.5 animate-in zoom-in-95 duration-300"><Label className="text-[9px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-1.5"><Car className="h-3 w-3" /> VTR nº</Label><Input placeholder="001" className="h-11 uppercase font-bold text-xs bg-blue-50/30 border-blue-100 focus:bg-white" value={post.vtrNumber || ""} onChange={(e) => { const newPosts = [...sector.posts]; newPosts[pIdx].vtrNumber = e.target.value.toUpperCase(); updateSectorBlock(sIdx, { posts: newPosts }); }} /></div>)}
+                              {isVTR && (
+                                <div className="space-y-1.5 animate-in zoom-in-95 duration-300">
+                                  <Label className="text-[9px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-1.5"><Car className="h-3 w-3" /> VTR nº</Label>
+                                  <Input placeholder="001" className="h-11 uppercase font-bold text-xs bg-blue-50/30 border-blue-100 focus:bg-white" value={post.vtrNumber || ""} onChange={(e) => { const newPosts = [...sector.posts]; newPosts[pIdx].vtrNumber = e.target.value.toUpperCase(); updateSectorBlock(sIdx, { posts: newPosts }); }} />
+                                </div>
+                              )}
                               {post.members.map((member: any, mIdx: number) => (
                                 <div key={member.id} className={cn("flex flex-col gap-2 p-2 rounded-lg border border-slate-100 bg-white/80 shadow-sm animate-in fade-in slide-in-from-left-2 duration-200", isVTR && "border-blue-100")}>
                                   <div className="flex gap-2 items-end">
-                                    <div className="flex-1">{renderAutocomplete(`Servidor ${mIdx + 1}`, member.term, (v) => updateMemberInPost(sIdx, pIdx, mIdx, { term: v }), (v) => updateMemberInPost(sIdx, pIdx, mIdx, { empId: v }), member.empId, member.show, (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }), () => {}, allEmployees || [], [...trulyAbsentIds, ...teamMemberIds.filter(id => id !== member.empId)], false, 'qra')}</div>
+                                    <div className="flex-1">
+                                      {renderAutocomplete(`Servidor ${mIdx + 1}`, member.term, (v) => updateMemberInPost(sIdx, pIdx, mIdx, { term: v }), (v) => updateMemberInPost(sIdx, pIdx, mIdx, { empId: v }), member.empId, member.show, (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }), () => {}, allEmployees || [], [...trulyAbsentIds, ...teamMemberIds.filter(id => id !== member.empId)], false, 'qra')}
+                                    </div>
                                     {post.members.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeMemberFromPost(sIdx, pIdx, mIdx)} className="h-11 w-11 text-destructive/50 hover:text-destructive rounded-xl"><Trash2 className="h-3.5 w-3.5" /></Button>}
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </div>
-                        ))}
-                      <div className="flex justify-start"><Button type="button" variant="ghost" size="sm" onClick={() => addPostToSector(sIdx)} className="h-6 text-[9px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5"><Plus className="h-3.5 w-3.5" /> ADICIONAR POSTO</Button></div>
+                        );
+                      })}
+                      <div className="flex justify-start">
+                        <Button type="button" variant="ghost" size="sm" onClick={() => addPostToSector(sIdx)} className="h-6 text-[9px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5"><Plus className="h-3.5 w-3.5" /> ADICIONAR POSTO</Button>
+                      </div>
                     </div>
                   </div>
                 ))}
-                {sectorBlocks.length === 0 && (<div className="text-center py-12 border-2 border-dashed rounded-2xl bg-slate-50/50"><p className="uppercase text-[10px] font-black text-muted-foreground tracking-widest">Nenhuma equipe configurada.</p></div>)}
+                {sectorBlocks.length === 0 && (
+                  <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-slate-50/50">
+                    <p className="uppercase text-[10px] font-black text-muted-foreground tracking-widest">Nenhuma equipe configurada.</p>
+                  </div>
+                )}
               </CollapsibleContent>
             </Collapsible>
 
