@@ -17,13 +17,11 @@ import {
   ChevronDown,
   ChevronUp,
   History,
-  Info,
   Star,
   Timer,
   Users,
   Car,
   Save,
-  AlertTriangle,
   MessageSquare
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
@@ -122,7 +120,6 @@ export default function RelatoriosPage() {
     setDefaultDate(getSaoPauloDate());
     setDefaultTime(getSaoPauloTime());
 
-    // Verifica rascunho ao carregar
     const saved = localStorage.getItem('nrg_relatorio_draft');
     if (saved) {
       try {
@@ -191,10 +188,7 @@ export default function RelatoriosPage() {
       observations
     };
     localStorage.setItem('nrg_relatorio_draft', JSON.stringify(draft));
-    toast({ 
-      title: "RASCUNHO SALVO", 
-      description: "As informações foram guardadas no seu navegador com sucesso." 
-    });
+    toast({ title: "RASCUNHO SALVO", description: "As informações foram guardadas no seu navegador." });
   };
 
   const handleLoadDraft = () => {
@@ -210,9 +204,8 @@ export default function RelatoriosPage() {
       setEspecialRows(tempDraft.especialRows || [{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
       setSectorBlocks(tempDraft.sectorBlocks || []);
       setObservations(tempDraft.observations || "");
-      
       setIsDraftDialogOpen(false);
-      toast({ title: "RASCUNHO CARREGADO", description: "Os dados foram restaurados." });
+      toast({ title: "RASCUNHO CARREGADO" });
     }
   };
 
@@ -264,7 +257,7 @@ export default function RelatoriosPage() {
     });
   };
 
-  // FUNÇÕES DE MANIPULAÇÃO DA EQUIPE
+  // Funções de Equipe
   const addSectorBlock = () => {
     setSectorBlocks([...sectorBlocks, {
       id: generateId(),
@@ -323,11 +316,7 @@ export default function RelatoriosPage() {
     const limit = isVTR ? 4 : 15;
 
     if (post.members.length >= limit) {
-      toast({ 
-        variant: "destructive", 
-        title: "LIMITE ATINGIDO", 
-        description: `MÁXIMO DE ${limit} SERVIDORES PARA ESTE POSTO (${post.type}).` 
-      });
+      toast({ variant: "destructive", title: "LIMITE ATINGIDO", description: `MÁXIMO DE ${limit} SERVIDORES PARA ESTE POSTO.` });
       return;
     }
     post.members.push({ id: generateId(), empId: "", term: "", show: false });
@@ -356,22 +345,22 @@ export default function RelatoriosPage() {
     });
   };
 
-  // Busca coleções
+  // Coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
-  const allLaunchesRef_ = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
+  const launchesRef = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
-  const { data: allLaunches } = useCollection(allLaunchesRef_);
+  const { data: allLaunches } = useCollection(launchesRef);
 
-  // Períodos filtrados para Escala Especial
+  // Períodos filtrados
   const specialPeriodsList = React.useMemo(() => {
     if (!shiftPeriods) return [];
     return shiftPeriods.filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"));
   }, [shiftPeriods]);
 
-  // Lista de Afastados Hoje (Automatizada e Filtrada por Inspetor)
+  // Afastados Hoje
   const absentTodayList = React.useMemo(() => {
     if (!allLaunches || !allEmployees || !inspetorId) return [];
     
@@ -393,77 +382,59 @@ export default function RelatoriosPage() {
       const isOrdinario = normalizeStr(emp.escala || "") === "ORDINARIO";
 
       return isSameShiftAndSchedule || isOrdinario;
-    }).map(l => {
-      const emp = allEmployees.find(e => e.id === l.employeeId);
-      return {
-        ...l,
-        unit: emp?.unit || "N/A"
-      };
-    }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
+    }).map(l => ({
+      ...l,
+      unit: allEmployees.find(e => e.id === l.employeeId)?.unit || "N/A"
+    })).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [allLaunches, allEmployees, inspetorId]);
 
-  // IDs realmente indisponíveis (Faltas manuais + Afastados de sistema)
+  // Listas de Controle
   const trulyAbsentIds = React.useMemo(() => {
     const ids = faltaRows.map(r => r.empId).filter(Boolean);
     absentTodayList.forEach(l => ids.push(l.employeeId));
     return Array.from(new Set(ids));
   }, [faltaRows, absentTodayList]);
 
-  // IDs na Subinspetoria
   const subTeamIds = React.useMemo(() => {
     const ids = [inspetorId, ...subinspetorRows.map(r => r.empId)].filter(Boolean);
     return Array.from(new Set(ids));
   }, [inspetorId, subinspetorRows]);
 
-  // IDs na Equipe do Dia (para evitar duplicidade interna na própria equipe)
   const teamMemberIds = React.useMemo(() => {
     const ids: string[] = [];
-    sectorBlocks.forEach(s => {
-      s.posts.forEach((p: any) => {
-        p.members.forEach((m: any) => {
-          if (m.empId) ids.push(m.empId);
-        });
-      });
-    });
+    sectorBlocks.forEach(s => s.posts.forEach((p: any) => p.members.forEach((m: any) => { if (m.empId) ids.push(m.empId); })));
     return Array.from(new Set(ids));
   }, [sectorBlocks]);
 
-  // Lista de Chefias Disponíveis para Setores (Apenas quem está na Subinspetoria)
   const availableChiefsForSectors = React.useMemo(() => {
     if (!allEmployees) return [];
-    const validChiefIds = subTeamIds;
-    if (validChiefIds.length === 0) return [];
-    return allEmployees.filter(emp => validChiefIds.includes(emp.id));
+    return allEmployees.filter(emp => subTeamIds.includes(emp.id));
   }, [allEmployees, subTeamIds]);
 
-  // Verificação de preenchimento
+  // Verificações
   const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.empId), [subinspetorRows]);
   const absencesFilled = React.useMemo(() => faltaRows.some(r => !!r.empId), [faltaRows]);
   const especialFilled = React.useMemo(() => especialRows.some(r => !!r.empId), [especialRows]);
   const teamFilled = React.useMemo(() => sectorBlocks.some(s => s.sectorType && s.posts.some((p: any) => p.members.some((m: any) => !!m.empId))), [sectorBlocks]);
   const afastadosFilled = absentTodayList.length > 0;
 
-  // Filtra chefia geral
   const chefiaList = React.useMemo(() => {
     if (!allEmployees) return [];
     const allowedRoles = ["INSPETOR", "SUBINSPETOR", "INSPETOR GERAL", "COMANDANTE"];
-    return allEmployees.filter(emp => {
-      const role = normalizeStr(emp.role || "");
-      return allowedRoles.some(allowed => role === allowed);
-    });
+    return allEmployees.filter(emp => allowedRoles.includes(normalizeStr(emp.role || "")));
   }, [allEmployees]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!inspetorId || !selectedEscalaId) {
-      toast({ variant: "destructive", title: "DADOS INCOMPLETOS", description: "POR FAVOR, SELECIONE O INSPETOR E A ESCALA." })
+      toast({ variant: "destructive", title: "DADOS INCOMPLETOS", description: "SELECIONE O INSPETOR E A ESCALA." })
       return
     }
     setLoading(true)
     setTimeout(() => {
       setLoading(false)
-      localStorage.removeItem('nrg_relatorio_draft'); // Limpa rascunho ao enviar
-      toast({ title: "RELATÓRIO ENVIADO", description: "AS INFORMAÇÕES FORAM REGISTRADAS COM SUCESSO." })
+      localStorage.removeItem('nrg_relatorio_draft');
+      toast({ title: "RELATÓRIO ENVIADO" })
       setObservations("")
     }, 1000)
   }
@@ -483,8 +454,7 @@ export default function RelatoriosPage() {
     displayType: 'full' | 'qra' = 'full'
   ) => {
     const filtered = sourceList.filter(e => 
-      (normalizeStr(e.name).includes(normalizeStr(term)) || 
-      normalizeStr(e.qra).includes(normalizeStr(term))) &&
+      (normalizeStr(e.name).includes(normalizeStr(term)) || normalizeStr(e.qra).includes(normalizeStr(term))) &&
       (!excludeIds.includes(e.id) || e.id === id)
     );
 
@@ -495,17 +465,14 @@ export default function RelatoriosPage() {
         </Label>
         <div className="relative">
           <Input 
-            placeholder={`BUSCAR ${label.toUpperCase()}...`} 
+            placeholder={`BUSCAR...`} 
             className="h-11 uppercase font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors pr-10" 
             value={term}
             onChange={(e) => {
               const val = e.target.value.toUpperCase();
               setTerm(val);
               setShow(true);
-              if (!val) {
-                setId("");
-                setInfo("");
-              }
+              if (!val) { setId(""); setInfo(""); }
             }}
             onFocus={() => setShow(true)}
             required={!isOptional}
@@ -541,9 +508,7 @@ export default function RelatoriosPage() {
                 </button>
               ))
             ) : (
-              <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">
-                Servidor indisponível ou não encontrado.
-              </div>
+              <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">Nenhum servidor disponível.</div>
             )}
           </div>
         )}
@@ -554,7 +519,7 @@ export default function RelatoriosPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
-      {/* DIÁLOGO DE RASCUNHO */}
+      {/* DIÁLOGO RASCUNHO */}
       <AlertDialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
@@ -563,11 +528,11 @@ export default function RelatoriosPage() {
             </div>
             <AlertDialogTitle className="uppercase text-xl font-black">Rascunho Identificado</AlertDialogTitle>
             <AlertDialogDescription className="uppercase text-[10px] font-bold text-muted-foreground leading-relaxed">
-              EXISTE UM RELATÓRIO SALVO NO SEU NAVEGADOR. DESEJA CARREGAR AS INFORMAÇÕES OU INICIAR UM NOVO?
+              EXISTE UM RELATÓRIO SALVO NO NAVEGADOR. DESEJA CARREGAR OU INICIAR UM NOVO?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 gap-2">
-            <AlertDialogCancel onClick={handleDiscardDraft} className="h-12 uppercase font-black text-xs tracking-widest border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700">DESCARTAR</AlertDialogCancel>
+            <AlertDialogCancel onClick={handleDiscardDraft} className="h-12 uppercase font-black text-xs tracking-widest border-red-100 text-red-600 hover:bg-red-50">DESCARTAR</AlertDialogCancel>
             <AlertDialogAction onClick={handleLoadDraft} className="h-12 uppercase font-black text-xs tracking-widest bg-amber-600 hover:bg-amber-700 shadow-xl shadow-amber-100">CARREGAR RASCUNHO</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
@@ -575,9 +540,7 @@ export default function RelatoriosPage() {
 
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
-          <div className="bg-blue-50 p-2 rounded-xl">
-            <FileText className="h-6 w-6 text-blue-600" />
-          </div>
+          <div className="bg-blue-50 p-2 rounded-xl"><FileText className="h-6 w-6 text-blue-600" /></div>
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">RELATÓRIO SUBINSPETORIA</h2>
             <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">NÚCLEO DE REGISTRO E GESTÃO - NRG GMVV</p>
@@ -590,8 +553,8 @@ export default function RelatoriosPage() {
           <CardHeader className="bg-primary/5 border-b p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">RELATÓRIO SUBINSPETORIA - NRG GMVV</CardTitle>
-                <CardDescription className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Preenchimento obrigatório para registro de atividade de turno.</CardDescription>
+                <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">RELATÓRIO OPERACIONAL</CardTitle>
+                <CardDescription className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Preenchimento obrigatório para registro de atividade.</CardDescription>
               </div>
               <div className="bg-white/50 px-4 py-2 rounded-xl border border-primary/10 flex items-center gap-3 shrink-0">
                 <ShieldCheck className="h-5 w-5 text-primary" />
@@ -601,89 +564,41 @@ export default function RelatoriosPage() {
           </CardHeader>
           
           <CardContent className="p-6 space-y-10">
-            {/* LINHA 1: DATA, HORÁRIO, ESCALA */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                  <Calendar className="h-3 w-3" /> Data
-                </Label>
-                <input 
-                  type="date" 
-                  value={defaultDate}
-                  onChange={(e) => setDefaultDate(e.target.value)}
-                  className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none" 
-                  required
-                />
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Calendar className="h-3 w-3" /> Data</Label>
+                <input type="date" value={defaultDate} onChange={(e) => setDefaultDate(e.target.value)} className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none" required />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                  <Clock className="h-3 w-3" /> Horário
-                </Label>
-                <input 
-                  type="time" 
-                  value={defaultTime}
-                  onChange={(e) => setDefaultTime(e.target.value)}
-                  className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none" 
-                  required
-                />
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Clock className="h-3 w-3" /> Horário</Label>
+                <input type="time" value={defaultTime} onChange={(e) => setDefaultTime(e.target.value)} className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none" required />
               </div>
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                  <Briefcase className="h-3 w-3" /> Escala de Serviço
-                </Label>
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Briefcase className="h-3 w-3" /> Escala de Serviço</Label>
                 <Select value={selectedEscalaId} onValueChange={setSelectedEscalaId} required>
-                  <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
-                    <SelectValue placeholder="SELECIONE A ESCALA..." />
-                  </SelectTrigger>
+                  <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
                   <SelectContent>
                     {shiftPeriods?.map((p: any) => (
-                      <SelectItem key={p.id} value={p.id} className="uppercase text-xs font-bold">
-                        {p.escalaName} ({p.startTime} ÀS {p.endTime})
-                      </SelectItem>
+                      <SelectItem key={p.id} value={p.id} className="uppercase text-xs font-bold">{p.escalaName} ({p.startTime} ÀS {p.endTime})</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* LINHA 2: INSPETOR (FIXO) */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {renderAutocomplete(
-                "Inspetor / Responsável", 
-                inspetorTerm, 
-                setInspetorTerm, 
-                setInspetorId, 
-                inspetorId, 
-                showInspetorSuggestions, 
-                setShowInspetorSuggestions,
-                setInspetorInfo,
-                chefiaList,
-                [...trulyAbsentIds, ...subTeamIds.filter(id => id !== inspetorId)]
-              )}
+              {renderAutocomplete("Inspetor / Responsável", inspetorTerm, setInspetorTerm, setInspetorId, inspetorId, showInspetorSuggestions, setShowInspetorSuggestions, setInspetorInfo, chefiaList, [...trulyAbsentIds, ...subTeamIds.filter(id => id !== inspetorId)])}
               <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                  Escala e Turno (Inspetor)
-                </Label>
-                <Input 
-                  value={inspetorInfo}
-                  readOnly 
-                  placeholder="--"
-                  className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
-                />
+                <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">Escala e Turno (Inspetor)</Label>
+                <Input value={inspetorInfo} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" />
               </div>
             </div>
 
-            {/* SEÇÃO SUBINSPETORES DINÂMICOS */}
             <Collapsible open={isSubTeamOpen} onOpenChange={setIsSubTeamOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
-                    <button type="button" className={cn(
-                      "p-2 rounded-xl transition-colors border shadow-sm",
-                      subTeamFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
-                    )}>
-                      <User className="h-5 w-5" />
-                    </button>
+                    <button type="button" className={cn("p-2 rounded-xl transition-colors border shadow-sm", subTeamFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100")}><User className="h-5 w-5" /></button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
                     <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Equipe de Subinspetoria</h4>
@@ -691,166 +606,67 @@ export default function RelatoriosPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={addSubinspetorRow}
-                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> ADICIONAR SUBINSPETOR
-                  </Button>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                      {isSubTeamOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </CollapsibleTrigger>
+                  <Button type="button" variant="outline" size="sm" onClick={addSubinspetorRow} className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"><Plus className="h-3.5 w-3.5" /> ADICIONAR</Button>
+                  <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">{isSubTeamOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button></CollapsibleTrigger>
                 </div>
               </div>
-              
               <CollapsibleContent className="space-y-4">
                 {subinspetorRows.map((row, index) => (
                   <div key={row.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="w-full">
-                      {renderAutocomplete(
-                        "Subinspetor", 
-                        row.term, 
-                        (v) => updateSubinspetorRow(index, { term: v }), 
-                        (v) => updateSubinspetorRow(index, { empId: v }), 
-                        row.empId, 
-                        row.show, 
-                        (v) => updateSubinspetorRow(index, { show: v }),
-                        (v) => updateSubinspetorRow(index, { info: v }),
-                        chefiaList,
-                        [...trulyAbsentIds, ...subTeamIds.filter(id => id !== row.empId)]
-                      )}
-                    </div>
+                    {renderAutocomplete("Subinspetor", row.term, (v) => updateSubinspetorRow(index, { term: v }), (v) => updateSubinspetorRow(index, { empId: v }), row.empId, row.show, (v) => updateSubinspetorRow(index, { show: v }), (v) => updateSubinspetorRow(index, { info: v }), chefiaList, [...trulyAbsentIds, ...subTeamIds.filter(id => id !== row.empId)])}
                     <div className="w-full space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                        Escala e Turno (Subinspetor)
-                      </Label>
-                      <Input 
-                        value={row.info}
-                        readOnly 
-                        placeholder="--"
-                        className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
-                      />
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">Escala e Turno (Subinspetor)</Label>
+                      <Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" />
                     </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => removeSubinspetorRow(index)}
-                      className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeSubinspetorRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO FALTAS */}
             <Collapsible open={isAbsencesOpen} onOpenChange={setIsAbsencesOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
-                    <button type="button" className={cn(
-                      "p-2 rounded-xl transition-colors border shadow-sm",
-                      absencesFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
-                    )}>
-                      <UserX className="h-5 w-5" />
-                    </button>
+                    <button type="button" className={cn("p-2 rounded-xl transition-colors border shadow-sm", absencesFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100")}><UserX className="h-5 w-5" /></button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
                     <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Faltas</h4>
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{absencesFilled ? "SESSÃO PREENCHIDA" : "NENHUMA FALTA REGISTRADA"}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{absencesFilled ? "SESSÃO PREENCHIDA" : "NENHUMA FALTA"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={addFaltaRow}
-                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> ADICIONAR FALTA
-                  </Button>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                      {isAbsencesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </CollapsibleTrigger>
+                  <Button type="button" variant="outline" size="sm" onClick={addFaltaRow} className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-red-200 text-red-600 hover:bg-red-50"><Plus className="h-3.5 w-3.5" /> ADICIONAR</Button>
+                  <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">{isAbsencesOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button></CollapsibleTrigger>
                 </div>
               </div>
-              
               <CollapsibleContent className="space-y-4">
                 {faltaRows.map((row, index) => (
                   <div key={row.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
-                    <div className="w-full">
-                      {renderAutocomplete(
-                        "Servidor (Falta)", 
-                        row.term, 
-                        (v) => updateFaltaRow(index, { term: v }), 
-                        (v) => updateFaltaRow(index, { empId: v }), 
-                        row.empId, 
-                        row.show, 
-                        (v) => updateFaltaRow(index, { show: v }),
-                        (v) => updateFaltaRow(index, { info: v }),
-                        allEmployees || [],
-                        [...trulyAbsentIds.filter(id => id !== row.empId), ...subTeamIds, ...teamMemberIds]
-                      )}
-                    </div>
+                    {renderAutocomplete("Servidor (Falta)", row.term, (v) => updateFaltaRow(index, { term: v }), (v) => updateFaltaRow(index, { empId: v }), row.empId, row.show, (v) => updateFaltaRow(index, { show: v }), (v) => updateFaltaRow(index, { info: v }), allEmployees || [], [...trulyAbsentIds.filter(id => id !== row.empId), ...subTeamIds, ...teamMemberIds])}
                     <div className="w-full space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
-                        Escala e Turno (Servidor)
-                      </Label>
-                      <Input 
-                        value={row.info}
-                        readOnly 
-                        placeholder="--"
-                        className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" 
-                      />
+                      <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">Escala e Turno (Servidor)</Label>
+                      <Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" />
                     </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => removeFaltaRow(index)}
-                      className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeFaltaRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO AFASTAMENTOS E FOLGAS */}
             <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
-                    <button type="button" className={cn(
-                      "p-2 rounded-xl transition-colors border shadow-sm",
-                      afastadosFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
-                    )}>
-                      <History className="h-5 w-5" />
-                    </button>
+                    <button type="button" className={cn("p-2 rounded-xl transition-colors border shadow-sm", afastadosFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100")}><History className="h-5 w-5" /></button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
                     <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Afastamentos / Folgas (Hoje)</h4>
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{afastadosFilled ? "REGISTROS ENCONTRADOS" : "NENHUM REGISTRO NO SISTEMA"}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{afastadosFilled ? "REGISTROS ENCONTRADOS" : "NENHUM REGISTRO"}</span>
                   </div>
                 </div>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                    {isAfastadosOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                  </Button>
-                </CollapsibleTrigger>
+                <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">{isAfastadosOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button></CollapsibleTrigger>
               </div>
-              
               <CollapsibleContent className="space-y-4">
                 <div className="overflow-x-auto border rounded-xl bg-white shadow-sm overflow-hidden">
                   <Table>
@@ -865,37 +681,15 @@ export default function RelatoriosPage() {
                     </TableHeader>
                     <TableBody>
                       {absentTodayList.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-12">
-                            <span className="uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">NENHUM REGISTRO PARA ESTE TURNO HOJE.</span>
-                          </TableCell>
-                        </TableRow>
+                        <TableRow><TableCell colSpan={5} className="text-center py-12 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">Nenhum registro para hoje.</TableCell></TableRow>
                       ) : (
                         absentTodayList.map((item) => (
                           <TableRow key={item.id} className="hover:bg-slate-50/50">
-                            <TableCell className="py-3">
-                              <div className="flex flex-col">
-                                <span className="font-black uppercase text-[12px] text-slate-900 leading-tight">{item.employeeQra}</span>
-                                <span className="text-[10px] uppercase text-muted-foreground font-medium">{item.employeeName}</span>
-                              </div>
-                            </TableCell>
+                            <TableCell className="py-3"><div className="flex flex-col"><span className="font-black uppercase text-[12px] text-slate-900 leading-tight">{item.employeeQra}</span><span className="text-[10px] uppercase text-muted-foreground font-medium">{item.employeeName}</span></div></TableCell>
                             <TableCell className="text-[11px] font-bold uppercase text-slate-700">{item.escala} / {item.turno}</TableCell>
                             <TableCell><Badge variant="secondary" className="text-[9px] uppercase font-bold bg-slate-100 text-slate-600 px-2 py-0">{item.unit}</Badge></TableCell>
-                            <TableCell>
-                              <Badge className={cn(
-                                "text-[9px] uppercase font-black border-none px-3 h-6",
-                                normalizeStr(item.type).includes("FERIAS") ? "bg-blue-600 text-white" :
-                                normalizeStr(item.type).includes("LICENCA") ? "bg-purple-600 text-white" :
-                                normalizeStr(item.type).includes("ATESTADO") ? "bg-red-600 text-white" :
-                                "bg-orange-500 text-white"
-                              )}>{item.type}</Badge>
-                            </TableCell>
-                            <TableCell className="text-center">
-                              <div className="flex items-center justify-center gap-1.5">
-                                <Calendar className="h-3 w-3 text-muted-foreground" />
-                                <span className="text-[11px] font-black font-mono text-slate-900">{formatDateBR(item.endDate)}</span>
-                              </div>
-                            </TableCell>
+                            <TableCell><Badge className={cn("text-[9px] uppercase font-black border-none px-3 h-6", normalizeStr(item.type).includes("FERIAS") ? "bg-blue-600 text-white" : normalizeStr(item.type).includes("LICENCA") ? "bg-purple-600 text-white" : normalizeStr(item.type).includes("ATESTADO") ? "bg-red-600 text-white" : "bg-orange-500 text-white")}>{item.type}</Badge></TableCell>
+                            <TableCell className="text-center"><div className="flex items-center justify-center gap-1.5"><Calendar className="h-3 w-3 text-muted-foreground" /><span className="text-[11px] font-black font-mono text-slate-900">{formatDateBR(item.endDate)}</span></div></TableCell>
                           </TableRow>
                         ))
                       )}
@@ -905,104 +699,43 @@ export default function RelatoriosPage() {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO ESCALA ESPECIAL */}
             <Collapsible open={isEspecialOpen} onOpenChange={setIsEspecialOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
-                    <button type="button" className={cn(
-                      "p-2 rounded-xl transition-colors border shadow-sm",
-                      especialFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
-                    )}>
-                      <Star className="h-5 w-5" />
-                    </button>
+                    <button type="button" className={cn("p-2 rounded-xl transition-colors border shadow-sm", especialFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100")}><Star className="h-5 w-5" /></button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
                     <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Escala Especial</h4>
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{especialFilled ? "SESSÃO PREENCHIDA" : "NENHUM SERVIDOR EM EXTRA"}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{especialFilled ? "SESSÃO PREENCHIDA" : "NENHUM SERVIDOR"}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={addEspecialRow}
-                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> ADICIONAR SERVIDOR
-                  </Button>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                      {isEspecialOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </CollapsibleTrigger>
+                  <Button type="button" variant="outline" size="sm" onClick={addEspecialRow} className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"><Plus className="h-3.5 w-3.5" /> ADICIONAR</Button>
+                  <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">{isEspecialOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button></CollapsibleTrigger>
                 </div>
               </div>
-              
               <CollapsibleContent className="space-y-6">
                 {especialRows.map((row, index) => (
                   <div key={row.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300 bg-slate-50/30 p-4 rounded-xl border border-dashed border-slate-200">
-                    <div className="w-full">
-                      {renderAutocomplete(
-                        "Servidor", 
-                        row.term, 
-                        (v) => updateEspecialRow(index, { term: v }), 
-                        (v) => updateEspecialRow(index, { empId: v }), 
-                        row.empId, 
-                        row.show, 
-                        (v) => updateEspecialRow(index, { show: v }),
-                        (v) => updateEspecialRow(index, { info: v }),
-                        allEmployees || [],
-                        [...trulyAbsentIds]
-                      )}
-                    </div>
-                    <div className="w-full space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground">Escala e Turno (Original)</Label>
-                      <Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" />
-                    </div>
-                    <div className="w-full space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-2">
-                        <Timer className="h-3 w-3" /> Período Escala Especial
-                      </Label>
-                      <Select value={row.periodId} onValueChange={(v) => updateEspecialRow(index, { periodId: v })}>
-                        <SelectTrigger className="h-11 uppercase text-[9px] font-bold bg-white">
-                          <SelectValue placeholder="SELECIONE O HORÁRIO..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {specialPeriodsList.map((p: any) => (
-                            <SelectItem key={p.id} value={p.id} className="uppercase text-[9px] font-bold">
-                              {p.escalaName} ({p.startTime} ÀS {p.endTime})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
+                    {renderAutocomplete("Servidor", row.term, (v) => updateEspecialRow(index, { term: v }), (v) => updateEspecialRow(index, { empId: v }), row.empId, row.show, (v) => updateEspecialRow(index, { show: v }), (v) => updateEspecialRow(index, { info: v }), allEmployees || [], [...trulyAbsentIds])}
+                    <div className="w-full space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Escala e Turno</Label><Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" /></div>
+                    <div className="w-full space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-2"><Timer className="h-3 w-3" /> Horário Especial</Label>
+                      <Select value={row.periodId} onValueChange={(v) => updateEspecialRow(index, { periodId: v })}><SelectTrigger className="h-11 uppercase text-[9px] font-bold bg-white"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+                        <SelectContent>{specialPeriodsList.map((p: any) => (<SelectItem key={p.id} value={p.id} className="uppercase text-[9px] font-bold">{p.escalaName} ({p.startTime} ÀS {p.endTime})</SelectItem>))}</SelectContent>
                       </Select>
                     </div>
-                    <Button 
-                      type="button" 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => removeEspecialRow(index)}
-                      className="h-11 w-11 text-destructive hover:bg-red-50 hover:text-red-600 rounded-xl shrink-0"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <Button type="button" variant="ghost" size="icon" onClick={() => removeEspecialRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                   </div>
                 ))}
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO EQUIPE DO DIA */}
             <Collapsible open={isTeamOpen} onOpenChange={setIsTeamOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
                   <CollapsibleTrigger asChild>
-                    <button type="button" className={cn(
-                      "p-2 rounded-xl transition-colors border shadow-sm",
-                      teamFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100"
-                    )}>
-                      <Users className="h-5 w-5" />
-                    </button>
+                    <button type="button" className={cn("p-2 rounded-xl transition-colors border shadow-sm", teamFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100")}><Users className="h-5 w-5" /></button>
                   </CollapsibleTrigger>
                   <div className="flex flex-col">
                     <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Equipe do Dia</h4>
@@ -1010,248 +743,71 @@ export default function RelatoriosPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={addSectorBlock}
-                    className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"
-                  >
-                    <Plus className="h-3.5 w-3.5" /> ADICIONAR NOVO BLOCO (SETOR)
-                  </Button>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">
-                      {isTeamOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                    </Button>
-                  </CollapsibleTrigger>
+                  <Button type="button" variant="outline" size="sm" onClick={addSectorBlock} className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"><Plus className="h-3.5 w-3.5" /> ADICIONAR BLOCO</Button>
+                  <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">{isTeamOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button></CollapsibleTrigger>
                 </div>
               </div>
-              
               <CollapsibleContent className="space-y-6">
                 {sectorBlocks.map((sector, sIdx) => (
                   <div key={sector.id} className="relative p-3 rounded-xl border-2 border-slate-100 bg-slate-50/20 space-y-4 animate-in zoom-in-95 duration-300">
-                    
-                    {/* CABEÇALHO DO SETOR */}
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 bg-white p-3 rounded-xl border border-dashed items-end">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
-                        <Select value={sector.sectorType} onValueChange={(v) => updateSectorBlock(sIdx, { sectorType: v })}>
-                          <SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50">
-                            <SelectValue placeholder="SELECIONE O SETOR..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem>
-                            <SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem>
-                            <SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem>
-                            <SelectItem value="COVV" className="uppercase text-xs font-bold">COVV</SelectItem>
-                          </SelectContent>
+                      <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
+                        <Select value={sector.sectorType} onValueChange={(v) => updateSectorBlock(sIdx, { sectorType: v })}><SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+                          <SelectContent><SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem><SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem><SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem><SelectItem value="COVV" className="uppercase text-xs font-bold">COVV</SelectItem></SelectContent>
                         </Select>
                       </div>
-                      <div className="w-full">
-                        {renderAutocomplete(
-                          "Chefia Responsável", 
-                          sector.chiefData.term, 
-                          (v) => updateSectorChiefData(sIdx, { term: v }), 
-                          (v) => updateSectorChiefData(sIdx, { id: v }), 
-                          sector.chiefData.id, 
-                          sector.chiefData.show, 
-                          (v) => updateSectorChiefData(sIdx, { show: v }),
-                          (v) => updateSectorChiefData(sIdx, { info: v }),
-                          availableChiefsForSectors,
-                          sectorBlocks.filter((_, i) => i !== sIdx).map(s => s.chiefData.id).filter(Boolean)
-                        )}
-                      </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeSectorBlock(sIdx)}
-                        className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+                      <div className="w-full">{renderAutocomplete("Chefia Responsável", sector.chiefData.term, (v) => updateSectorChiefData(sIdx, { term: v }), (v) => updateSectorChiefData(sIdx, { id: v }), sector.chiefData.id, sector.chiefData.show, (v) => updateSectorChiefData(sIdx, { show: v }), (v) => updateSectorChiefData(sIdx, { info: v }), availableChiefsForSectors, sectorBlocks.filter((_, i) => i !== sIdx).map(s => s.chiefData.id).filter(Boolean))}</div>
+                      <Button type="button" variant="ghost" size="icon" onClick={() => removeSectorBlock(sIdx)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                     </div>
-
-                    {/* LISTA DE POSTOS DENTRO DO SETOR */}
                     <div className="space-y-2">
                       {sector.posts.map((post: any, pIdx: number) => {
                         const isVTR = post.type === "VTR";
-                        const memberLimit = isVTR ? 4 : 15;
-
                         return (
                           <div key={post.id} className="space-y-2 bg-white/50 p-3 rounded-xl border border-slate-100 shadow-sm">
                             <div className="flex flex-col md:flex-row items-stretch md:items-end gap-4">
-                              <div className="flex-1 space-y-1.5">
-                                <Label className="text-[9px] font-bold uppercase text-muted-foreground">Posto / Serviço</Label>
-                                <Select value={post.type} onValueChange={(v) => {
-                                  const newPosts = [...sector.posts];
-                                  newPosts[pIdx].type = v;
-                                  if (v === "VTR" && newPosts[pIdx].members.length > 4) {
-                                    newPosts[pIdx].members = newPosts[pIdx].members.slice(0, 4);
-                                  }
-                                  updateSectorBlock(sIdx, { posts: newPosts });
-                                }}>
-                                  <SelectTrigger className="h-10 uppercase text-xs font-bold bg-slate-50/50">
-                                    <SelectValue placeholder="SELECIONE O POSTO..." />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem>
-                                    <SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem>
-                                    <SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem>
-                                    <SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem>
-                                  </SelectContent>
+                              <div className="flex-1 space-y-1.5"><Label className="text-[9px] font-bold uppercase text-muted-foreground">Posto / Serviço</Label>
+                                <Select value={post.type} onValueChange={(v) => { const newPosts = [...sector.posts]; newPosts[pIdx].type = v; if (v === "VTR" && newPosts[pIdx].members.length > 4) newPosts[pIdx].members = newPosts[pIdx].members.slice(0, 4); updateSectorBlock(sIdx, { posts: newPosts }); }}><SelectTrigger className="h-10 uppercase text-xs font-bold bg-slate-50/50"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
+                                  <SelectContent><SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem><SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem><SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem><SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem></SelectContent>
                                 </Select>
                               </div>
                               <div className="flex items-center gap-2">
-                                <Button 
-                                  type="button" 
-                                  variant="outline" 
-                                  size="sm" 
-                                  onClick={() => addMemberToPost(sIdx, pIdx)}
-                                  className="h-10 text-[9px] font-black uppercase border-dashed border-primary/30 text-primary hover:bg-primary/5"
-                                >
-                                  <Plus className="h-3.5 w-3.5 mr-1" /> SERVIDOR ({post.members.length}/{memberLimit})
-                                </Button>
-                                {sector.posts.length > 1 && (
-                                  <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="icon" 
-                                    onClick={() => removePostFromSector(sIdx, pIdx)}
-                                    className="h-10 w-10 text-destructive hover:bg-red-50"
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </Button>
-                                )}
+                                <Button type="button" variant="outline" size="sm" onClick={() => addMemberToPost(sIdx, pIdx)} className="h-10 text-[9px] font-black uppercase border-dashed border-primary/30 text-primary hover:bg-primary/5"><Plus className="h-3.5 w-3.5 mr-1" /> SERVIDOR ({post.members.length}/{isVTR ? 4 : 15})</Button>
+                                {sector.posts.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removePostFromSector(sIdx, pIdx)} className="h-10 w-10 text-destructive hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>}
                               </div>
                             </div>
-
-                            {/* INTEGRANTES DO POSTO */}
-                            <div className={cn(
-                              "grid gap-2 pt-1",
-                              isVTR ? "grid-cols-1 md:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
-                            )}>
-                              {isVTR && (
-                                <div className="space-y-1.5 animate-in zoom-in-95 duration-300">
-                                  <Label className="text-[9px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-1.5">
-                                    <Car className="h-3 w-3" /> VTR nº
-                                  </Label>
-                                  <Input 
-                                    placeholder="001" 
-                                    className="h-11 uppercase font-bold text-xs bg-blue-50/30 border-blue-100 focus:bg-white"
-                                    value={post.vtrNumber || ""}
-                                    onChange={(e) => {
-                                      const newPosts = [...sector.posts];
-                                      newPosts[pIdx].vtrNumber = e.target.value.toUpperCase();
-                                      updateSectorBlock(sIdx, { posts: newPosts });
-                                    }}
-                                  />
-                                </div>
-                              )}
-
+                            <div className={cn("grid gap-2 pt-1", isVTR ? "grid-cols-1 md:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
+                              {isVTR && (<div className="space-y-1.5 animate-in zoom-in-95 duration-300"><Label className="text-[9px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-1.5"><Car className="h-3 w-3" /> VTR nº</Label><Input placeholder="001" className="h-11 uppercase font-bold text-xs bg-blue-50/30 border-blue-100 focus:bg-white" value={post.vtrNumber || ""} onChange={(e) => { const newPosts = [...sector.posts]; newPosts[pIdx].vtrNumber = e.target.value.toUpperCase(); updateSectorBlock(sIdx, { posts: newPosts }); }} /></div>)}
                               {post.members.map((member: any, mIdx: number) => (
-                                <div key={member.id} className={cn(
-                                  "flex flex-col gap-2 p-2 rounded-lg border border-slate-100 bg-white/80 shadow-sm animate-in fade-in slide-in-from-left-2 duration-200",
-                                  isVTR && "border-blue-100"
-                                )}>
+                                <div key={member.id} className={cn("flex flex-col gap-2 p-2 rounded-lg border border-slate-100 bg-white/80 shadow-sm animate-in fade-in slide-in-from-left-2 duration-200", isVTR && "border-blue-100")}>
                                   <div className="flex gap-2 items-end">
-                                    <div className="flex-1">
-                                      {renderAutocomplete(
-                                        `Servidor ${mIdx + 1}`, 
-                                        member.term, 
-                                        (v) => updateMemberInPost(sIdx, pIdx, mIdx, { term: v }), 
-                                        (v) => updateMemberInPost(sIdx, pIdx, mIdx, { empId: v }), 
-                                        member.empId, 
-                                        member.show, 
-                                        (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }),
-                                        () => {},
-                                        allEmployees || [],
-                                        [...trulyAbsentIds, ...teamMemberIds.filter(id => id !== member.empId)],
-                                        false,
-                                        'qra'
-                                      )}
-                                    </div>
-                                    {post.members.length > 1 && (
-                                      <Button 
-                                        type="button" 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => removeMemberFromPost(sIdx, pIdx, mIdx)}
-                                        className="h-11 w-11 text-destructive/50 hover:text-destructive hover:bg-red-50 rounded-xl"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    )}
+                                    <div className="flex-1">{renderAutocomplete(`Servidor ${mIdx + 1}`, member.term, (v) => updateMemberInPost(sIdx, pIdx, mIdx, { term: v }), (v) => updateMemberInPost(sIdx, pIdx, mIdx, { empId: v }), member.empId, member.show, (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }), () => {}, allEmployees || [], [...trulyAbsentIds, ...teamMemberIds.filter(id => id !== member.empId)], false, 'qra')}</div>
+                                    {post.members.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeMemberFromPost(sIdx, pIdx, mIdx)} className="h-11 w-11 text-destructive/50 hover:text-destructive rounded-xl"><Trash2 className="h-3.5 w-3.5" /></Button>}
                                   </div>
                                 </div>
                               ))}
                             </div>
                           </div>
-                        );
-                      })}
-                      
-                      <div className="flex justify-start">
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => addPostToSector(sIdx)}
-                          className="h-6 text-[9px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5"
-                        >
-                          <Plus className="h-3.5 w-3.5" /> ADICIONAR POSTO
-                        </Button>
-                      </div>
+                        ))}
+                      <div className="flex justify-start"><Button type="button" variant="ghost" size="sm" onClick={() => addPostToSector(sIdx)} className="h-6 text-[9px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5"><Plus className="h-3.5 w-3.5" /> ADICIONAR POSTO</Button></div>
                     </div>
                   </div>
                 ))}
-
-                {sectorBlocks.length === 0 && (
-                  <div className="text-center py-12 border-2 border-dashed rounded-2xl bg-slate-50/50">
-                    <p className="uppercase text-[10px] font-black text-muted-foreground tracking-widest">Nenhuma equipe configurada para este relatório.</p>
-                  </div>
-                )}
+                {sectorBlocks.length === 0 && (<div className="text-center py-12 border-2 border-dashed rounded-2xl bg-slate-50/50"><p className="uppercase text-[10px] font-black text-muted-foreground tracking-widest">Nenhuma equipe configurada.</p></div>)}
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO OBSERVAÇÕES GERAIS */}
             <div className="space-y-4 pt-4 border-t border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="bg-amber-50 p-2 rounded-xl border border-amber-100 shadow-sm">
-                  <MessageSquare className="h-5 w-5 text-amber-600" />
-                </div>
-                <div className="flex flex-col">
-                  <h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Observações Gerais do Turno</h4>
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">RELATO DE OCORRÊNCIAS E ALTERAÇÕES DO SERVIÇO.</span>
-                </div>
+                <div className="bg-amber-50 p-2 rounded-xl border border-amber-100 shadow-sm"><MessageSquare className="h-5 w-5 text-amber-600" /></div>
+                <div className="flex flex-col"><h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Observações do Turno</h4><span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">RELATO DE OCORRÊNCIAS.</span></div>
               </div>
-              
-              <Textarea 
-                placeholder="DESCREVA AQUI AS PRINCIPAIS OCORRÊNCIAS, ALTERAÇÕES DE EFETIVO OU OBSERVAÇÕES RELEVANTES DO TURNO..."
-                className="min-h-[150px] uppercase text-xs p-4 rounded-xl bg-slate-50/30 border-slate-200 focus:bg-white transition-all resize-none leading-relaxed"
-                value={observations}
-                onChange={(e) => setObservations(e.target.value.toUpperCase())}
-              />
+              <Textarea placeholder="DESCREVA AS OCORRÊNCIAS DO TURNO..." className="min-h-[150px] uppercase text-xs p-4 rounded-xl bg-slate-50/30 border-slate-200 focus:bg-white transition-all resize-none leading-relaxed" value={observations} onChange={(e) => setObservations(e.target.value.toUpperCase())} />
             </div>
           </CardContent>
 
           <CardFooter className="bg-slate-50 border-t p-6 flex flex-col sm:flex-row gap-4">
-            <Button 
-              type="button" 
-              variant="outline"
-              onClick={handleSaveDraft}
-              className="w-full sm:w-auto h-14 uppercase font-black text-xs tracking-widest border-primary/20 text-primary hover:bg-primary/5"
-            >
-              <Save className="h-5 w-5 mr-2" />
-              Salvar Rascunho
-            </Button>
-            <Button 
-              type="submit" 
-              disabled={loading || loadingEmployees}
-              className="flex-1 h-14 uppercase font-black text-xs tracking-widest bg-primary hover:bg-primary/90 shadow-xl shadow-blue-200 transition-all active:scale-95"
-            >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Send className="h-5 w-5 mr-2" />}
-              Enviar Relatório para o Sistema
-            </Button>
+            <Button type="button" variant="outline" onClick={handleSaveDraft} className="w-full sm:w-auto h-14 uppercase font-black text-xs tracking-widest border-primary/20 text-primary hover:bg-primary/5"><Save className="h-5 w-5 mr-2" /> Salvar Rascunho</Button>
+            <Button type="submit" disabled={loading || loadingEmployees} className="flex-1 h-14 uppercase font-black text-xs tracking-widest bg-primary hover:bg-primary/90 shadow-xl shadow-blue-200 transition-all active:scale-95">{loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Send className="h-5 w-5 mr-2" />} Enviar Relatório</Button>
           </CardFooter>
         </form>
       </Card>
