@@ -286,22 +286,13 @@ export default function RelatoriosPage() {
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
-  const { data: allLaunches } = useCollection(launchesRef);
+  const { data: allLaunches } = useCollection(allLaunchesRef);
 
   // Períodos filtrados para Escala Especial
   const specialPeriodsList = React.useMemo(() => {
     if (!shiftPeriods) return [];
     return shiftPeriods.filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"));
   }, [shiftPeriods]);
-
-  // Lista de Chefias Disponíveis para Setores (Baseado na Equipe de Subinspetoria Selecionada)
-  const availableChiefsForSectors = React.useMemo(() => {
-    if (!allEmployees) return [];
-    const subIdList = subinspetorRows.map(r => r.empId).filter(Boolean);
-    const validChiefIds = [inspetorId, ...subIdList].filter(Boolean);
-    if (validChiefIds.length === 0) return [];
-    return allEmployees.filter(emp => validChiefIds.includes(emp.id));
-  }, [allEmployees, subinspetorRows, inspetorId]);
 
   // Lista de Afastados Hoje (Automatizada e Filtrada por Inspetor)
   const absentTodayList = React.useMemo(() => {
@@ -334,24 +325,46 @@ export default function RelatoriosPage() {
     }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [allLaunches, allEmployees, inspetorId]);
 
-  // IDs selecionados para exclusão global (Impede duplicidade de nomes)
-  const allSelectedIds = React.useMemo(() => {
-    const ids = [inspetorId];
-    subinspetorRows.forEach(r => r.empId && ids.push(r.empId));
-    faltaRows.forEach(r => r.empId && ids.push(r.empId));
-    especialRows.forEach(r => r.empId && ids.push(r.empId));
-    
+  // Lógica de Exclusão por Seção (Evita duplicidade respeitando as regras operacionais)
+  
+  // IDs realmente indisponíveis (Faltas manuais + Afastados de sistema)
+  const trulyAbsentIds = React.useMemo(() => {
+    const ids = faltaRows.map(r => r.empId).filter(Boolean);
+    absentTodayList.forEach(l => ids.push(l.employeeId));
+    return Array.from(new Set(ids));
+  }, [faltaRows, absentTodayList]);
+
+  // IDs na Subinspetoria
+  const subTeamIds = React.useMemo(() => {
+    const ids = [inspetorId, ...subinspetorRows.map(r => r.empId)].filter(Boolean);
+    return Array.from(new Set(ids));
+  }, [inspetorId, subinspetorRows]);
+
+  // IDs na Escala Especial
+  const specialScaleIds = React.useMemo(() => {
+    return especialRows.map(r => r.empId).filter(Boolean);
+  }, [especialRows]);
+
+  // IDs na Equipe do Dia (para evitar duplicidade em VTRs/Postos diferentes)
+  const teamMemberIds = React.useMemo(() => {
+    const ids: string[] = [];
     sectorBlocks.forEach(s => {
-      if (s.chiefData.id) ids.push(s.chiefData.id);
       s.posts.forEach((p: any) => {
         p.members.forEach((m: any) => {
           if (m.empId) ids.push(m.empId);
         });
       });
     });
-    
-    return ids.filter(Boolean);
-  }, [inspetorId, subinspetorRows, faltaRows, especialRows, sectorBlocks]);
+    return Array.from(new Set(ids));
+  }, [sectorBlocks]);
+
+  // Lista de Chefias Disponíveis para Setores (Baseado na Equipe de Subinspetoria Selecionada)
+  const availableChiefsForSectors = React.useMemo(() => {
+    if (!allEmployees) return [];
+    const validChiefIds = subTeamIds;
+    if (validChiefIds.length === 0) return [];
+    return allEmployees.filter(emp => validChiefIds.includes(emp.id));
+  }, [allEmployees, subTeamIds]);
 
   // Verificação de preenchimento
   const subTeamFilled = React.useMemo(() => subinspetorRows.some(r => !!r.empId), [subinspetorRows]);
@@ -554,7 +567,7 @@ export default function RelatoriosPage() {
                 setShowInspetorSuggestions,
                 setInspetorInfo,
                 chefiaList,
-                allSelectedIds.filter(id => id !== inspetorId)
+                [...trulyAbsentIds, ...subTeamIds.filter(id => id !== inspetorId)]
               )}
               <div className="space-y-1.5">
                 <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2">
@@ -618,7 +631,7 @@ export default function RelatoriosPage() {
                         (v) => updateSubinspetorRow(index, { show: v }),
                         (v) => updateSubinspetorRow(index, { info: v }),
                         chefiaList,
-                        allSelectedIds.filter(id => id !== row.empId)
+                        [...trulyAbsentIds, ...subTeamIds.filter(id => id !== row.empId)]
                       )}
                     </div>
                     <div className="w-full space-y-1.5">
@@ -695,7 +708,7 @@ export default function RelatoriosPage() {
                         (v) => updateFaltaRow(index, { show: v }),
                         (v) => updateFaltaRow(index, { info: v }),
                         allEmployees || [],
-                        allSelectedIds.filter(id => id !== row.empId)
+                        [...trulyAbsentIds.filter(id => id !== row.empId), ...subTeamIds, ...specialScaleIds, ...teamMemberIds]
                       )}
                     </div>
                     <div className="w-full space-y-1.5">
@@ -723,7 +736,7 @@ export default function RelatoriosPage() {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO AFASTAMENTOS E FOLGAS */}
+            {/* SEÇÃO AFASTAMENTOS E FOLGAS (ESTÁTICA/SISTEMA) */}
             <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
@@ -850,7 +863,7 @@ export default function RelatoriosPage() {
                         (v) => updateEspecialRow(index, { show: v }),
                         (v) => updateEspecialRow(index, { info: v }),
                         allEmployees || [],
-                        allSelectedIds.filter(id => id !== row.empId)
+                        [...trulyAbsentIds, ...specialScaleIds.filter(id => id !== row.empId)]
                       )}
                     </div>
                     <div className="w-full space-y-1.5">
@@ -969,19 +982,6 @@ export default function RelatoriosPage() {
 
                     {/* LISTA DE POSTOS DENTRO DO SETOR */}
                     <div className="space-y-4">
-                      <div className="flex items-center justify-between border-b pb-1">
-                        <h5 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Postos e Integrantes</h5>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => addPostToSector(sIdx)}
-                          className="h-6 text-[9px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5"
-                        >
-                          <Plus className="h-3.5 w-3.5" /> ADICIONAR POSTO
-                        </Button>
-                      </div>
-
                       {sector.posts.map((post: any, pIdx: number) => {
                         const isVTR = post.type === "VTR";
                         const memberLimit = isVTR ? 4 : 15;
@@ -1045,7 +1045,7 @@ export default function RelatoriosPage() {
                                     <Car className="h-3 w-3" /> VTR nº
                                   </Label>
                                   <Input 
-                                    placeholder="EX: 001" 
+                                    placeholder="001" 
                                     className="h-11 uppercase font-bold text-xs bg-blue-50/30 border-blue-100 focus:bg-white"
                                     value={post.vtrNumber || ""}
                                     onChange={(e) => {
@@ -1074,7 +1074,7 @@ export default function RelatoriosPage() {
                                         (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }),
                                         () => {},
                                         allEmployees || [],
-                                        allSelectedIds.filter(id => id !== member.empId),
+                                        [...trulyAbsentIds, ...teamMemberIds.filter(id => id !== member.empId)],
                                         false,
                                         'qra'
                                       )}
@@ -1097,6 +1097,18 @@ export default function RelatoriosPage() {
                           </div>
                         );
                       })}
+                      
+                      <div className="flex justify-start">
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => addPostToSector(sIdx)}
+                          className="h-6 text-[9px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5"
+                        >
+                          <Plus className="h-3.5 w-3.5" /> ADICIONAR POSTO
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
