@@ -22,7 +22,9 @@ import {
   Star,
   Timer,
   Users,
-  Car
+  Car,
+  Save,
+  AlertTriangle
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -53,6 +55,16 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -100,9 +112,25 @@ export default function RelatoriosPage() {
   const [defaultTime, setDefaultTime] = React.useState("")
   const [selectedEscalaId, setSelectedEscalaId] = React.useState("")
 
+  // Estados do Rascunho
+  const [isDraftDialogOpen, setIsDraftDialogOpen] = React.useState(false)
+  const [tempDraft, setTempDraft] = React.useState<any>(null)
+
   React.useEffect(() => {
     setDefaultDate(getSaoPauloDate());
     setDefaultTime(getSaoPauloTime());
+
+    // Verifica rascunho ao carregar
+    const saved = localStorage.getItem('nrg_relatorio_draft');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setTempDraft(parsed);
+        setIsDraftDialogOpen(true);
+      } catch (e) {
+        console.error("Erro ao ler rascunho", e);
+      }
+    }
   }, []);
 
   // Estados para Inspetor (Fixo)
@@ -144,6 +172,51 @@ export default function RelatoriosPage() {
       ]
     }
   ]);
+
+  // Lógica de Rascunho
+  const handleSaveDraft = () => {
+    const draft = {
+      defaultDate,
+      defaultTime,
+      selectedEscalaId,
+      inspetorTerm,
+      inspetorId,
+      inspetorInfo,
+      subinspetorRows,
+      faltaRows,
+      especialRows,
+      sectorBlocks
+    };
+    localStorage.setItem('nrg_relatorio_draft', JSON.stringify(draft));
+    toast({ 
+      title: "RASCUNHO SALVO", 
+      description: "As informações foram guardadas no seu navegador com sucesso." 
+    });
+  };
+
+  const handleLoadDraft = () => {
+    if (tempDraft) {
+      setDefaultDate(tempDraft.defaultDate || getSaoPauloDate());
+      setDefaultTime(tempDraft.defaultTime || getSaoPauloTime());
+      setSelectedEscalaId(tempDraft.selectedEscalaId || "");
+      setInspetorTerm(tempDraft.inspetorTerm || "");
+      setInspetorId(tempDraft.inspetorId || "");
+      setInspetorInfo(tempDraft.inspetorInfo || "");
+      setSubinspetorRows(tempDraft.subinspetorRows || [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
+      setFaltaRows(tempDraft.faltaRows || [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
+      setEspecialRows(tempDraft.especialRows || [{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
+      setSectorBlocks(tempDraft.sectorBlocks || []);
+      
+      setIsDraftDialogOpen(false);
+      toast({ title: "RASCUNHO CARREGADO", description: "Os dados foram restaurados." });
+    }
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem('nrg_relatorio_draft');
+    setIsDraftDialogOpen(false);
+    toast({ variant: "destructive", title: "RASCUNHO DESCARTADO" });
+  };
 
   // Auxiliares Subinspetores
   const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: generateId(), term: "", info: "", show: false, empId: "" }]);
@@ -282,11 +355,11 @@ export default function RelatoriosPage() {
   // Busca coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
-  const allLaunchesRef = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
+  const allLaunchesRef_ = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
-  const { data: allLaunches } = useCollection(allLaunchesRef);
+  const { data: allLaunches } = useCollection(allLaunchesRef_);
 
   // Períodos filtrados para Escala Especial
   const specialPeriodsList = React.useMemo(() => {
@@ -325,8 +398,6 @@ export default function RelatoriosPage() {
     }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [allLaunches, allEmployees, inspetorId]);
 
-  // Lógica de Exclusão por Seção
-  
   // IDs realmente indisponíveis (Faltas manuais + Afastados de sistema)
   const trulyAbsentIds = React.useMemo(() => {
     const ids = faltaRows.map(r => r.empId).filter(Boolean);
@@ -340,7 +411,7 @@ export default function RelatoriosPage() {
     return Array.from(new Set(ids));
   }, [inspetorId, subinspetorRows]);
 
-  // IDs na Equipe do Dia
+  // IDs na Equipe do Dia (para evitar duplicidade interna na própria equipe)
   const teamMemberIds = React.useMemo(() => {
     const ids: string[] = [];
     sectorBlocks.forEach(s => {
@@ -353,7 +424,7 @@ export default function RelatoriosPage() {
     return Array.from(new Set(ids));
   }, [sectorBlocks]);
 
-  // Lista de Chefias Disponíveis para Setores
+  // Lista de Chefias Disponíveis para Setores (Apenas quem está na Subinspetoria)
   const availableChiefsForSectors = React.useMemo(() => {
     if (!allEmployees) return [];
     const validChiefIds = subTeamIds;
@@ -387,6 +458,7 @@ export default function RelatoriosPage() {
     setLoading(true)
     setTimeout(() => {
       setLoading(false)
+      localStorage.removeItem('nrg_relatorio_draft'); // Limpa rascunho ao enviar
       toast({ title: "RELATÓRIO ENVIADO", description: "AS INFORMAÇÕES FORAM REGISTRADAS COM SUCESSO." })
     }, 1000)
   }
@@ -477,6 +549,25 @@ export default function RelatoriosPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+      {/* DIÁLOGO DE RASCUNHO */}
+      <AlertDialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <div className="bg-amber-50 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+              <History className="h-6 w-6 text-amber-600" />
+            </div>
+            <AlertDialogTitle className="uppercase text-xl font-black">Rascunho Identificado</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-[10px] font-bold text-muted-foreground leading-relaxed">
+              EXISTE UM RELATÓRIO SALVO NO SEU NAVEGADOR. DESEJA CARREGAR AS INFORMAÇÕES OU INICIAR UM NOVO?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-2">
+            <AlertDialogCancel onClick={handleDiscardDraft} className="h-12 uppercase font-black text-xs tracking-widest border-red-100 text-red-600 hover:bg-red-50 hover:text-red-700">DESCARTAR</AlertDialogCancel>
+            <AlertDialogAction onClick={handleLoadDraft} className="h-12 uppercase font-black text-xs tracking-widest bg-amber-600 hover:bg-amber-700 shadow-xl shadow-amber-100">CARREGAR RASCUNHO</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
@@ -1118,11 +1209,20 @@ export default function RelatoriosPage() {
             </Collapsible>
           </CardContent>
 
-          <CardFooter className="bg-slate-50 border-t p-6">
+          <CardFooter className="bg-slate-50 border-t p-6 flex flex-col sm:flex-row gap-4">
+            <Button 
+              type="button" 
+              variant="outline"
+              onClick={handleSaveDraft}
+              className="w-full sm:w-auto h-14 uppercase font-black text-xs tracking-widest border-primary/20 text-primary hover:bg-primary/5"
+            >
+              <Save className="h-5 w-5 mr-2" />
+              Salvar Rascunho
+            </Button>
             <Button 
               type="submit" 
               disabled={loading || loadingEmployees}
-              className="w-full h-14 uppercase font-black text-xs tracking-widest bg-primary hover:bg-primary/90 shadow-xl shadow-blue-200 transition-all active:scale-95"
+              className="flex-1 h-14 uppercase font-black text-xs tracking-widest bg-primary hover:bg-primary/90 shadow-xl shadow-blue-200 transition-all active:scale-95"
             >
               {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Send className="h-5 w-5 mr-2" />}
               Enviar Relatório para o Sistema
