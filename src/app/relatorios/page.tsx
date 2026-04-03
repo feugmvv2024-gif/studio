@@ -276,6 +276,14 @@ export default function RelatoriosPage() {
     return shiftPeriods.filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"));
   }, [shiftPeriods]);
 
+  // Lista de Chefias Disponíveis para Setores (Baseado na Equipe de Subinspetoria Selecionada)
+  const availableChiefsForSectors = React.useMemo(() => {
+    if (!allEmployees) return [];
+    const subIdList = subinspetorRows.map(r => r.empId).filter(Boolean);
+    const validChiefIds = [inspetorId, ...subIdList];
+    return allEmployees.filter(emp => validChiefIds.includes(emp.id));
+  }, [allEmployees, subinspetorRows, inspetorId]);
+
   // Lista de Afastados Hoje (Automatizada e Filtrada por Inspetor)
   const absentTodayList = React.useMemo(() => {
     if (!allLaunches || !allEmployees || !inspetorId) return [];
@@ -307,7 +315,7 @@ export default function RelatoriosPage() {
     }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [allLaunches, allEmployees, inspetorId]);
 
-  // IDs selecionados para exclusão global
+  // IDs selecionados para exclusão global (Impede duplicidade de nomes)
   const allSelectedIds = React.useMemo(() => {
     const ids = [inspetorId];
     subinspetorRows.forEach(r => r.empId && ids.push(r.empId));
@@ -315,6 +323,8 @@ export default function RelatoriosPage() {
     especialRows.forEach(r => r.empId && ids.push(r.empId));
     
     sectorBlocks.forEach(s => {
+      // Chief ID não entra na exclusão de membros operacionais necessariamente,
+      // mas monitoramos para evitar duplicidade de comando.
       if (s.chiefData.id) ids.push(s.chiefData.id);
       s.posts.forEach((p: any) => {
         p.members.forEach((m: any) => {
@@ -333,7 +343,7 @@ export default function RelatoriosPage() {
   const teamFilled = React.useMemo(() => sectorBlocks.some(s => s.sectorType && s.posts.some((p: any) => p.members.some((m: any) => !!m.empId))), [sectorBlocks]);
   const afastadosFilled = absentTodayList.length > 0;
 
-  // Filtra chefia
+  // Filtra chefia geral (usado apenas na Subinspetoria)
   const chefiaList = React.useMemo(() => {
     if (!allEmployees) return [];
     const allowedRoles = ["INSPETOR", "SUBINSPETOR", "INSPETOR GERAL", "COMANDANTE"];
@@ -925,8 +935,8 @@ export default function RelatoriosPage() {
                           sector.chiefData.show, 
                           (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, show: v } }),
                           (v) => updateSectorBlock(sIdx, { chiefData: { ...sector.chiefData, info: v } }),
-                          chefiaList,
-                          allSelectedIds.filter(id => id !== sector.chiefData.id)
+                          availableChiefsForSectors,
+                          sectorBlocks.filter((_, i) => i !== sIdx).map(s => s.chiefData.id).filter(Boolean)
                         )}
                       </div>
                       <Button 
