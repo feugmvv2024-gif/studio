@@ -21,7 +21,7 @@ import {
   Star,
   Timer,
   Users,
-  LayoutGrid
+  Car
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -52,7 +52,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -81,7 +80,6 @@ const formatDateBR = (dateStr: string) => {
   return dateStr.split('-').reverse().join('/');
 };
 
-// Geradores de ID para estado local
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
 export default function RelatoriosPage() {
@@ -127,7 +125,7 @@ export default function RelatoriosPage() {
     { id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }
   ]);
 
-  // --- NOVA ESTRUTURA: EQUIPE DO DIA (Setores -> Postos -> Membros) ---
+  // ESTRUTURA: EQUIPE DO DIA (Setores -> Postos -> Membros)
   const [sectorBlocks, setSectorBlocks] = React.useState<any[]>([
     {
       id: generateId(),
@@ -138,7 +136,7 @@ export default function RelatoriosPage() {
           id: generateId(),
           type: "",
           members: [
-            { id: generateId(), empId: "", term: "", show: false }
+            { id: generateId(), empId: "", term: "", show: false, vtrNumber: "" }
           ]
         }
       ]
@@ -187,13 +185,13 @@ export default function RelatoriosPage() {
     });
   };
 
-  // --- FUNÇÕES DE MANIPULAÇÃO DA EQUIPE (SECTOR BLOCKS) ---
+  // FUNÇÕES DE MANIPULAÇÃO DA EQUIPE
   const addSectorBlock = () => {
     setSectorBlocks([...sectorBlocks, {
       id: generateId(),
       sectorType: "",
       chiefData: { id: "", uid: "", term: "", info: "", show: false },
-      posts: [{ id: generateId(), type: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }]
+      posts: [{ id: generateId(), type: "", members: [{ id: generateId(), empId: "", term: "", show: false, vtrNumber: "" }] }]
     }]);
   };
 
@@ -215,7 +213,7 @@ export default function RelatoriosPage() {
     newBlocks[sectorIndex].posts.push({
       id: generateId(),
       type: "",
-      members: [{ id: generateId(), empId: "", term: "", show: false }]
+      members: [{ id: generateId(), empId: "", term: "", show: false, vtrNumber: "" }]
     });
     setSectorBlocks(newBlocks);
   };
@@ -228,11 +226,19 @@ export default function RelatoriosPage() {
 
   const addMemberToPost = (sectorIndex: number, postIndex: number) => {
     const newBlocks = [...sectorBlocks];
-    if (newBlocks[sectorIndex].posts[postIndex].members.length >= 15) {
-      toast({ variant: "destructive", title: "LIMITE ATINGIDO", description: "MÁXIMO DE 15 SERVIDORES POR POSTO." });
+    const post = newBlocks[sectorIndex].posts[postIndex];
+    const isVTR = post.type === "VTR";
+    const limit = isVTR ? 4 : 15;
+
+    if (post.members.length >= limit) {
+      toast({ 
+        variant: "destructive", 
+        title: "LIMITE ATINGIDO", 
+        description: `MÁXIMO DE ${limit} SERVIDORES PARA ESTE POSTO (${post.type}).` 
+      });
       return;
     }
-    newBlocks[sectorIndex].posts[postIndex].members.push({ id: generateId(), empId: "", term: "", show: false });
+    post.members.push({ id: generateId(), empId: "", term: "", show: false, vtrNumber: "" });
     setSectorBlocks(newBlocks);
   };
 
@@ -853,7 +859,7 @@ export default function RelatoriosPage() {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO EQUIPE DO DIA (ESTRUTURA HIERÁRQUICA) */}
+            {/* SEÇÃO EQUIPE DO DIA */}
             <Collapsible open={isTeamOpen} onOpenChange={setIsTeamOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
@@ -892,7 +898,7 @@ export default function RelatoriosPage() {
                 {sectorBlocks.map((sector, sIdx) => (
                   <div key={sector.id} className="relative p-6 rounded-2xl border-2 border-slate-100 bg-slate-50/20 space-y-8 animate-in zoom-in-95 duration-300">
                     
-                    {/* CABEÇALHO DO SETOR: Tipo, Chefia e Lixeira */}
+                    {/* CABEÇALHO DO SETOR */}
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-6 bg-white p-4 rounded-xl border border-dashed items-end">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
@@ -947,87 +953,115 @@ export default function RelatoriosPage() {
                         </Button>
                       </div>
 
-                      {sector.posts.map((post: any, pIdx: number) => (
-                        <div key={post.id} className="space-y-4 bg-white/50 p-4 rounded-xl border border-slate-100 shadow-sm">
-                          <div className="flex flex-col md:flex-row items-stretch md:items-end gap-4">
-                            <div className="flex-1 space-y-1.5">
-                              <Label className="text-[9px] font-bold uppercase text-muted-foreground">Posto / Serviço</Label>
-                              <Select value={post.type} onValueChange={(v) => {
-                                const newPosts = [...sector.posts];
-                                newPosts[pIdx].type = v;
-                                updateSectorBlock(sIdx, { posts: newPosts });
-                              }}>
-                                <SelectTrigger className="h-10 uppercase text-xs font-bold bg-slate-50/50">
-                                  <SelectValue placeholder="SELECIONE O POSTO..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem>
-                                  <SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem>
-                                  <SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem>
-                                  <SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Button 
-                                type="button" 
-                                variant="outline" 
-                                size="sm" 
-                                onClick={() => addMemberToPost(sIdx, pIdx)}
-                                className="h-10 text-[9px] font-black uppercase border-dashed border-primary/30 text-primary hover:bg-primary/5"
-                              >
-                                <Plus className="h-3.5 w-3.5 mr-1" /> SERVIDOR ({post.members.length}/15)
-                              </Button>
-                              {sector.posts.length > 1 && (
+                      {sector.posts.map((post: any, pIdx: number) => {
+                        const isVTR = post.type === "VTR";
+                        const memberLimit = isVTR ? 4 : 15;
+
+                        return (
+                          <div key={post.id} className="space-y-4 bg-white/50 p-4 rounded-xl border border-slate-100 shadow-sm">
+                            <div className="flex flex-col md:flex-row items-stretch md:items-end gap-4">
+                              <div className="flex-1 space-y-1.5">
+                                <Label className="text-[9px] font-bold uppercase text-muted-foreground">Posto / Serviço</Label>
+                                <Select value={post.type} onValueChange={(v) => {
+                                  const newPosts = [...sector.posts];
+                                  newPosts[pIdx].type = v;
+                                  // Limpa excesso de membros se mudar para VTR
+                                  if (v === "VTR" && newPosts[pIdx].members.length > 4) {
+                                    newPosts[pIdx].members = newPosts[pIdx].members.slice(0, 4);
+                                  }
+                                  updateSectorBlock(sIdx, { posts: newPosts });
+                                }}>
+                                  <SelectTrigger className="h-10 uppercase text-xs font-bold bg-slate-50/50">
+                                    <SelectValue placeholder="SELECIONE O POSTO..." />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem>
+                                    <SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem>
+                                    <SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem>
+                                    <SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                              <div className="flex items-center gap-2">
                                 <Button 
                                   type="button" 
-                                  variant="ghost" 
-                                  size="icon" 
-                                  onClick={() => removePostFromSector(sIdx, pIdx)}
-                                  className="h-10 w-10 text-destructive hover:bg-red-50"
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => addMemberToPost(sIdx, pIdx)}
+                                  className="h-10 text-[9px] font-black uppercase border-dashed border-primary/30 text-primary hover:bg-primary/5"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Plus className="h-3.5 w-3.5 mr-1" /> SERVIDOR ({post.members.length}/{memberLimit})
                                 </Button>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* GRID DE INTEGRANTES DO POSTO */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
-                            {post.members.map((member: any, mIdx: number) => (
-                              <div key={member.id} className="flex gap-2 items-end animate-in fade-in slide-in-from-left-2 duration-200">
-                                <div className="flex-1">
-                                  {renderAutocomplete(
-                                    `Servidor ${mIdx + 1}`, 
-                                    member.term, 
-                                    (v) => updateMemberInPost(sIdx, pIdx, mIdx, { term: v }), 
-                                    (v) => updateMemberInPost(sIdx, pIdx, mIdx, { empId: v }), 
-                                    member.empId, 
-                                    member.show, 
-                                    (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }),
-                                    () => {},
-                                    allEmployees || [],
-                                    allSelectedIds.filter(id => id !== member.empId),
-                                    false,
-                                    'qra'
-                                  )}
-                                </div>
-                                {post.members.length > 1 && (
+                                {sector.posts.length > 1 && (
                                   <Button 
                                     type="button" 
                                     variant="ghost" 
                                     size="icon" 
-                                    onClick={() => removeMemberFromPost(sIdx, pIdx, mIdx)}
-                                    className="h-11 w-11 text-destructive/50 hover:text-destructive hover:bg-red-50 rounded-xl"
+                                    onClick={() => removePostFromSector(sIdx, pIdx)}
+                                    className="h-10 w-10 text-destructive hover:bg-red-50"
                                   >
-                                    <Trash2 className="h-3.5 w-3.5" />
+                                    <Trash2 className="h-4 w-4" />
                                   </Button>
                                 )}
                               </div>
-                            ))}
+                            </div>
+
+                            {/* INTEGRANTES DO POSTO */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pt-2">
+                              {post.members.map((member: any, mIdx: number) => (
+                                <div key={member.id} className={cn(
+                                  "flex flex-col gap-2 p-3 rounded-xl border border-slate-100 bg-white/80 shadow-sm animate-in fade-in slide-in-from-left-2 duration-200",
+                                  isVTR && "border-blue-100"
+                                )}>
+                                  <div className="flex gap-2 items-end">
+                                    <div className="flex-1">
+                                      {renderAutocomplete(
+                                        `Servidor ${mIdx + 1}`, 
+                                        member.term, 
+                                        (v) => updateMemberInPost(sIdx, pIdx, mIdx, { term: v }), 
+                                        (v) => updateMemberInPost(sIdx, pIdx, mIdx, { empId: v }), 
+                                        member.empId, 
+                                        member.show, 
+                                        (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }),
+                                        () => {},
+                                        allEmployees || [],
+                                        allSelectedIds.filter(id => id !== member.empId),
+                                        false,
+                                        'qra'
+                                      )}
+                                    </div>
+                                    {post.members.length > 1 && (
+                                      <Button 
+                                        type="button" 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => removeMemberFromPost(sIdx, pIdx, mIdx)}
+                                        className="h-11 w-11 text-destructive/50 hover:text-destructive hover:bg-red-50 rounded-xl"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                  
+                                  {isVTR && (
+                                    <div className="space-y-1.5 animate-in zoom-in-95 duration-300">
+                                      <Label className="text-[9px] font-black uppercase text-blue-600 tracking-widest flex items-center gap-1.5">
+                                        <Car className="h-3 w-3" /> VTR nº
+                                      </Label>
+                                      <Input 
+                                        placeholder="EX: 001" 
+                                        className="h-8 uppercase font-bold text-xs bg-blue-50/30 border-blue-100 focus:bg-white"
+                                        value={member.vtrNumber}
+                                        onChange={(e) => updateMemberInPost(sIdx, pIdx, mIdx, { vtrNumber: e.target.value.toUpperCase() })}
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 ))}
