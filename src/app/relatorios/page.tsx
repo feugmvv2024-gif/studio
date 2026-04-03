@@ -891,24 +891,9 @@ export default function RelatoriosPage() {
               <CollapsibleContent className="space-y-10">
                 {sectorBlocks.map((sector, sIdx) => (
                   <div key={sector.id} className="relative p-6 rounded-2xl border-2 border-slate-100 bg-slate-50/20 space-y-8 animate-in zoom-in-95 duration-300">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2 bg-white px-4 py-1.5 rounded-full border shadow-sm">
-                        <LayoutGrid className="h-4 w-4 text-primary" />
-                        <span className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Bloco de Setor #{sIdx + 1}</span>
-                      </div>
-                      <Button 
-                        type="button" 
-                        variant="ghost" 
-                        size="icon" 
-                        onClick={() => removeSectorBlock(sIdx)}
-                        className="h-8 w-8 text-destructive hover:bg-red-50 rounded-full"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-
-                    {/* CABEÇALHO DO SETOR: Tipo e Chefia */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-4 rounded-xl border border-dashed">
+                    
+                    {/* CABEÇALHO DO SETOR: Tipo, Chefia e Lixeira */}
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-6 bg-white p-4 rounded-xl border border-dashed items-end">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
                         <Select value={sector.sectorType} onValueChange={(v) => updateSectorBlock(sIdx, { sectorType: v })}>
@@ -936,6 +921,15 @@ export default function RelatoriosPage() {
                           allSelectedIds.filter(id => id !== sector.chiefData.id)
                         )}
                       </div>
+                      <Button 
+                        type="button" 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => removeSectorBlock(sIdx)}
+                        className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     </div>
 
                     {/* LISTA DE POSTOS DENTRO DO SETOR */}
@@ -949,7 +943,7 @@ export default function RelatoriosPage() {
                           onClick={() => addPostToSector(sIdx)}
                           className="h-6 text-[9px] font-black uppercase text-primary gap-1.5 hover:bg-primary/5"
                         >
-                          <Plus className="h-3 w-3" /> ADICIONAR POSTO
+                          <Plus className="h-3.5 w-3.5" /> ADICIONAR POSTO
                         </Button>
                       </div>
 
