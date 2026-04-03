@@ -896,12 +896,12 @@ export default function RelatoriosPage() {
                 </div>
               </div>
               
-              <CollapsibleContent className="space-y-10">
+              <CollapsibleContent className="space-y-6">
                 {sectorBlocks.map((sector, sIdx) => (
-                  <div key={sector.id} className="relative p-6 rounded-2xl border-2 border-slate-100 bg-slate-50/20 space-y-8 animate-in zoom-in-95 duration-300">
+                  <div key={sector.id} className="relative p-4 rounded-xl border-2 border-slate-100 bg-slate-50/20 space-y-4 animate-in zoom-in-95 duration-300">
                     
                     {/* CABEÇALHO DO SETOR */}
-                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-6 bg-white p-4 rounded-xl border border-dashed items-end">
+                    <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 bg-white p-3 rounded-xl border border-dashed items-end">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Setor</Label>
                         <Select value={sector.sectorType} onValueChange={(v) => updateSectorBlock(sIdx, { sectorType: v })}>
@@ -941,8 +941,8 @@ export default function RelatoriosPage() {
                     </div>
 
                     {/* LISTA DE POSTOS DENTRO DO SETOR */}
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between border-b pb-2">
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between border-b pb-1">
                         <h5 className="text-[10px] font-black uppercase text-slate-500 tracking-widest">Postos e Integrantes</h5>
                         <Button 
                           type="button" 
@@ -960,7 +960,7 @@ export default function RelatoriosPage() {
                         const memberLimit = isVTR ? 4 : 15;
 
                         return (
-                          <div key={post.id} className="space-y-4 bg-white/50 p-4 rounded-xl border border-slate-100 shadow-sm">
+                          <div key={post.id} className="space-y-2 bg-white/50 p-3 rounded-xl border border-slate-100 shadow-sm">
                             <div className="flex flex-col md:flex-row items-stretch md:items-end gap-4">
                               <div className="flex-1 space-y-1.5">
                                 <Label className="text-[9px] font-bold uppercase text-muted-foreground">Posto / Serviço</Label>
@@ -1010,7 +1010,7 @@ export default function RelatoriosPage() {
 
                             {/* INTEGRANTES DO POSTO */}
                             <div className={cn(
-                              "grid gap-4 pt-2",
+                              "grid gap-2 pt-1",
                               isVTR ? "grid-cols-1 md:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                             )}>
                               {isVTR && (
@@ -1033,7 +1033,7 @@ export default function RelatoriosPage() {
 
                               {post.members.map((member: any, mIdx: number) => (
                                 <div key={member.id} className={cn(
-                                  "flex flex-col gap-2 p-3 rounded-xl border border-slate-100 bg-white/80 shadow-sm animate-in fade-in slide-in-from-left-2 duration-200",
+                                  "flex flex-col gap-2 p-2 rounded-lg border border-slate-100 bg-white/80 shadow-sm animate-in fade-in slide-in-from-left-2 duration-200",
                                   isVTR && "border-blue-100"
                                 )}>
                                   <div className="flex gap-2 items-end">
