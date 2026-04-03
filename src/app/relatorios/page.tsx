@@ -519,7 +519,6 @@ export default function RelatoriosPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
-      {/* DIÁLOGO RASCUNHO */}
       <AlertDialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
