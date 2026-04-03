@@ -325,7 +325,7 @@ export default function RelatoriosPage() {
     }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [allLaunches, allEmployees, inspetorId]);
 
-  // Lógica de Exclusão por Seção (Evita duplicidade respeitando as regras operacionais)
+  // Lógica de Exclusão por Seção
   
   // IDs realmente indisponíveis (Faltas manuais + Afastados de sistema)
   const trulyAbsentIds = React.useMemo(() => {
@@ -340,12 +340,7 @@ export default function RelatoriosPage() {
     return Array.from(new Set(ids));
   }, [inspetorId, subinspetorRows]);
 
-  // IDs na Escala Especial
-  const specialScaleIds = React.useMemo(() => {
-    return especialRows.map(r => r.empId).filter(Boolean);
-  }, [especialRows]);
-
-  // IDs na Equipe do Dia (para evitar duplicidade em VTRs/Postos diferentes)
+  // IDs na Equipe do Dia
   const teamMemberIds = React.useMemo(() => {
     const ids: string[] = [];
     sectorBlocks.forEach(s => {
@@ -358,7 +353,7 @@ export default function RelatoriosPage() {
     return Array.from(new Set(ids));
   }, [sectorBlocks]);
 
-  // Lista de Chefias Disponíveis para Setores (Baseado na Equipe de Subinspetoria Selecionada)
+  // Lista de Chefias Disponíveis para Setores
   const availableChiefsForSectors = React.useMemo(() => {
     if (!allEmployees) return [];
     const validChiefIds = subTeamIds;
@@ -373,7 +368,7 @@ export default function RelatoriosPage() {
   const teamFilled = React.useMemo(() => sectorBlocks.some(s => s.sectorType && s.posts.some((p: any) => p.members.some((m: any) => !!m.empId))), [sectorBlocks]);
   const afastadosFilled = absentTodayList.length > 0;
 
-  // Filtra chefia geral (usado apenas na Subinspetoria)
+  // Filtra chefia geral
   const chefiaList = React.useMemo(() => {
     if (!allEmployees) return [];
     const allowedRoles = ["INSPETOR", "SUBINSPETOR", "INSPETOR GERAL", "COMANDANTE"];
@@ -708,7 +703,7 @@ export default function RelatoriosPage() {
                         (v) => updateFaltaRow(index, { show: v }),
                         (v) => updateFaltaRow(index, { info: v }),
                         allEmployees || [],
-                        [...trulyAbsentIds.filter(id => id !== row.empId), ...subTeamIds, ...specialScaleIds, ...teamMemberIds]
+                        [...trulyAbsentIds.filter(id => id !== row.empId), ...subTeamIds, ...teamMemberIds]
                       )}
                     </div>
                     <div className="w-full space-y-1.5">
@@ -736,7 +731,7 @@ export default function RelatoriosPage() {
               </CollapsibleContent>
             </Collapsible>
 
-            {/* SEÇÃO AFASTAMENTOS E FOLGAS (ESTÁTICA/SISTEMA) */}
+            {/* SEÇÃO AFASTAMENTOS E FOLGAS */}
             <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-3">
@@ -863,7 +858,7 @@ export default function RelatoriosPage() {
                         (v) => updateEspecialRow(index, { show: v }),
                         (v) => updateEspecialRow(index, { info: v }),
                         allEmployees || [],
-                        [...trulyAbsentIds, ...specialScaleIds.filter(id => id !== row.empId)]
+                        [...trulyAbsentIds]
                       )}
                     </div>
                     <div className="w-full space-y-1.5">
@@ -938,7 +933,7 @@ export default function RelatoriosPage() {
               
               <CollapsibleContent className="space-y-6">
                 {sectorBlocks.map((sector, sIdx) => (
-                  <div key={sector.id} className="relative p-4 rounded-xl border-2 border-slate-100 bg-slate-50/20 space-y-4 animate-in zoom-in-95 duration-300">
+                  <div key={sector.id} className="relative p-3 rounded-xl border-2 border-slate-100 bg-slate-50/20 space-y-4 animate-in zoom-in-95 duration-300">
                     
                     {/* CABEÇALHO DO SETOR */}
                     <div className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 bg-white p-3 rounded-xl border border-dashed items-end">
@@ -952,6 +947,7 @@ export default function RelatoriosPage() {
                             <SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem>
                             <SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem>
                             <SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem>
+                            <SelectItem value="COVV" className="uppercase text-xs font-bold">COVV</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -981,7 +977,7 @@ export default function RelatoriosPage() {
                     </div>
 
                     {/* LISTA DE POSTOS DENTRO DO SETOR */}
-                    <div className="space-y-4">
+                    <div className="space-y-2">
                       {sector.posts.map((post: any, pIdx: number) => {
                         const isVTR = post.type === "VTR";
                         const memberLimit = isVTR ? 4 : 15;
