@@ -93,9 +93,16 @@ export default function Dashboard() {
 
   const employeesRef = React.useMemo(() => collection(firestore, 'employees'), [firestore]);
   const launchesRef = React.useMemo(() => collection(firestore, 'launches'), [firestore]);
+  
+  // Consulta de relatórios do dia para extrair faltas REAIS
+  const todayReportsRef = React.useMemo(() => {
+    const today = getSaoPauloDate();
+    return query(collection(firestore, 'dailyReports'), where('date', '==', today));
+  }, [firestore]);
 
   const { data: employees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: launches, loading: loadingLaunches } = useCollection(launchesRef);
+  const { data: todayReports, loading: loadingReports } = useCollection(todayReportsRef);
 
   // Automação de Reconciliação de Status
   React.useEffect(() => {
@@ -150,17 +157,79 @@ export default function Dashboard() {
     };
   }, [employees]);
 
-  // Listas para os Modais
-  const absentList = React.useMemo(() => {
-    if (!launches) return [];
+  // Estatísticas de Ausentes (Hoje) - Faltas vêm dos Relatórios, outros dos Lançamentos
+  const absentStats = React.useMemo(() => {
     const today = getSaoPauloDate();
-    return launches.filter(l => {
+    const summary = { total: 0, folga: 0, abono: 0, falta: 0 };
+
+    if (launches) {
+      launches.forEach(l => {
+        const type = normalizeStr(l.type);
+        const isActive = l.startDate <= today && l.endDate >= today;
+        if (isActive) {
+          // Extrai apenas Folgas, TRE e Abonos (ignora FALTA do agendamento)
+          if (type.includes("FOLGA") || type.includes("TRE DEBITO")) { 
+            summary.folga++; 
+            summary.total++; 
+          } else if (type.includes("ABONO")) { 
+            summary.abono++; 
+            summary.total++; 
+          }
+        }
+      });
+    }
+
+    // Extrai Faltas únicas dos relatórios operacionais de hoje
+    if (todayReports) {
+      const uniqueFaltaIds = new Set();
+      todayReports.forEach(report => {
+        (report.absences || []).forEach((abs: any) => {
+          uniqueFaltaIds.add(abs.id);
+        });
+      });
+      summary.falta = uniqueFaltaIds.size;
+      summary.total += summary.falta;
+    }
+    
+    return summary;
+  }, [launches, todayReports]);
+
+  // Listas para os Modais (Mescla lançamentos e faltas de relatórios)
+  const absentList = React.useMemo(() => {
+    const today = getSaoPauloDate();
+    
+    // 1. Pega Folgas/TRE/Abonos dos Lançamentos
+    const listFromLaunches = (launches || []).filter(l => {
       const type = normalizeStr(l.type);
       const isActive = l.startDate <= today && l.endDate >= today;
-      // Inclui TRE DÉBITO como ausência hoje
-      return isActive && (type.includes("FOLGA") || type.includes("ABONO") || type.includes("FALTA") || type.includes("TRE DEBITO"));
-    }).sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
-  }, [launches]);
+      return isActive && (type.includes("FOLGA") || type.includes("ABONO") || type.includes("TRE DEBITO"));
+    });
+
+    // 2. Pega Faltas únicas dos Relatórios de hoje
+    const uniqueFaltasMap = new Map();
+    (todayReports || []).forEach(report => {
+      (report.absences || []).forEach((abs: any) => {
+        if (!uniqueFaltasMap.has(abs.id)) {
+          uniqueFaltasMap.set(abs.id, {
+            id: abs.id,
+            employeeId: abs.id,
+            employeeName: abs.name,
+            employeeQra: abs.qra,
+            type: "FALTA (RELATÓRIO)",
+            escala: report.escalaName,
+            turno: report.time,
+            endDate: today
+          });
+        }
+      });
+    });
+
+    const listFromReports = Array.from(uniqueFaltasMap.values());
+
+    return [...listFromLaunches, ...listFromReports].sort((a, b) => 
+      (a.employeeName || "").localeCompare(b.employeeName || "")
+    );
+  }, [launches, todayReports]);
 
   const afastadosList = React.useMemo(() => {
     if (!employees || !launches) return [];
@@ -200,26 +269,6 @@ export default function Dashboard() {
     }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0 });
   }, [launches]);
 
-  // Estatísticas de Ausentes (Hoje)
-  const absentStats = React.useMemo(() => {
-    if (!launches) return { total: 0, folga: 0, abono: 0, falta: 0 };
-    const today = getSaoPauloDate();
-    
-    return launches.reduce((acc, l) => {
-      const type = normalizeStr(l.type);
-      const isActive = l.startDate <= today && l.endDate >= today;
-      
-      if (isActive) {
-        // TRE DÉBITO é contabilizado junto com FOLGA
-        if (type.includes("FOLGA") || type.includes("TRE DEBITO")) { acc.folga++; acc.total++; }
-        else if (type.includes("ABONO")) { acc.abono++; acc.total++; }
-        else if (type.includes("FALTA")) { acc.falta++; acc.total++; }
-      }
-      
-      return acc;
-    }, { total: 0, folga: 0, abono: 0, falta: 0 });
-  }, [launches]);
-
   // Cálculo de Efetivo Disponível
   const availableStats = React.useMemo(() => {
     const totalAfastados = stats.leave + stats.vacation + stats.medical;
@@ -245,7 +294,7 @@ export default function Dashboard() {
     { name: "Pendente", total: stats.pending },
   ];
 
-  if (loadingEmployees || loadingLaunches) {
+  if (loadingEmployees || loadingLaunches || loadingReports) {
     return (
       <div className="flex h-full items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
