@@ -269,7 +269,7 @@ export default function RelatoriosPage() {
   // Coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
-  const launchesRef = React.useMemo(() => {
+  const allLaunchesRef = React.useMemo(() => {
     if (!firestore) return null;
     const today = getSaoPauloDate();
     return query(collection(firestore, 'launches'), where('startDate', '<=', today));
