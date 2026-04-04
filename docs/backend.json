@@ -74,6 +74,36 @@
       },
       "required": ["date", "employeeId", "type", "hours"]
     },
+    "DailyReport": {
+      "title": "Daily Report",
+      "description": "Relatório operacional diário consolidado.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "date": { "type": "string" },
+        "time": { "type": "string" },
+        "escalaId": { "type": "string" },
+        "escalaName": { "type": "string" },
+        "inspector": {
+          "type": "object",
+          "properties": {
+            "id": { "type": "string" },
+            "name": { "type": "string" },
+            "qra": { "type": "string" },
+            "info": { "type": "string" }
+          }
+        },
+        "subinspectors": { "type": "array", "items": { "type": "object" } },
+        "absences": { "type": "array", "items": { "type": "object" } },
+        "absentTodayList": { "type": "array", "items": { "type": "object" } },
+        "specialSchedule": { "type": "array", "items": { "type": "object" } },
+        "sectors": { "type": "array", "items": { "type": "object" } },
+        "observations": { "type": "string" },
+        "status": { "type": "string", "enum": ["PENDENTE", "ARQUIVADO"] },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Request": {
       "title": "Operational Request",
       "description": "Solicitação operacional enviada por um funcionário (férias, permuta, etc).",
@@ -172,6 +202,10 @@
     "/launches/{launchId}": {
       "schema": "#/backend/entities/Launch",
       "description": "Coleção global de lançamentos operacionais."
+    },
+    "/dailyReports/{reportId}": {
+      "schema": "#/backend/entities/DailyReport",
+      "description": "Coleção de relatórios diários operacionais."
     },
     "/requests/{requestId}": {
       "schema": "#/backend/entities/Request",

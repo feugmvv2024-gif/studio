@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -24,15 +25,18 @@ import {
   Save,
   MessageSquare,
   ClipboardList,
-  Archive
+  Archive,
+  Eye,
+  CheckCircle2,
+  X
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
-import { useFirestore, useCollection } from '@/firebase'
-import { collection, query, orderBy, where } from 'firebase/firestore'
+import { useFirestore, useCollection, useAuth } from '@/firebase'
+import { collection, query, orderBy, where, addDoc, serverTimestamp, updateDoc, doc } from 'firebase/firestore'
 import { cn } from "@/lib/utils"
 import {
   Select,
@@ -72,6 +76,14 @@ import {
   TabsList,
   TabsTrigger,
 } from "@/components/ui/tabs"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -105,6 +117,7 @@ const generateId = () => Math.random().toString(36).substr(2, 9);
 export default function RelatoriosPage() {
   const { toast } = useToast()
   const firestore = useFirestore()
+  const { user: currentUser } = useAuth()
   const [loading, setLoading] = React.useState(false)
 
   // Estados de Colapso
@@ -362,9 +375,20 @@ export default function RelatoriosPage() {
     return query(collection(firestore, 'launches'), where('startDate', '<=', today));
   }, [firestore]);
 
+  // Queries para abas de auditoria
+  const pendingReportsRef = React.useMemo(() => 
+    firestore ? query(collection(firestore, 'dailyReports'), where('status', '==', 'PENDENTE'), orderBy('createdAt', 'desc')) : null
+  , [firestore]);
+
+  const archivedReportsRef = React.useMemo(() => 
+    firestore ? query(collection(firestore, 'dailyReports'), where('status', '==', 'ARQUIVADO'), orderBy('createdAt', 'desc')) : null
+  , [firestore]);
+
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: shiftPeriods } = useCollection(shiftPeriodsRef);
   const { data: allLaunches } = useCollection(launchesRef);
+  const { data: pendingReports } = useCollection(pendingReportsRef);
+  const { data: archivedReports } = useCollection(archivedReportsRef);
 
   // Períodos filtrados para Escala Especial
   const specialPeriodsList = React.useMemo(() => {
@@ -436,20 +460,103 @@ export default function RelatoriosPage() {
     return allEmployees.filter(emp => allowedRoles.includes(normalizeStr(emp.role || "")));
   }, [allEmployees]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!firestore || !currentUser) return;
+
     if (!inspetorId || !selectedEscalaId) {
-      toast({ variant: "destructive", title: "DADOS INCOMPLETOS", description: "SELECIONE O INSPETOR E A ESCALA." })
-      return
+      toast({ variant: "destructive", title: "DADOS INCOMPLETOS", description: "SELECIONE O INSPETOR E A ESCALA." });
+      return;
     }
-    setLoading(true)
-    setTimeout(() => {
-      setLoading(false)
+
+    setLoading(true);
+
+    const reportData = {
+      date: defaultDate,
+      time: defaultTime,
+      escalaId: selectedEscalaId,
+      escalaName: shiftPeriods?.find((p: any) => p.id === selectedEscalaId)?.escalaName || "N/A",
+      inspector: {
+        id: inspetorId,
+        name: inspetorTerm.split(' (')[0],
+        qra: inspetorTerm.match(/\(([^)]+)\)/)?.[1] || inspetorTerm,
+        info: inspetorInfo
+      },
+      subinspectors: subinspetorRows.filter(r => !!r.empId).map(r => ({
+        id: r.empId,
+        name: r.term.split(' (')[0],
+        qra: r.term.match(/\(([^)]+)\)/)?.[1] || r.term,
+        info: r.info
+      })),
+      absences: faltaRows.filter(r => !!r.empId).map(r => ({
+        id: r.empId,
+        name: r.term.split(' (')[0],
+        qra: r.term.match(/\(([^)]+)\)/)?.[1] || r.term,
+        info: r.info
+      })),
+      absentTodayList: absentTodayList,
+      specialSchedule: especialRows.filter(r => !!r.empId).map(r => ({
+        id: r.empId,
+        name: r.term.split(' (')[0],
+        qra: r.term.match(/\(([^)]+)\)/)?.[1] || r.term,
+        info: r.info,
+        periodId: r.periodId,
+        periodName: specialPeriodsList.find((p: any) => p.id === r.periodId)?.escalaName || "N/A"
+      })),
+      sectors: sectorBlocks.map(s => ({
+        id: s.id,
+        sectorType: s.sectorType,
+        chief: {
+          id: s.chiefData.id,
+          name: s.chiefData.term.split(' (')[0],
+          qra: s.chiefData.term.match(/\(([^)]+)\)/)?.[1] || s.chiefData.term
+        },
+        posts: s.posts.map((p: any) => ({
+          id: p.id,
+          type: p.type,
+          vtrNumber: p.vtrNumber,
+          members: p.members.filter((m: any) => !!m.empId).map((m: any) => ({
+            id: m.empId,
+            qra: m.term
+          }))
+        }))
+      })),
+      observations: observations,
+      status: "PENDENTE",
+      createdBy: currentUser.uid,
+      createdAt: serverTimestamp()
+    };
+
+    try {
+      await addDoc(collection(firestore, 'dailyReports'), reportData);
       localStorage.removeItem('nrg_relatorio_draft');
-      toast({ title: "RELATÓRIO ENVIADO" })
-      setObservations("")
-    }, 1000)
-  }
+      toast({ title: "RELATÓRIO ENVIADO", description: "O registro foi salvo para auditoria." });
+      
+      // Resetar formulário
+      setObservations("");
+      setInspetorId("");
+      setInspetorTerm("");
+      setInspetorInfo("");
+      setSubinspetorRows([{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
+      setFaltaRows([{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
+      setEspecialRows([{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
+      setSectorBlocks([{ id: generateId(), sectorType: "", chiefData: { id: "", term: "", info: "", show: false }, posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }] }]);
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERRO AO SALVAR", description: "Verifique sua conexão." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleArchiveReport = async (reportId: string) => {
+    if (!firestore) return;
+    try {
+      await updateDoc(doc(firestore, 'dailyReports', reportId), { status: 'ARQUIVADO' });
+      toast({ title: "RELATÓRIO ARQUIVADO", description: "Homologação concluída com sucesso." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERRO AO ARQUIVAR" });
+    }
+  };
 
   const renderAutocomplete = (
     label: string, 
@@ -529,6 +636,186 @@ export default function RelatoriosPage() {
     );
   };
 
+  const renderReportList = (reports: any[], emptyMessage: string, showArchiveAction?: boolean) => (
+    <div className="grid gap-4">
+      {reports.length === 0 ? (
+        <div className="text-center py-20 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest border-2 border-dashed rounded-2xl">
+          {emptyMessage}
+        </div>
+      ) : (
+        reports.map(report => (
+          <Card key={report.id} className="card-shadow border-none rounded-xl overflow-hidden hover:shadow-md transition-all">
+            <div className="flex flex-col sm:flex-row items-stretch">
+              <div className={cn(
+                "w-full sm:w-16 flex flex-col items-center justify-center p-4 shrink-0 text-white",
+                report.status === 'ARQUIVADO' ? 'bg-green-600' : 'bg-blue-600'
+              )}>
+                <FileText className="h-6 w-6" />
+              </div>
+              <div className="flex-1 p-4 grid grid-cols-1 sm:grid-cols-4 gap-4 items-center">
+                <div>
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase">Data / Turno</p>
+                  <p className="text-[11px] font-black uppercase text-slate-900">{formatDateBR(report.date)} - {report.time}</p>
+                  <Badge variant="secondary" className="text-[8px] uppercase font-bold mt-1">{report.escalaName}</Badge>
+                </div>
+                <div>
+                  <p className="text-[9px] font-bold text-muted-foreground uppercase">Inspetor Responsável</p>
+                  <p className="text-[11px] font-black uppercase text-slate-900">{report.inspector?.name}</p>
+                  <p className="text-[9px] font-bold text-primary uppercase">QRA: {report.inspector?.qra}</p>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                  <Badge variant="outline" className="text-[8px] uppercase font-bold">{report.sectors?.length} Setores</Badge>
+                  <Badge variant="outline" className="text-[8px] uppercase font-bold">{report.absentTodayList?.length + report.absences?.length} Ausências</Badge>
+                </div>
+                <div className="flex items-center justify-end gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-blue-600 hover:bg-blue-50">
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-[95vw] sm:max-w-4xl max-h-[90vh] p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+                      <DialogHeader className="bg-primary p-6 text-white shrink-0">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-4">
+                            <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm"><FileText className="h-6 w-6" /></div>
+                            <div>
+                              <DialogTitle className="text-xl font-black uppercase tracking-tight leading-none">Detalhamento do Relatório</DialogTitle>
+                              <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest mt-1">Ref: {formatDateBR(report.date)} • {report.escalaName}</p>
+                            </div>
+                          </div>
+                          {showArchiveAction && (
+                            <Button onClick={() => handleArchiveReport(report.id)} size="sm" className="bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-9 gap-2 shadow-lg shadow-green-900/20">
+                              <CheckCircle2 className="h-4 w-4" /> Homologar
+                            </Button>
+                          )}
+                        </div>
+                      </DialogHeader>
+                      <ScrollArea className="max-h-[70vh]">
+                        <div className="p-6 space-y-8 pb-12">
+                          {/* Resumo Chefia */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Inspetor / Responsável</Label>
+                              <div className="p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <p className="text-sm font-black uppercase">{report.inspector?.name} ({report.inspector?.qra})</p>
+                                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-0.5">{report.inspector?.info}</p>
+                              </div>
+                            </div>
+                            {report.subinspectors?.length > 0 && (
+                              <div className="space-y-2">
+                                <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Subinspetores</Label>
+                                <div className="space-y-2">
+                                  {report.subinspectors.map((sub: any, idx: number) => (
+                                    <div key={idx} className="p-2 bg-slate-50/50 rounded-lg border border-slate-100 flex justify-between items-center">
+                                      <span className="text-[11px] font-black uppercase">{sub.name} ({sub.qra})</span>
+                                      <Badge variant="outline" className="text-[8px] font-bold">{sub.info}</Badge>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Equipe do Dia Hierárquico */}
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                              <Users className="h-4 w-4 text-blue-600" />
+                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Equipe do Dia</h4>
+                            </div>
+                            <div className="space-y-6">
+                              {report.sectors?.map((sector: any, sIdx: number) => (
+                                <div key={sIdx} className="space-y-3 bg-slate-50/30 p-4 rounded-2xl border border-slate-100">
+                                  <div className="flex items-center justify-between">
+                                    <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] px-3">{sector.sectorType}</Badge>
+                                    <span className="text-[10px] font-black uppercase text-slate-600">Chefe: {sector.chief?.name} ({sector.chief?.qra})</span>
+                                  </div>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {sector.posts?.map((post: any, pIdx: number) => (
+                                      <div key={pIdx} className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm space-y-2">
+                                        <div className="flex items-center justify-between border-b pb-1">
+                                          <span className="text-[9px] font-black uppercase text-slate-500">{post.type} {post.vtrNumber ? `• VTR ${post.vtrNumber}` : ""}</span>
+                                          <Badge variant="outline" className="text-[8px] font-bold">{post.members?.length} Membros</Badge>
+                                        </div>
+                                        <div className="flex flex-wrap gap-1.5">
+                                          {post.members?.map((m: any, mIdx: number) => (
+                                            <Badge key={mIdx} variant="secondary" className="text-[9px] font-bold bg-slate-100 text-slate-700 uppercase">{m.qra}</Badge>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Faltas e Especial */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2 border-b pb-2">
+                                <UserX className="h-4 w-4 text-red-600" />
+                                <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Ausências do Turno</h4>
+                              </div>
+                              <div className="space-y-2">
+                                {[...(report.absences || []), ...(report.absentTodayList || [])].map((aus: any, idx: number) => (
+                                  <div key={idx} className="p-2 bg-red-50/30 rounded-lg border border-red-100 flex justify-between items-center">
+                                    <div className="flex flex-col">
+                                      <span className="text-[11px] font-black uppercase text-red-900">{aus.employeeQra || aus.qra} - {aus.employeeName || aus.name}</span>
+                                      <span className="text-[8px] font-bold text-red-600 uppercase">{aus.type || "FALTA NÃO JUSTIFICADA"}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-[8px] border-red-200 text-red-700 font-bold uppercase">{aus.escala || aus.info}</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2 border-b pb-2">
+                                <Star className="h-4 w-4 text-amber-600" />
+                                <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Escala Especial</h4>
+                              </div>
+                              <div className="space-y-2">
+                                {report.specialSchedule?.map((esp: any, idx: number) => (
+                                  <div key={idx} className="p-2 bg-amber-50/30 rounded-lg border border-amber-100 flex justify-between items-center">
+                                    <div className="flex flex-col">
+                                      <span className="text-[11px] font-black uppercase text-amber-900">{esp.name} ({esp.qra})</span>
+                                      <span className="text-[8px] font-bold text-amber-600 uppercase">{esp.periodName}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-[8px] border-amber-200 text-amber-700 font-bold uppercase">{esp.info}</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Observações */}
+                          <div className="space-y-4">
+                            <div className="flex items-center gap-2 border-b pb-2">
+                              <MessageSquare className="h-4 w-4 text-slate-600" />
+                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Relato de Ocorrências</h4>
+                            </div>
+                            <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 italic text-[11px] text-slate-700 uppercase leading-relaxed whitespace-pre-wrap">
+                              {report.observations || "NENHUMA OCORRÊNCIA REGISTRADA."}
+                            </div>
+                          </div>
+                        </div>
+                      </ScrollArea>
+                    </DialogContent>
+                  </Dialog>
+                  {showArchiveAction && (
+                    <Button onClick={() => handleArchiveReport(report.id)} variant="ghost" size="sm" className="h-9 w-9 p-0 text-green-600 hover:bg-green-50">
+                      <CheckCircle2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </Card>
+        ))
+      )}
+    </div>
+  );
+
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
       <AlertDialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
@@ -565,10 +852,16 @@ export default function RelatoriosPage() {
             <Plus className="h-3.5 w-3.5" /> NOVO RELATÓRIO
           </TabsTrigger>
           <TabsTrigger value="sent" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
-            <ClipboardList className="h-3.5 w-3.5" /> RELATÓRIOS ENVIADOS
+            <ClipboardList className="h-3.5 w-3.5" /> 
+            ENVIADOS
+            {pendingReports && pendingReports.length > 0 && (
+              <Badge className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center bg-primary text-primary-foreground text-[8px] rounded-full">
+                {pendingReports.length}
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger value="archived" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
-            <Archive className="h-3.5 w-3.5" /> RELATÓRIOS ARQUIVADOS
+            <Archive className="h-3.5 w-3.5" /> ARQUIVO
           </TabsTrigger>
         </TabsList>
 
@@ -871,31 +1164,11 @@ export default function RelatoriosPage() {
         </TabsContent>
 
         <TabsContent value="sent" className="mt-6">
-          <Card className="card-shadow border-none rounded-2xl overflow-hidden py-20">
-            <CardContent className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="bg-muted p-4 rounded-full">
-                <ClipboardList className="h-10 w-10 text-muted-foreground opacity-50" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold uppercase tracking-tight">Fila de Auditoria Vazia</h3>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Nenhum relatório aguardando conferência no momento.</p>
-              </div>
-            </CardContent>
-          </Card>
+          {renderReportList(pendingReports || [], "Nenhum relatório aguardando auditoria no momento.", true)}
         </TabsContent>
 
         <TabsContent value="archived" className="mt-6">
-          <Card className="card-shadow border-none rounded-2xl overflow-hidden py-20">
-            <CardContent className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="bg-muted p-4 rounded-full">
-                <Archive className="h-10 w-10 text-muted-foreground opacity-50" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold uppercase tracking-tight">Arquivo Histórico Vazio</h3>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Nenhum relatório foi arquivado ainda.</p>
-              </div>
-            </CardContent>
-          </Card>
+          {renderReportList(archivedReports || [], "Arquivo histórico vazio.")}
         </TabsContent>
       </Tabs>
     </div>
