@@ -31,7 +31,10 @@ import {
   X,
   AlertTriangle,
   ArrowRight,
-  RotateCcw
+  RotateCcw,
+  Plane,
+  Stethoscope,
+  Info
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -270,10 +273,9 @@ export default function RelatoriosPage() {
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
   const allLaunchesRef = React.useMemo(() => {
-    if (!firestore) return null;
-    const today = getSaoPauloDate();
-    return query(collection(firestore, 'launches'), where('startDate', '<=', today));
-  }, [firestore]);
+    if (!firestore || !defaultDate) return null;
+    return query(collection(firestore, 'launches'), where('startDate', '<=', defaultDate));
+  }, [firestore, defaultDate]);
 
   // Auditoria e Gestão
   const pendingReportsRef = React.useMemo(() => firestore ? query(collection(firestore, 'dailyReports'), where('status', '==', 'PENDENTE'), orderBy('createdAt', 'desc')) : null, [firestore]);
@@ -327,7 +329,13 @@ export default function RelatoriosPage() {
         qra: r.term.match(/\(([^)]+)\)/)?.[1] || r.term,
         info: r.info
       })),
-      absentTodayList: [], // Preenchido dinamicamente se necessário, mas o original usa consulta
+      absentTodayList: absentTodayList.map(l => ({
+        id: l.employeeId,
+        name: l.employeeName,
+        qra: l.employeeQra,
+        type: l.type,
+        endDate: l.endDate
+      })),
       specialSchedule: especialRows.filter(r => !!r.empId).map(r => ({
         id: r.empId,
         name: r.term.split(' (')[0],
@@ -433,16 +441,15 @@ export default function RelatoriosPage() {
     }
   };
 
-  // Re-utilizando a lógica de busca do Inspetor e outros campos conforme código anterior
   const absentTodayList = React.useMemo(() => {
-    if (!allLaunches || !allEmployees || !inspetorId) return [];
+    if (!allLaunches || !allEmployees || !inspetorId || !defaultDate) return [];
     const selectedInspetor = allEmployees.find(e => e.id === inspetorId);
     if (!selectedInspetor) return [];
-    const today = getSaoPauloDate();
+    const targetDate = defaultDate;
     const types = ["FOLGA", "ABONO", "FERIAS", "LICENCA", "ATESTADO", "TRE DEBITO"];
     return allLaunches.filter(l => {
       const normType = normalizeStr(l.type || "");
-      const isActive = l.startDate <= today && l.endDate >= today;
+      const isActive = l.startDate <= targetDate && l.endDate >= targetDate;
       if (!isActive || !types.some(t => normType.includes(t))) return false;
       const emp = allEmployees.find(e => e.id === l.employeeId);
       if (!emp) return false;
@@ -451,7 +458,7 @@ export default function RelatoriosPage() {
       return isSameShiftAndSchedule || isOrdinario;
     }).map(l => ({ ...l, unit: allEmployees.find(e => e.id === l.employeeId)?.unit || "N/A" }))
       .sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
-  }, [allLaunches, allEmployees, inspetorId]);
+  }, [allLaunches, allEmployees, inspetorId, defaultDate]);
 
   const trulyAbsentIds = React.useMemo(() => {
     const ids = faltaRows.map(r => r.empId).filter(Boolean);
@@ -708,24 +715,28 @@ export default function RelatoriosPage() {
                             </div>
                           </div>
 
-                          {/* Outras Seções */}
+                          {/* Ausentes e Especial */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            {report.absences?.length > 0 && (
-                              <div className="space-y-4">
-                                <div className="flex items-center gap-2 border-b pb-2">
-                                  <UserX className="h-4 w-4 text-red-600" />
-                                  <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Faltas Registradas</h4>
-                                </div>
-                                <div className="space-y-2">
-                                  {report.absences.map((aus: any, idx: number) => (
-                                    <div key={idx} className="p-2 bg-red-50/30 rounded-lg border border-red-100 flex justify-between items-center">
-                                      <span className="text-[11px] font-black uppercase text-red-900">{aus.name} ({aus.qra})</span>
-                                      <Badge variant="outline" className="text-[8px] border-red-200 text-red-700 font-bold">{aus.info}</Badge>
-                                    </div>
-                                  ))}
-                                </div>
+                            <div className="space-y-4">
+                              <div className="flex items-center gap-2 border-b pb-2">
+                                <UserX className="h-4 w-4 text-red-600" />
+                                <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Ausências & Faltas</h4>
                               </div>
-                            )}
+                              <div className="space-y-2">
+                                {report.absentTodayList?.map((aus: any, idx: number) => (
+                                  <div key={`af-${idx}`} className="p-2 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
+                                    <span className="text-[11px] font-black uppercase text-slate-700">{aus.name} ({aus.qra})</span>
+                                    <Badge variant="secondary" className="text-[8px] font-bold uppercase">{aus.type}</Badge>
+                                  </div>
+                                ))}
+                                {report.absences?.map((aus: any, idx: number) => (
+                                  <div key={`ms-${idx}`} className="p-2 bg-red-50/30 rounded-lg border border-red-100 flex justify-between items-center">
+                                    <span className="text-[11px] font-black uppercase text-red-900">{aus.name} ({aus.qra})</span>
+                                    <Badge variant="outline" className="text-[8px] border-red-200 text-red-700 font-bold">{aus.info}</Badge>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
                             {report.specialSchedule?.length > 0 && (
                               <div className="space-y-4">
                                 <div className="flex items-center gap-2 border-b pb-2">
@@ -899,7 +910,7 @@ export default function RelatoriosPage() {
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Escala e Turno (Inspetor)</Label><Input value={inspetorInfo} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" /></div>
                 </div>
 
-                {/* Seções Dinâmicas conforme Código Anterior */}
+                {/* Seções Dinâmicas */}
                 <Collapsible open={isSubTeamOpen} onOpenChange={setIsSubTeamOpen} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
@@ -919,6 +930,64 @@ export default function RelatoriosPage() {
                         <Button type="button" variant="ghost" size="icon" onClick={() => removeSubinspetorRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
+                  </CollapsibleContent>
+                </Collapsible>
+
+                {/* Ausentes (Oficial) */}
+                <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <CollapsibleTrigger asChild><button type="button" className={cn("p-2 rounded-xl transition-colors border shadow-sm", afastadosFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-slate-50 text-slate-400 border-slate-100")}><ShieldCheck className="h-5 w-5" /></button></CollapsibleTrigger>
+                      <div className="flex flex-col"><h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Servidores Ausentes (Oficial)</h4><span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{absentTodayList.length} SERVIDORES LANÇADOS NO SISTEMA RH.</span></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">{isAfastadosOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button></CollapsibleTrigger>
+                    </div>
+                  </div>
+                  <CollapsibleContent className="animate-in slide-in-from-top-4 duration-500">
+                    {absentTodayList.length === 0 ? (
+                      <div className="p-8 border-2 border-dashed rounded-2xl text-center bg-slate-50/30">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold italic">Nenhuma ausência oficial para esta data/turno.</p>
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {absentTodayList.map((aus, idx) => {
+                          const type = normalizeStr(aus.type);
+                          const isVacation = type.includes("FERIAS");
+                          const isMedical = type.includes("ATESTADO");
+                          const isLeave = type.includes("LICENCA");
+                          
+                          return (
+                            <div key={idx} className="p-3 rounded-xl border border-slate-100 bg-white shadow-sm flex items-center gap-3">
+                              <div className={cn(
+                                "p-2 rounded-lg shrink-0",
+                                isVacation ? "bg-blue-50 text-blue-600" :
+                                isMedical ? "bg-red-50 text-red-600" :
+                                isLeave ? "bg-purple-50 text-purple-600" : "bg-orange-50 text-orange-600"
+                              )}>
+                                {isVacation ? <Plane className="h-4 w-4" /> : isMedical ? <Stethoscope className="h-4 w-4" /> : <Calendar className="h-4 w-4" />}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-black uppercase text-slate-900 truncate">{aus.employeeName}</p>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  <span className="text-[9px] font-bold text-muted-foreground uppercase">QRA: {aus.employeeQra}</span>
+                                  <Badge variant="outline" className={cn(
+                                    "text-[8px] font-black uppercase px-1.5 h-4 border-none",
+                                    isVacation ? "bg-blue-600 text-white" :
+                                    isMedical ? "bg-red-600 text-white" :
+                                    isLeave ? "bg-purple-600 text-white" : "bg-orange-500 text-white"
+                                  )}>{aus.type}</Badge>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="mt-4 bg-blue-50/50 p-3 rounded-xl border border-blue-100 flex items-start gap-3">
+                      <Info className="h-4 w-4 text-blue-600 mt-0.5" />
+                      <p className="text-[10px] text-blue-800 font-medium uppercase leading-relaxed">Estes dados são extraídos automaticamente da escala oficial de RH. Servidores nesta lista não podem ser escalados no turno.</p>
+                    </div>
                   </CollapsibleContent>
                 </Collapsible>
 
