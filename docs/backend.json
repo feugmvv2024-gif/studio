@@ -76,7 +76,7 @@
     },
     "DailyReport": {
       "title": "Daily Report",
-      "description": "Relatório operacional diário consolidado.",
+      "description": "Relatório operacional diário consolidado com histórico de auditoria.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -84,24 +84,31 @@
         "time": { "type": "string" },
         "escalaId": { "type": "string" },
         "escalaName": { "type": "string" },
-        "inspector": {
-          "type": "object",
-          "properties": {
-            "id": { "type": "string" },
-            "name": { "type": "string" },
-            "qra": { "type": "string" },
-            "info": { "type": "string" }
-          }
-        },
+        "inspector": { "type": "object" },
         "subinspectors": { "type": "array", "items": { "type": "object" } },
         "absences": { "type": "array", "items": { "type": "object" } },
         "absentTodayList": { "type": "array", "items": { "type": "object" } },
         "specialSchedule": { "type": "array", "items": { "type": "object" } },
         "sectors": { "type": "array", "items": { "type": "object" } },
         "observations": { "type": "string" },
-        "status": { "type": "string", "enum": ["PENDENTE", "ARQUIVADO"] },
+        "status": { "type": "string", "enum": ["PENDENTE", "EM REVISÃO", "ARQUIVADO"] },
+        "lastReturnReason": { "type": "string", "description": "Último motivo de devolução pelo RH." },
+        "auditHistory": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "timestamp": { "type": "string", "format": "date-time" },
+              "action": { "type": "string" },
+              "user": { "type": "string" },
+              "qra": { "type": "string" },
+              "notes": { "type": "string" }
+            }
+          }
+        },
         "createdBy": { "type": "string" },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
       }
     },
     "Request": {
