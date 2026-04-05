@@ -1,4 +1,3 @@
-
 'use client';
 
 import React, { useEffect } from 'react';
@@ -24,16 +23,20 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [user, loading, router, pathname]);
 
-  // Controle de Acesso (RBAC) para Agentes
+  // Controle de Acesso (RBAC) para Agentes, Inspetores e Subinspetores
   useEffect(() => {
     if (!loading && user && employeeData) {
       const role = normalizeStr(employeeData.role || "");
       
       if (role === "AGENTE") {
         const allowedPaths = ['/meus-lancamentos', '/requests', '/profile'];
-        // Se tentar acessar página administrativa, redireciona para o autoatendimento
         if (pathname !== '/login' && !allowedPaths.includes(pathname)) {
           router.push('/meus-lancamentos');
+        }
+      } else if (role === "INSPETOR" || role === "SUBINSPETOR") {
+        const allowedPaths = ['/relatorios', '/meus-lancamentos', '/requests', '/profile'];
+        if (pathname !== '/login' && !allowedPaths.includes(pathname)) {
+          router.push('/relatorios');
         }
       }
     }

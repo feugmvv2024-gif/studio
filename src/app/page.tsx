@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect } from "react"
@@ -19,11 +18,15 @@ export default function Home() {
       } else {
         if (employeeData) {
           const role = normalizeStr(employeeData.role || "");
-          // Agentes são redirecionados para Meus Lançamentos como página inicial
+          
           if (role === "AGENTE") {
+            // Agentes começam em Meus Lançamentos
             router.push("/meus-lancamentos");
+          } else if (role === "INSPETOR" || role === "SUBINSPETOR") {
+            // Inspetores e Subinspetores começam em Relatórios
+            router.push("/relatorios");
           } else {
-            // Inspetores e RH continuam caindo no Dashboard
+            // Gestores e RH continuam caindo no Dashboard
             router.push("/dashboard");
           }
         } else {

@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -57,7 +56,7 @@ export function AppSidebar() {
 
   const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
-  // Filtra navegação com base no cargo
+  // Filtra navegação com base no cargo (RBAC)
   const filteredNavigation = React.useMemo(() => {
     if (!employeeData) return [];
     const role = normalizeStr(employeeData.role || "");
@@ -68,12 +67,19 @@ export function AppSidebar() {
         ["/meus-lancamentos", "/requests", "/profile"].includes(item.href)
       );
     }
+
+    if (role === "INSPETOR" || role === "SUBINSPETOR") {
+      // Inspetores e Subinspetores veem Relatórios + Autoatendimento
+      return navigation.filter(item => 
+        ["/relatorios", "/meus-lancamentos", "/requests", "/profile"].includes(item.href)
+      );
+    }
     
-    // Outros cargos veem tudo
+    // Outros cargos (Gestor de RH, etc) veem tudo
     return navigation;
   }, [employeeData]);
 
-  // Lógica de monitoramento de requerimentos pendentes (Fluxo Multi-Etapas)
+  // Lógica de monitoramento de requerimentos pendentes
   const managementRequestsQuery = React.useMemo(() => {
     if (!firestore || !user || !employeeData) return null;
     return query(collection(firestore, 'requests'), where('status', 'in', ['Pendente', 'Aguardando Parceiro', 'Aprovado pela Chefia']));
