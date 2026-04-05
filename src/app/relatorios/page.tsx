@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -563,7 +562,7 @@ export default function RelatoriosPage() {
       <div className="space-y-1 relative flex-1">
         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><User className="h-3 w-3" /> {label}</Label>
         <div className="relative">
-          <Input placeholder={`BUSCAR...`} className="h-11 uppercase font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors pr-10" value={term} onChange={(e) => { const val = e.target.value.toUpperCase(); setTerm(val); setShow(true); if (!val) { setId(""); setInfo(""); } }} onFocus={() => setShow(true)} required={!isOptional} />
+          <Input placeholder={`BUSCAR...`} className="h-11 uppercase font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" value={term} onChange={(e) => { const val = e.target.value.toUpperCase(); setTerm(val); setShow(true); if (!val) { setId(""); setInfo(""); } }} onFocus={() => setShow(true)} required={!isOptional} />
           {id && <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /><Check className="h-4 w-4 text-green-600" /></div>}
         </div>
         {show && term && (
@@ -637,6 +636,7 @@ export default function RelatoriosPage() {
                   <p className="text-[9px] font-bold text-muted-foreground uppercase">Inspetor Responsável</p>
                   <p className="text-[11px] font-black uppercase text-slate-900">{report.inspector?.name}</p>
                   <p className="text-[9px] font-bold text-primary uppercase">QRA: {report.inspector?.qra}</p>
+                  <p className="text-[8px] font-medium text-muted-foreground uppercase mt-0.5">{report.inspector?.info}</p>
                 </div>
                 <div className="flex flex-wrap gap-1">
                   <Badge variant="outline" className="text-[8px] uppercase font-bold">{report.sectors?.length} Setores</Badge>
