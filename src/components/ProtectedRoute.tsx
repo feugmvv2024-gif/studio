@@ -16,11 +16,28 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   const router = useRouter();
   const pathname = usePathname();
 
+  const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
+
   useEffect(() => {
     if (!loading && !user && pathname !== '/login') {
       router.push('/login');
     }
   }, [user, loading, router, pathname]);
+
+  // Controle de Acesso (RBAC) para Agentes
+  useEffect(() => {
+    if (!loading && user && employeeData) {
+      const role = normalizeStr(employeeData.role || "");
+      
+      if (role === "AGENTE") {
+        const allowedPaths = ['/meus-lancamentos', '/requests', '/profile'];
+        // Se tentar acessar página administrativa, redireciona para o autoatendimento
+        if (pathname !== '/login' && !allowedPaths.includes(pathname)) {
+          router.push('/meus-lancamentos');
+        }
+      }
+    }
+  }, [loading, user, employeeData, pathname, router]);
 
   if (loading) {
     return (
@@ -57,9 +74,6 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       </div>
     );
   }
-
-  // A verificação de nível de acesso (RBAC) foi removida.
-  // Todos os usuários vinculados têm acesso aos filhos.
 
   return <>{children}</>;
 }

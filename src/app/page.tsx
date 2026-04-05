@@ -7,19 +7,32 @@ import { useAuth } from "@/firebase"
 import { Loader2 } from "lucide-react"
 
 export default function Home() {
-  const { user, loading } = useAuth();
+  const { user, employeeData, loading } = useAuth();
   const router = useRouter();
+
+  const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
         router.push("/login");
       } else {
-        // Redireciona todos os usuários logados para o dashboard, sem verificação de nível
-        router.push("/dashboard");
+        if (employeeData) {
+          const role = normalizeStr(employeeData.role || "");
+          // Agentes são redirecionados para Meus Lançamentos como página inicial
+          if (role === "AGENTE") {
+            router.push("/meus-lancamentos");
+          } else {
+            // Inspetores e RH continuam caindo no Dashboard
+            router.push("/dashboard");
+          }
+        } else {
+          // Caso os dados funcionais ainda não existam, o ProtectedRoute cuidará da tela de erro
+          router.push("/dashboard");
+        }
       }
     }
-  }, [user, loading, router]);
+  }, [user, loading, router, employeeData]);
 
   return (
     <div className="flex h-screen w-screen items-center justify-center">

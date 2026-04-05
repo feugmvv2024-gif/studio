@@ -55,6 +55,24 @@ export function AppSidebar() {
   
   const [connectionStatus, setConnectionStatus] = React.useState<'connected' | 'stable' | 'disconnected'>('stable')
 
+  const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
+
+  // Filtra navegação com base no cargo
+  const filteredNavigation = React.useMemo(() => {
+    if (!employeeData) return [];
+    const role = normalizeStr(employeeData.role || "");
+    
+    if (role === "AGENTE") {
+      // Agentes veem apenas os itens de autoatendimento
+      return navigation.filter(item => 
+        ["/meus-lancamentos", "/requests", "/profile"].includes(item.href)
+      );
+    }
+    
+    // Outros cargos veem tudo
+    return navigation;
+  }, [employeeData]);
+
   // Lógica de monitoramento de requerimentos pendentes (Fluxo Multi-Etapas)
   const managementRequestsQuery = React.useMemo(() => {
     if (!firestore || !user || !employeeData) return null;
@@ -65,15 +83,12 @@ export function AppSidebar() {
 
   const pendingActionCount = React.useMemo(() => {
     if (!managementRequests || !user || !employeeData) return 0;
-    const role = (employeeData.role || "").toUpperCase();
+    const role = normalizeStr(employeeData.role || "");
     const isRH = role.includes("GESTOR DE RH");
     
     return managementRequests.filter(req => {
-      // 1. Sou o parceiro aguardando aceite?
       if (req.status === "Aguardando Parceiro") return req.partnerId === user.uid;
-      // 2. Sou a chefia aguardando parecer?
       if (req.status === "Pendente") return req.chefiaIds?.includes(user.uid);
-      // 3. Sou o RH aguardando homologação?
       if (req.status === "Aprovado pela Chefia") return isRH;
       return false;
     }).length;
@@ -127,7 +142,7 @@ export function AppSidebar() {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigation.map((item) => (
+              {filteredNavigation.map((item) => (
                   <SidebarMenuItem key={item.name}>
                     <SidebarMenuButton
                       asChild
