@@ -279,7 +279,27 @@ export default function RelatoriosPage() {
 
   // Auditoria e Gestão
   const pendingReportsRef = React.useMemo(() => firestore ? query(collection(firestore, 'dailyReports'), where('status', '==', 'PENDENTE'), orderBy('createdAt', 'desc')) : null, [firestore]);
-  const archivedReportsRef = React.useMemo(() => firestore ? query(collection(firestore, 'dailyReports'), where('status', '==', 'ARQUIVADO'), orderBy('createdAt', 'desc')) : null, [firestore]);
+  
+  // Lógica de visibilidade dinâmica da aba Arquivo
+  const archivedReportsRef = React.useMemo(() => {
+    if (!firestore || !currentUser || !employeeData) return null;
+    const isRH = normalizeStr(employeeData.role || "").includes("GESTOR DE RH");
+    
+    const baseQuery = collection(firestore, 'dailyReports');
+    if (isRH) {
+      // Gestor vê tudo
+      return query(baseQuery, where('status', '==', 'ARQUIVADO'), orderBy('createdAt', 'desc'));
+    } else {
+      // Usuário comum vê apenas os próprios
+      return query(
+        baseQuery, 
+        where('status', '==', 'ARQUIVADO'), 
+        where('createdBy', '==', currentUser.uid),
+        orderBy('createdAt', 'desc')
+      );
+    }
+  }, [firestore, currentUser, employeeData]);
+
   const inReviewReportsRef = React.useMemo(() => firestore ? query(collection(firestore, 'dailyReports'), where('status', '==', 'EM REVISÃO'), orderBy('createdAt', 'desc')) : null, [firestore]);
 
   const { data: allEmployees, loading: loadingEmployees } = useCollection(employeesRef);
