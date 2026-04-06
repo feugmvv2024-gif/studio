@@ -13,6 +13,7 @@ import {
   History,
   ShieldCheck,
   FileText,
+  CalendarCheck,
 } from "lucide-react"
 
 import {
@@ -39,6 +40,7 @@ const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
   { name: "Lançamentos", href: "/lancamentos", icon: FilePlus },
   { name: "Efetivo", href: "/efetivo", icon: Users },
+  { name: "Frequência", href: "/frequencia", icon: CalendarCheck },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
   { name: "Meus Lançamentos", href: "/meus-lancamentos", icon: History },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
@@ -75,7 +77,7 @@ export function AppSidebar() {
       );
     }
     
-    // Outros cargos (Gestor de RH, etc) veem tudo
+    // Outros cargos (Gestor de RH, Inspetor Geral, Comandante, etc) veem tudo
     return navigation;
   }, [employeeData]);
 
