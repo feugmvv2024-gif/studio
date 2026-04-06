@@ -14,6 +14,7 @@ import {
   ShieldCheck,
   FileText,
   CalendarCheck,
+  Plane,
 } from "lucide-react"
 
 import {
@@ -45,6 +46,7 @@ const navigation = [
   { name: "Meus Lançamentos", href: "/meus-lancamentos", icon: History },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
+  { name: "Férias", href: "/ferias", icon: Plane },
   { name: "Dados Perfil", href: "/dados-perfil", icon: FileText },
   { name: "Configuração", href: "/settings", icon: Settings },
 ]
@@ -66,14 +68,14 @@ export function AppSidebar() {
     if (role === "AGENTE") {
       // Agentes veem apenas os itens de autoatendimento
       return navigation.filter(item => 
-        ["/meus-lancamentos", "/requests", "/profile"].includes(item.href)
+        ["/meus-lancamentos", "/requests", "/profile", "/ferias"].includes(item.href)
       );
     }
 
     if (role === "INSPETOR" || role === "SUBINSPETOR") {
       // Inspetores e Subinspetores veem Relatórios + Autoatendimento
       return navigation.filter(item => 
-        ["/relatorios", "/meus-lancamentos", "/requests", "/profile"].includes(item.href)
+        ["/relatorios", "/meus-lancamentos", "/requests", "/profile", "/ferias"].includes(item.href)
       );
     }
     

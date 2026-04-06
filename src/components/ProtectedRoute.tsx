@@ -29,12 +29,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
       const role = normalizeStr(employeeData.role || "");
       
       if (role === "AGENTE") {
-        const allowedPaths = ['/meus-lancamentos', '/requests', '/profile'];
+        const allowedPaths = ['/meus-lancamentos', '/requests', '/profile', '/ferias'];
         if (pathname !== '/login' && !allowedPaths.includes(pathname)) {
           router.push('/meus-lancamentos');
         }
       } else if (role === "INSPETOR" || role === "SUBINSPETOR") {
-        const allowedPaths = ['/relatorios', '/meus-lancamentos', '/requests', '/profile'];
+        const allowedPaths = ['/relatorios', '/meus-lancamentos', '/requests', '/profile', '/ferias'];
         if (pathname !== '/login' && !allowedPaths.includes(pathname)) {
           router.push('/relatorios');
         }
