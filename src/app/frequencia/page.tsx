@@ -6,7 +6,8 @@ import {
   CalendarCheck, 
   Search, 
   Loader2, 
-  Download
+  Download,
+  CalendarDays
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { 
@@ -20,11 +21,26 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { useFirestore, useCollection } from '@/firebase'
 import { collection, query, orderBy } from 'firebase/firestore'
 
+const MONTHS = [
+  "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+  "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+];
+
 export default function FrequenciaPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
+  const [selectedMonth, setSelectedMonth] = React.useState(new Date().getMonth())
+  const [selectedYear, setSelectedYear] = React.useState(new Date().getFullYear())
+  
   const firestore = useFirestore()
 
   // Consulta todos os funcionários ordenados por nome
@@ -34,6 +50,20 @@ export default function FrequenciaPage() {
   }, [firestore]);
 
   const { data: employees, loading } = useCollection(employeesRef);
+
+  // Cálculo de dias no mês selecionado
+  const daysInMonth = React.useMemo(() => {
+    return new Date(selectedYear, selectedMonth + 1, 0).getDate();
+  }, [selectedMonth, selectedYear]);
+
+  // Anos para o seletor (2024 até 2030)
+  const years = React.useMemo(() => {
+    const startYear = 2024;
+    const endYear = 2030;
+    const list = [];
+    for (let i = startYear; i <= endYear; i++) list.push(i);
+    return list;
+  }, []);
 
   // Lógica de filtragem por Nome, Matrícula ou QRA
   const filteredData = React.useMemo(() => {
@@ -74,7 +104,7 @@ export default function FrequenciaPage() {
       </div>
 
       <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
-        <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 bg-muted/5 border-b">
+        <CardHeader className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 p-4 bg-muted/5 border-b">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
@@ -84,9 +114,41 @@ export default function FrequenciaPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-3 py-1 rounded-lg text-xs">
-            {filteredData.length} SERVIDORES LISTADOS
-          </Badge>
+          
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
+              <CalendarDays className="h-4 w-4 text-muted-foreground" />
+              <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
+                <SelectTrigger className="h-9 w-[140px] uppercase text-[10px] font-bold bg-background/50">
+                  <SelectValue placeholder="MÊS" />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((month, idx) => (
+                    <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">
+                      {month}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
+              <SelectTrigger className="h-9 w-[100px] uppercase text-[10px] font-bold bg-background/50">
+                <SelectValue placeholder="ANO" />
+              </SelectTrigger>
+              <SelectContent>
+                {years.map(year => (
+                  <SelectItem key={year} value={year.toString()} className="uppercase text-[10px] font-bold">
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-3 py-1 rounded-lg text-[10px] h-9 whitespace-nowrap">
+              {filteredData.length} SERVIDORES
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -96,7 +158,7 @@ export default function FrequenciaPage() {
                   <TableHead className="font-bold uppercase text-[9px] w-[50px] text-center">Nº</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">MATRÍCULA</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[200px]">NOME COMPLETO</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center">PRESENÇA</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] text-center bg-blue-50/50 text-blue-700">PRESENÇA</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] text-center">ESPECIAL</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] text-center">FOLGA/TRE</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] text-center">FÉRIAS</TableHead>
@@ -125,7 +187,8 @@ export default function FrequenciaPage() {
                           <span className="text-[9px] text-primary uppercase font-bold tracking-tighter">QRA: {emp.qra}</span>
                         </div>
                       </TableCell>
-                      {/* Colunas de Status (Fase 3: Inteligência de Dados) */}
+                      {/* Colunas de Status */}
+                      <TableCell className="text-center font-mono text-[11px] font-black text-blue-700 bg-blue-50/20">{daysInMonth}</TableCell>
                       <TableCell className="text-center font-mono text-[10px]">-</TableCell>
                       <TableCell className="text-center font-mono text-[10px]">-</TableCell>
                       <TableCell className="text-center font-mono text-[10px]">-</TableCell>
@@ -133,8 +196,7 @@ export default function FrequenciaPage() {
                       <TableCell className="text-center font-mono text-[10px]">-</TableCell>
                       <TableCell className="text-center font-mono text-[10px]">-</TableCell>
                       <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[10px] font-black bg-muted/5">-</TableCell>
+                      <TableCell className="text-center font-mono text-[11px] font-black bg-muted/5">{daysInMonth}</TableCell>
                     </TableRow>
                   ))
                 )}
