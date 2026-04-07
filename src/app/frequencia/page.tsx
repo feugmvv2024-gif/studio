@@ -143,11 +143,11 @@ export default function FrequenciaPage() {
           .print-w-full { width: 100% !important; }
           table { width: 100% !important; table-layout: auto !important; }
 
-          /* Estilo explícito para o bloco de assinatura aparecer */
+          /* Estilo explícito para o bloco de assinatura aparecer mais abaixo */
           .signature-block {
             display: flex !important;
             visibility: visible !important;
-            margin-top: 4rem !important;
+            margin-top: 10rem !important;
             break-inside: avoid !important;
           }
         }
@@ -349,12 +349,12 @@ export default function FrequenciaPage() {
       <div className="hidden print:flex signature-block mt-20 justify-around gap-12 text-center px-4" style={{ breakInside: 'avoid' }}>
         <div className="flex flex-col items-center gap-1 w-full max-w-[280px]">
           <div className="border-t border-slate-900 w-full mb-2"></div>
-          <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">Nome do Comandante</p>
+          <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">NOME COMPLETO DO COMANDANTE</p>
           <p className="text-[9px] font-bold uppercase text-muted-foreground">COMANDANTE - GMVV</p>
         </div>
         <div className="flex flex-col items-center gap-1 w-full max-w-[280px]">
           <div className="border-t border-slate-900 w-full mb-2"></div>
-          <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">Nome do Inspetor Geral</p>
+          <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">NOME COMPLETO DO INSPETOR GERAL</p>
           <p className="text-[9px] font-bold uppercase text-muted-foreground">INSPETOR GERAL - GMVV</p>
         </div>
       </div>
