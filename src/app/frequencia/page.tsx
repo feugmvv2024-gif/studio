@@ -123,10 +123,17 @@ export default function FrequenciaPage() {
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page { size: A4 portrait; margin: 1cm; }
-          body { background: white !important; }
+          body { background: white !important; overflow: visible !important; }
           .card-shadow { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
-          /* Garante que o conteúdo ocupe a largura total */
+          
+          /* Remove barras de rolagem e containers de scroll */
+          .overflow-x-auto { overflow: visible !important; }
+          ::-webkit-scrollbar { display: none !important; }
+          * { -ms-overflow-style: none !important; scrollbar-width: none !important; }
+
+          /* Garante que o conteúdo ocupe a largura total sem scroll */
           .print-w-full { width: 100% !important; }
+          table { width: 100% !important; table-layout: auto !important; }
         }
       ` }} />
 
