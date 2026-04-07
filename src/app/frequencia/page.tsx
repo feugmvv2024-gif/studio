@@ -59,6 +59,16 @@ export default function FrequenciaPage() {
   const { data: employees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: launches, loading: loadingLaunches } = useCollection(launchesRef);
 
+  // Busca nomes das autoridades para assinatura
+  const authorities = React.useMemo(() => {
+    if (!employees) return { comandante: "NOME NÃO LOCALIZADO", inspetorGeral: "NOME NÃO LOCALIZADO" };
+    
+    const comandante = employees.find(e => normalizeStr(e.role).includes("COMANDANTE"))?.name || "NOME NÃO LOCALIZADO";
+    const inspetorGeral = employees.find(e => normalizeStr(e.role).includes("INSPETOR GERAL"))?.name || "NOME NÃO LOCALIZADO";
+    
+    return { comandante, inspetorGeral };
+  }, [employees]);
+
   // Cálculo de dias no mês selecionado
   const daysInMonthCount = React.useMemo(() => {
     return new Date(selectedYear, selectedMonth + 1, 0).getDate();
@@ -149,6 +159,7 @@ export default function FrequenciaPage() {
             visibility: visible !important;
             margin-top: 10rem !important;
             break-inside: avoid !important;
+            page-break-inside: avoid !important;
           }
         }
       ` }} />
@@ -346,16 +357,16 @@ export default function FrequenciaPage() {
       </Card>
 
       {/* Rodapé de Assinaturas (Configurado para sempre aparecer no papel) */}
-      <div className="hidden print:flex signature-block mt-20 justify-around gap-12 text-center px-4" style={{ breakInside: 'avoid' }}>
-        <div className="flex flex-col items-center gap-1 w-full max-w-[280px]">
-          <div className="border-t border-slate-900 w-full mb-2"></div>
-          <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">NOME COMPLETO DO COMANDANTE</p>
-          <p className="text-[9px] font-bold uppercase text-muted-foreground">COMANDANTE - GMVV</p>
+      <div className="hidden print:flex signature-block mt-20 justify-around gap-12 text-center px-4" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
+        <div className="flex flex-col items-center gap-1 w-full max-w-[320px]">
+          <div className="border-t border-slate-900 w-full mb-3"></div>
+          <p className="text-[11px] font-black uppercase text-slate-900 leading-tight tracking-tight">{authorities.comandante}</p>
+          <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">COMANDANTE - GMVV</p>
         </div>
-        <div className="flex flex-col items-center gap-1 w-full max-w-[280px]">
-          <div className="border-t border-slate-900 w-full mb-2"></div>
-          <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">NOME COMPLETO DO INSPETOR GERAL</p>
-          <p className="text-[9px] font-bold uppercase text-muted-foreground">INSPETOR GERAL - GMVV</p>
+        <div className="flex flex-col items-center gap-1 w-full max-w-[320px]">
+          <div className="border-t border-slate-900 w-full mb-3"></div>
+          <p className="text-[11px] font-black uppercase text-slate-900 leading-tight tracking-tight">{authorities.inspetorGeral}</p>
+          <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">INSPETOR GERAL - GMVV</p>
         </div>
       </div>
     </div>
