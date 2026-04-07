@@ -328,6 +328,20 @@ export default function FrequenciaPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Rodapé de Assinaturas (Visível apenas na impressão) */}
+      <div className="hidden print:flex mt-20 justify-around gap-12 text-center px-4" style={{ breakInside: 'avoid' }}>
+        <div className="flex flex-col items-center gap-1 w-full max-w-[280px]">
+          <div className="border-t border-slate-900 w-full mb-2"></div>
+          <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">Nome do Comandante</p>
+          <p className="text-[9px] font-bold uppercase text-muted-foreground">COMANDANTE - GMVV</p>
+        </div>
+        <div className="flex flex-col items-center gap-1 w-full max-w-[280px]">
+          <div className="border-t border-slate-900 w-full mb-2"></div>
+          <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">Nome do Inspetor Geral</p>
+          <p className="text-[9px] font-bold uppercase text-muted-foreground">INSPETOR GERAL - GMVV</p>
+        </div>
+      </div>
     </div>
   );
 }
