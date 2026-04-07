@@ -338,13 +338,13 @@ export default function FrequenciaPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center font-mono text-[14px] font-black text-blue-700 bg-blue-50/20 print:text-black print:bg-transparent">{presence}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] font-bold text-amber-600 print:text-black">{special || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] print:text-black">{folga || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] print:text-black">{ferias || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] print:text-black">{atestado || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] print:text-black">{abono || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] text-red-600 font-bold print:text-black">{falta || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] print:text-black">{licenca || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[15px] font-bold text-amber-600 print:text-black">{special || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[15px] print:text-black">{folga || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[15px] print:text-black">{ferias || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[15px] print:text-black">{atestado || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[15px] print:text-black">{abono || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[15px] text-red-600 font-bold print:text-black">{falta || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[15px] print:text-black">{licenca || "0"}</TableCell>
                         <TableCell className="text-center font-mono text-[14px] font-black bg-muted/5 print:text-black print:bg-transparent">{finalTotal}</TableCell>
                       </TableRow>
                     );
