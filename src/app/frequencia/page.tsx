@@ -60,7 +60,7 @@ export default function FrequenciaPage() {
   const { data: launches, loading: loadingLaunches } = useCollection(launchesRef);
 
   // Cálculo de dias no mês selecionado
-  const daysInMonth = React.useMemo(() => {
+  const daysInMonthCount = React.useMemo(() => {
     return new Date(selectedYear, selectedMonth + 1, 0).getDate();
   }, [selectedMonth, selectedYear]);
 
@@ -83,6 +83,27 @@ export default function FrequenciaPage() {
       emp.qra?.toLowerCase().includes(term)
     );
   }, [employees, searchTerm]);
+
+  // Função para calcular interseção de dias entre o lançamento e o mês selecionado
+  const calculateIntersectionDays = (startDateStr: string, endDateStr: string) => {
+    if (!startDateStr || !endDateStr) return 0;
+
+    const monthStart = new Date(selectedYear, selectedMonth, 1, 0, 0, 0);
+    const monthEnd = new Date(selectedYear, selectedMonth + 1, 0, 23, 59, 59);
+    
+    const launchStart = new Date(startDateStr + "T00:00:00");
+    const launchEnd = new Date(endDateStr + "T23:59:59");
+
+    const overlapStart = launchStart > monthStart ? launchStart : monthStart;
+    const overlapEnd = launchEnd < monthEnd ? launchEnd : monthEnd;
+
+    if (overlapStart <= overlapEnd) {
+      const diffTime = Math.abs(overlapEnd.getTime() - overlapStart.getTime());
+      return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    }
+
+    return 0;
+  };
 
   if (loadingEmployees || loadingLaunches) {
     return (
@@ -186,13 +207,8 @@ export default function FrequenciaPage() {
                   </TableRow>
                 ) : (
                   filteredData.map((emp, index) => {
-                    // Filtrar lançamentos do servidor para o período selecionado
-                    const employeeLaunches = (launches || []).filter(l => {
-                      if (l.employeeId !== emp.id) return false;
-                      if (!l.startDate) return false;
-                      const launchDate = new Date(l.startDate + "T00:00:00");
-                      return launchDate.getMonth() === selectedMonth && launchDate.getFullYear() === selectedYear;
-                    });
+                    // Filtrar todos os lançamentos do servidor
+                    const employeeLaunches = (launches || []).filter(l => l.employeeId === emp.id);
 
                     let special = 0;
                     let folga = 0;
@@ -204,31 +220,40 @@ export default function FrequenciaPage() {
 
                     employeeLaunches.forEach(l => {
                       const type = normalizeStr(l.type || "");
-                      const d = Number(l.days) || 0;
-                      const q = Number(l.qtdEscala) || 0;
-
-                      // Regra de Especial: Soma qtdEscala apenas para "ESCALA ESPECIAL"
+                      
+                      // Para Escala Especial, mantemos a lógica de contar a quantidade se o lançamento inicia no mês
                       if (type === "ESCALA ESPECIAL") {
-                        special += q;
+                        const start = new Date(l.startDate + "T00:00:00");
+                        if (start.getMonth() === selectedMonth && start.getFullYear() === selectedYear) {
+                          special += (Number(l.qtdEscala) || 0);
+                        }
                       } 
-                      // Outras colunas: Somam campo dias e afetam a presença
-                      else if (type.includes("FOLGA") || type.includes("TRE DEBITO")) {
-                        folga += d;
-                      } else if (type.includes("FERIAS")) {
-                        ferias += d;
-                      } else if (type.includes("ATESTADO")) {
-                        atestado += d;
-                      } else if (type.includes("ABONO")) {
-                        abono += d;
-                      } else if (type.includes("FALTA")) {
-                        falta += d;
-                      } else if (type.includes("LICENCA")) {
-                        licenca += d;
+                      // Para afastamentos, calculamos a interseção real de dias dentro do mês
+                      else {
+                        const intersectionDays = calculateIntersectionDays(l.startDate, l.endDate);
+                        
+                        if (intersectionDays > 0) {
+                          if (type.includes("FOLGA") || type.includes("TRE DEBITO")) {
+                            folga += intersectionDays;
+                          } else if (type.includes("FERIAS")) {
+                            ferias += intersectionDays;
+                          } else if (type.includes("ATESTADO")) {
+                            atestado += intersectionDays;
+                          } else if (type.includes("ABONO")) {
+                            abono += intersectionDays;
+                          } else if (type.includes("FALTA")) {
+                            falta += intersectionDays;
+                          } else if (type.includes("LICENCA")) {
+                            licenca += intersectionDays;
+                          }
+                        }
                       }
                     });
 
                     const totalAbsences = folga + ferias + atestado + abono + falta + licenca;
-                    const presence = daysInMonth - totalAbsences;
+                    // A presença é o que sobra dos dias do mês após subtrair os dias de afastamento naquele mês
+                    const presence = daysInMonthCount - totalAbsences;
+                    // O total sempre deve fechar o número de dias do mês
                     const finalTotal = presence + totalAbsences;
 
                     return (
