@@ -117,7 +117,7 @@ export default function FrequenciaPage() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
               placeholder="BUSCAR POR NOME, QRA OU MATRÍCULA..." 
-              className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50 focus:bg-background transition-colors" 
+              className="pl-8 uppercase h-9 text-[11px] border-muted/50 bg-background/50 focus:bg-background transition-colors" 
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -127,12 +127,12 @@ export default function FrequenciaPage() {
             <div className="flex items-center gap-1.5">
               <CalendarDays className="h-4 w-4 text-muted-foreground" />
               <Select value={selectedMonth.toString()} onValueChange={(v) => setSelectedMonth(parseInt(v))}>
-                <SelectTrigger className="h-9 w-[140px] uppercase text-[10px] font-bold bg-background/50">
+                <SelectTrigger className="h-9 w-[140px] uppercase text-[11px] font-bold bg-background/50">
                   <SelectValue placeholder="MÊS" />
                 </SelectTrigger>
                 <SelectContent>
                   {MONTHS.map((month, idx) => (
-                    <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">
+                    <SelectItem key={idx} value={idx.toString()} className="uppercase text-[11px] font-bold">
                       {month}
                     </SelectItem>
                   ))}
@@ -141,19 +141,19 @@ export default function FrequenciaPage() {
             </div>
 
             <Select value={selectedYear.toString()} onValueChange={(v) => setSelectedYear(parseInt(v))}>
-              <SelectTrigger className="h-9 w-[100px] uppercase text-[10px] font-bold bg-background/50">
+              <SelectTrigger className="h-9 w-[100px] uppercase text-[11px] font-bold bg-background/50">
                 <SelectValue placeholder="ANO" />
               </SelectTrigger>
               <SelectContent>
                 {years.map(year => (
-                  <SelectItem key={year} value={year.toString()} className="uppercase text-[10px] font-bold">
+                  <SelectItem key={year} value={year.toString()} className="uppercase text-[11px] font-bold">
                     {year}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
 
-            <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-3 py-1 rounded-lg text-[10px] h-9 whitespace-nowrap">
+            <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-3 py-1 rounded-lg text-[11px] h-9 whitespace-nowrap">
               {filteredData.length} SERVIDORES
             </Badge>
           </div>
@@ -163,24 +163,24 @@ export default function FrequenciaPage() {
             <Table>
               <TableHeader className="bg-muted/20">
                 <TableRow className="hover:bg-transparent border-b">
-                  <TableHead className="font-bold uppercase text-[9px] w-[50px] text-center">Nº</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">MATRÍCULA</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] min-w-[200px]">NOME COMPLETO</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center bg-blue-50/50 text-blue-700">PRESENÇA</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center">ESPECIAL</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center">FOLGA/TRE</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center">FÉRIAS</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center">ATESTADO</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center">ABONO</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center">FALTA</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center">LICENÇA</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] text-center bg-muted/30">TOTAL</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] w-[50px] text-center">Nº</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] min-w-[80px]">MATRÍCULA</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] min-w-[200px]">NOME COMPLETO</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center bg-blue-50/50 text-blue-700">PRESENÇA</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center">ESPECIAL</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center">FOLGA/TRE</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center">FÉRIAS</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center">ATESTADO</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center">ABONO</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center">FALTA</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center">LICENÇA</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center bg-muted/30">TOTAL</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={12} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                    <TableCell colSpan={12} className="h-32 text-center uppercase text-[12px] font-bold text-muted-foreground italic tracking-widest">
                       NENHUM SERVIDOR ENCONTRADO PARA OS FILTROS APLICADOS.
                     </TableCell>
                   </TableRow>
@@ -233,23 +233,23 @@ export default function FrequenciaPage() {
 
                     return (
                       <TableRow key={emp.id} className="hover:bg-blue-50/30 transition-colors">
-                        <TableCell className="font-mono text-[9px] text-center text-muted-foreground">{index + 1}</TableCell>
-                        <TableCell className="font-mono text-[10px] uppercase font-bold text-slate-600">{emp.matricula}</TableCell>
+                        <TableCell className="font-mono text-[11px] text-center text-muted-foreground">{index + 1}</TableCell>
+                        <TableCell className="font-mono text-[12px] uppercase font-bold text-slate-600">{emp.matricula}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-bold text-[11px] uppercase text-slate-800 leading-tight">{emp.name}</span>
-                            <span className="text-[9px] text-primary uppercase font-bold tracking-tighter">QRA: {emp.qra}</span>
+                            <span className="font-bold text-[13px] uppercase text-slate-800 leading-tight">{emp.name}</span>
+                            <span className="text-[10px] text-primary uppercase font-bold tracking-tighter">QRA: {emp.qra}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center font-mono text-[11px] font-black text-blue-700 bg-blue-50/20">{presence}</TableCell>
-                        <TableCell className="text-center font-mono text-[10px] font-bold text-amber-600">{special || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[10px]">{folga || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[10px]">{ferias || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[10px]">{atestado || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[10px]">{abono || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[10px] text-red-600 font-bold">{falta || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[10px]">{licenca || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[11px] font-black bg-muted/5">{finalTotal}</TableCell>
+                        <TableCell className="text-center font-mono text-[14px] font-black text-blue-700 bg-blue-50/20">{presence}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] font-bold text-amber-600">{special || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px]">{folga || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px]">{ferias || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px]">{atestado || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px]">{abono || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] text-red-600 font-bold">{falta || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px]">{licenca || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[14px] font-black bg-muted/5">{finalTotal}</TableCell>
                       </TableRow>
                     );
                   })
