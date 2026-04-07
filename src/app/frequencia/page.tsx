@@ -36,6 +36,8 @@ const MONTHS = [
   "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
 ];
 
+const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
+
 export default function FrequenciaPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [selectedMonth, setSelectedMonth] = React.useState(new Date().getMonth())
@@ -43,13 +45,19 @@ export default function FrequenciaPage() {
   
   const firestore = useFirestore()
 
-  // Consulta todos os funcionários ordenados por nome
+  // Consultas ao Firestore
   const employeesRef = React.useMemo(() => {
     if (!firestore) return null;
     return query(collection(firestore, 'employees'), orderBy('name', 'asc'));
   }, [firestore]);
 
-  const { data: employees, loading } = useCollection(employeesRef);
+  const launchesRef = React.useMemo(() => {
+    if (!firestore) return null;
+    return collection(firestore, 'launches');
+  }, [firestore]);
+
+  const { data: employees, loading: loadingEmployees } = useCollection(employeesRef);
+  const { data: launches, loading: loadingLaunches } = useCollection(launchesRef);
 
   // Cálculo de dias no mês selecionado
   const daysInMonth = React.useMemo(() => {
@@ -76,7 +84,7 @@ export default function FrequenciaPage() {
     );
   }, [employees, searchTerm]);
 
-  if (loading) {
+  if (loadingEmployees || loadingLaunches) {
     return (
       <div className="flex h-full items-center justify-center min-h-[400px]">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -177,28 +185,74 @@ export default function FrequenciaPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredData.map((emp, index) => (
-                    <TableRow key={emp.id} className="hover:bg-blue-50/30 transition-colors">
-                      <TableCell className="font-mono text-[9px] text-center text-muted-foreground">{index + 1}</TableCell>
-                      <TableCell className="font-mono text-[10px] uppercase font-bold text-slate-600">{emp.matricula}</TableCell>
-                      <TableCell>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-[11px] uppercase text-slate-800 leading-tight">{emp.name}</span>
-                          <span className="text-[9px] text-primary uppercase font-bold tracking-tighter">QRA: {emp.qra}</span>
-                        </div>
-                      </TableCell>
-                      {/* Colunas de Status */}
-                      <TableCell className="text-center font-mono text-[11px] font-black text-blue-700 bg-blue-50/20">{daysInMonth}</TableCell>
-                      <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[10px]">-</TableCell>
-                      <TableCell className="text-center font-mono text-[11px] font-black bg-muted/5">{daysInMonth}</TableCell>
-                    </TableRow>
-                  ))
+                  filteredData.map((emp, index) => {
+                    // Filtrar lançamentos do servidor para o período selecionado
+                    const employeeLaunches = (launches || []).filter(l => {
+                      if (l.employeeId !== emp.id) return false;
+                      if (!l.startDate) return false;
+                      const launchDate = new Date(l.startDate + "T00:00:00");
+                      return launchDate.getMonth() === selectedMonth && launchDate.getFullYear() === selectedYear;
+                    });
+
+                    let special = 0;
+                    let folga = 0;
+                    let ferias = 0;
+                    let atestado = 0;
+                    let abono = 0;
+                    let falta = 0;
+                    let licenca = 0;
+
+                    employeeLaunches.forEach(l => {
+                      const type = normalizeStr(l.type || "");
+                      const d = Number(l.days) || 0;
+                      const q = Number(l.qtdEscala) || 0;
+
+                      // Regra de Especial: Soma qtdEscala apenas para "ESCALA ESPECIAL"
+                      if (type === "ESCALA ESPECIAL") {
+                        special += q;
+                      } 
+                      // Outras colunas: Somam campo dias e afetam a presença
+                      else if (type.includes("FOLGA") || type.includes("TRE DEBITO")) {
+                        folga += d;
+                      } else if (type.includes("FERIAS")) {
+                        ferias += d;
+                      } else if (type.includes("ATESTADO")) {
+                        atestado += d;
+                      } else if (type.includes("ABONO")) {
+                        abono += d;
+                      } else if (type.includes("FALTA")) {
+                        falta += d;
+                      } else if (type.includes("LICENCA")) {
+                        licenca += d;
+                      }
+                    });
+
+                    const totalAbsences = folga + ferias + atestado + abono + falta + licenca;
+                    const presence = daysInMonth - totalAbsences;
+                    const finalTotal = presence + totalAbsences;
+
+                    return (
+                      <TableRow key={emp.id} className="hover:bg-blue-50/30 transition-colors">
+                        <TableCell className="font-mono text-[9px] text-center text-muted-foreground">{index + 1}</TableCell>
+                        <TableCell className="font-mono text-[10px] uppercase font-bold text-slate-600">{emp.matricula}</TableCell>
+                        <TableCell>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-[11px] uppercase text-slate-800 leading-tight">{emp.name}</span>
+                            <span className="text-[9px] text-primary uppercase font-bold tracking-tighter">QRA: {emp.qra}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center font-mono text-[11px] font-black text-blue-700 bg-blue-50/20">{presence}</TableCell>
+                        <TableCell className="text-center font-mono text-[10px] font-bold text-amber-600">{special || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[10px]">{folga || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[10px]">{ferias || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[10px]">{atestado || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[10px]">{abono || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[10px] text-red-600 font-bold">{falta || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[10px]">{licenca || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[11px] font-black bg-muted/5">{finalTotal}</TableCell>
+                      </TableRow>
+                    );
+                  })
                 )}
               </TableBody>
             </Table>
