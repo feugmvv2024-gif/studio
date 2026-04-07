@@ -399,7 +399,16 @@ export default function FrequenciaPage() {
               return calculateIntersectionDays(l.startDate, l.endDate) > 0;
             });
           }).map(emp => {
-            const empLaunches = (launches || []).filter(l => l.employeeId === emp.id).sort((a, b) => a.startDate.localeCompare(b.startDate));
+            // Refiltragem dos lançamentos para garantir que apenas os do mês atual apareçam no detalhamento
+            const empLaunches = (launches || []).filter(l => {
+              if (l.employeeId !== emp.id) return false;
+              const type = normalizeStr(l.type || "");
+              if (type === "ESCALA ESPECIAL") {
+                const start = new Date(l.startDate + "T00:00:00");
+                return start.getMonth() === selectedMonth && start.getFullYear() === selectedYear;
+              }
+              return calculateIntersectionDays(l.startDate, l.endDate) > 0;
+            }).sort((a, b) => a.startDate.localeCompare(b.startDate));
             
             return (
               <div key={emp.id} className="p-4 border border-slate-200 rounded-xl space-y-3 bg-slate-50/10" style={{ breakInside: 'avoid' }}>
@@ -412,35 +421,23 @@ export default function FrequenciaPage() {
                   {empLaunches.map((l, idx) => {
                     const type = normalizeStr(l.type || "");
                     const isSpecial = type === "ESCALA ESPECIAL";
-                    
-                    // Verifica se o lançamento pertence ao mês selecionado
-                    let shouldShow = false;
                     let displayInfo = "";
 
                     if (isSpecial) {
-                      const start = new Date(l.startDate + "T00:00:00");
-                      if (start.getMonth() === selectedMonth && start.getFullYear() === selectedYear) {
-                        shouldShow = true;
-                        displayInfo = `Data: ${l.startDate.split('-').reverse().join('/')} | Qtd: ${l.qtdEscala || 0} unid.`;
-                      }
+                      displayInfo = `DATA: ${l.startDate.split('-').reverse().join('/')} | QTD: ${l.qtdEscala || 0} UNID.`;
                     } else {
                       const intersection = calculateIntersectionDays(l.startDate, l.endDate);
-                      if (intersection > 0) {
-                        shouldShow = true;
-                        displayInfo = `Período: ${l.startDate.split('-').reverse().join('/')} à ${l.endDate.split('-').reverse().join('/')} | ${intersection} dia(s) no mês`;
-                      }
+                      displayInfo = `PERÍODO: ${l.startDate.split('-').reverse().join('/')} À ${l.endDate.split('-').reverse().join('/')} | ${intersection} DIA(S) NO MÊS`;
                     }
 
-                    if (!shouldShow) return null;
-
                     return (
-                      <div key={idx} className="flex items-start gap-2 text-[11px] animate-in fade-in duration-300">
+                      <div key={idx} className="flex items-start gap-2 text-[11px]">
                         <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
                         <div className="flex-1">
                           <span className="font-black uppercase text-slate-700">{l.type}:</span>
                           <span className="ml-2 font-medium text-slate-600 uppercase">{displayInfo}</span>
                           {l.observations && (
-                            <p className="text-[9px] text-muted-foreground italic mt-0.5 leading-tight">Obs: {l.observations}</p>
+                            <p className="text-[9px] text-muted-foreground italic mt-0.5 leading-tight">OBS: {l.observations}</p>
                           )}
                         </div>
                       </div>
