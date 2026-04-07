@@ -360,13 +360,13 @@ export default function FrequenciaPage() {
       <div className="hidden print:flex signature-block mt-20 justify-around gap-12 text-center px-4" style={{ breakInside: 'avoid', pageBreakInside: 'avoid' }}>
         <div className="flex flex-col items-center gap-1 w-full max-w-[320px]">
           <div className="border-t border-slate-900 w-full mb-3"></div>
-          <p className="text-[11px] font-black uppercase text-slate-900 leading-tight tracking-tight">{authorities.comandante}</p>
-          <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">COMANDANTE - GMVV</p>
+          <p className="text-[13px] font-black uppercase text-slate-900 leading-tight tracking-tight">{authorities.comandante}</p>
+          <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-widest">COMANDANTE - GMVV</p>
         </div>
         <div className="flex flex-col items-center gap-1 w-full max-w-[320px]">
           <div className="border-t border-slate-900 w-full mb-3"></div>
-          <p className="text-[11px] font-black uppercase text-slate-900 leading-tight tracking-tight">{authorities.inspetorGeral}</p>
-          <p className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">INSPETOR GERAL - GMVV</p>
+          <p className="text-[13px] font-black uppercase text-slate-900 leading-tight tracking-tight">{authorities.inspetorGeral}</p>
+          <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-widest">INSPETOR GERAL - GMVV</p>
         </div>
       </div>
     </div>
