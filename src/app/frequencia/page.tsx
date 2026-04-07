@@ -122,8 +122,16 @@ export default function FrequenciaPage() {
       {/* Configurações de Impressão via Style Tag */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
-          @page { size: A4 portrait; margin: 1cm; }
-          body { background: white !important; overflow: visible !important; }
+          @page { size: A4 portrait; margin: 1.5cm; }
+          
+          /* Forçar visibilidade total dos containers pais */
+          html, body, main, [data-sidebar="inset"], .flex-1 { 
+            overflow: visible !important; 
+            height: auto !important; 
+            display: block !important;
+            background: white !important;
+          }
+
           .card-shadow { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
           
           /* Remove barras de rolagem e containers de scroll */
@@ -134,6 +142,14 @@ export default function FrequenciaPage() {
           /* Garante que o conteúdo ocupe a largura total sem scroll */
           .print-w-full { width: 100% !important; }
           table { width: 100% !important; table-layout: auto !important; }
+
+          /* Estilo explícito para o bloco de assinatura aparecer */
+          .signature-block {
+            display: flex !important;
+            visibility: visible !important;
+            margin-top: 4rem !important;
+            break-inside: avoid !important;
+          }
         }
       ` }} />
 
@@ -329,8 +345,8 @@ export default function FrequenciaPage() {
         </CardContent>
       </Card>
 
-      {/* Rodapé de Assinaturas (Visível apenas na impressão) */}
-      <div className="hidden print:flex mt-20 justify-around gap-12 text-center px-4" style={{ breakInside: 'avoid' }}>
+      {/* Rodapé de Assinaturas (Configurado para sempre aparecer no papel) */}
+      <div className="hidden print:flex signature-block mt-20 justify-around gap-12 text-center px-4" style={{ breakInside: 'avoid' }}>
         <div className="flex flex-col items-center gap-1 w-full max-w-[280px]">
           <div className="border-t border-slate-900 w-full mb-2"></div>
           <p className="text-[10px] font-black uppercase text-slate-900 leading-tight">Nome do Comandante</p>
