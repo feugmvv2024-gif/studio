@@ -7,7 +7,8 @@ import {
   Loader2, 
   Download,
   CalendarDays,
-  Printer
+  Printer,
+  FileText
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { 
@@ -161,6 +162,12 @@ export default function FrequenciaPage() {
             break-inside: avoid !important;
             page-break-inside: avoid !important;
           }
+
+          /* Nova Página para o Detalhamento */
+          .print-new-page {
+            break-before: page !important;
+            margin-top: 2cm !important;
+          }
         }
       ` }} />
 
@@ -278,7 +285,6 @@ export default function FrequenciaPage() {
                   </TableRow>
                 ) : (
                   filteredData.map((emp, index) => {
-                    // Filtrar todos os lançamentos do servidor
                     const employeeLaunches = (launches || []).filter(l => l.employeeId === emp.id);
 
                     let special = 0;
@@ -292,14 +298,12 @@ export default function FrequenciaPage() {
                     employeeLaunches.forEach(l => {
                       const type = normalizeStr(l.type || "");
                       
-                      // Para Escala Especial, mantemos a lógica de contar a quantidade se o lançamento inicia no mês
                       if (type === "ESCALA ESPECIAL") {
                         const start = new Date(l.startDate + "T00:00:00");
                         if (start.getMonth() === selectedMonth && start.getFullYear() === selectedYear) {
                           special += (Number(l.qtdEscala) || 0);
                         }
                       } 
-                      // Para afastamentos, calculamos a interseção real de dias dentro do mês
                       else {
                         const intersectionDays = calculateIntersectionDays(l.startDate, l.endDate);
                         
@@ -322,9 +326,7 @@ export default function FrequenciaPage() {
                     });
 
                     const totalAbsences = folga + ferias + atestado + abono + falta + licenca;
-                    // A presença é o que sobra dos dias do mês após subtrair os dias de afastamento naquele mês
                     const presence = daysInMonthCount - totalAbsences;
-                    // O total sempre deve fechar o número de dias do mês
                     const finalTotal = presence + totalAbsences;
 
                     return (
@@ -367,6 +369,87 @@ export default function FrequenciaPage() {
           <div className="border-t border-slate-900 w-full mb-3"></div>
           <p className="text-[13px] font-black uppercase text-slate-900 leading-tight tracking-tight">{authorities.inspetorGeral}</p>
           <p className="text-[11px] font-bold uppercase text-muted-foreground tracking-widest">INSPETOR GERAL - GMVV</p>
+        </div>
+      </div>
+
+      {/* RELATÓRIO DETALHADO (VISÍVEL APENAS NA IMPRESSÃO - NOVA PÁGINA) */}
+      <div className="hidden print:block print-new-page space-y-8">
+        <div className="flex items-center justify-between border-b-2 border-slate-900 pb-4">
+          <div className="flex items-center gap-3">
+            <FileText className="h-8 w-8 text-slate-900" />
+            <div>
+              <h2 className="text-xl font-black uppercase text-slate-900 tracking-tight">Detalhamento por Servidor</h2>
+              <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Discriminativo de Afastamentos e Escalas Especiais</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-black uppercase">{MONTHS[selectedMonth]} / {selectedYear}</p>
+          </div>
+        </div>
+
+        <div className="space-y-6">
+          {filteredData.filter(emp => {
+            const empLaunches = (launches || []).filter(l => l.employeeId === emp.id);
+            return empLaunches.some(l => {
+              const type = normalizeStr(l.type || "");
+              if (type === "ESCALA ESPECIAL") {
+                const start = new Date(l.startDate + "T00:00:00");
+                return start.getMonth() === selectedMonth && start.getFullYear() === selectedYear;
+              }
+              return calculateIntersectionDays(l.startDate, l.endDate) > 0;
+            });
+          }).map(emp => {
+            const empLaunches = (launches || []).filter(l => l.employeeId === emp.id).sort((a, b) => a.startDate.localeCompare(b.startDate));
+            
+            return (
+              <div key={emp.id} className="p-4 border border-slate-200 rounded-xl space-y-3 bg-slate-50/10" style={{ breakInside: 'avoid' }}>
+                <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+                  <span className="text-sm font-black uppercase text-slate-900">{emp.name} (QRA {emp.qra})</span>
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase">MAT: {emp.matricula}</span>
+                </div>
+                
+                <div className="grid grid-cols-1 gap-2">
+                  {empLaunches.map((l, idx) => {
+                    const type = normalizeStr(l.type || "");
+                    const isSpecial = type === "ESCALA ESPECIAL";
+                    
+                    // Verifica se o lançamento pertence ao mês selecionado
+                    let shouldShow = false;
+                    let displayInfo = "";
+
+                    if (isSpecial) {
+                      const start = new Date(l.startDate + "T00:00:00");
+                      if (start.getMonth() === selectedMonth && start.getFullYear() === selectedYear) {
+                        shouldShow = true;
+                        displayInfo = `Data: ${l.startDate.split('-').reverse().join('/')} | Qtd: ${l.qtdEscala || 0} unid.`;
+                      }
+                    } else {
+                      const intersection = calculateIntersectionDays(l.startDate, l.endDate);
+                      if (intersection > 0) {
+                        shouldShow = true;
+                        displayInfo = `Período: ${l.startDate.split('-').reverse().join('/')} à ${l.endDate.split('-').reverse().join('/')} | ${intersection} dia(s) no mês`;
+                      }
+                    }
+
+                    if (!shouldShow) return null;
+
+                    return (
+                      <div key={idx} className="flex items-start gap-2 text-[11px] animate-in fade-in duration-300">
+                        <div className="mt-1.5 w-1.5 h-1.5 rounded-full bg-slate-400 shrink-0" />
+                        <div className="flex-1">
+                          <span className="font-black uppercase text-slate-700">{l.type}:</span>
+                          <span className="ml-2 font-medium text-slate-600 uppercase">{displayInfo}</span>
+                          {l.observations && (
+                            <p className="text-[9px] text-muted-foreground italic mt-0.5 leading-tight">Obs: {l.observations}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
