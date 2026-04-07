@@ -1,4 +1,3 @@
-
 'use client';
 
 import './globals.css';
@@ -39,12 +38,12 @@ export default function RootLayout({
                 <div className="flex min-h-screen w-full">
                   <AppSidebar />
                   <SidebarInset className="flex flex-col">
-                    <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-4 backdrop-blur sm:px-6">
+                    <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-4 backdrop-blur sm:px-6 print:hidden">
                       <div className="flex-1">
                         <h1 className="font-headline text-lg font-semibold text-primary">Gestão de RH</h1>
                       </div>
                     </header>
-                    <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+                    <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 print:p-0">
                       {children}
                     </main>
                   </SidebarInset>

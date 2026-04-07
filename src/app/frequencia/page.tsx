@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -7,7 +6,8 @@ import {
   Search, 
   Loader2, 
   Download,
-  CalendarDays
+  CalendarDays,
+  Printer
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { 
@@ -105,6 +105,10 @@ export default function FrequenciaPage() {
     return 0;
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (loadingEmployees || loadingLaunches) {
     return (
       <div className="flex h-full items-center justify-center min-h-[400px]">
@@ -114,8 +118,33 @@ export default function FrequenciaPage() {
   }
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12 print:p-0 print:space-y-4">
+      {/* Configurações de Impressão via Style Tag */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { size: A4 portrait; margin: 1cm; }
+          body { background: white !important; }
+          .card-shadow { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+          /* Garante que o conteúdo ocupe a largura total */
+          .print-w-full { width: 100% !important; }
+        }
+      ` }} />
+
+      {/* Cabeçalho de Impressão (Visível apenas na folha) */}
+      <div className="hidden print:block mb-6">
+        <div className="flex justify-between items-end border-b-2 border-primary pb-4">
+          <div>
+            <h1 className="text-2xl font-black uppercase text-primary tracking-tight">Mapa de Frequência</h1>
+            <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Referência: {MONTHS[selectedMonth]} / {selectedYear}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-black uppercase text-slate-900 tracking-tight">Núcleo de RH - GMVV</p>
+            <p className="text-[8px] font-mono font-bold text-muted-foreground uppercase">Gerado em: {new Date().toLocaleString('pt-BR')}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
         <div className="flex items-center gap-3">
           <div className="bg-primary/10 p-2 rounded-xl">
             <CalendarCheck className="h-6 w-6 text-primary" />
@@ -126,14 +155,22 @@ export default function FrequenciaPage() {
           </div>
         </div>
         <div className="flex gap-2">
-           <Button variant="outline" size="sm" className="h-9 uppercase font-bold text-[10px] gap-2 border-primary/20 hover:bg-primary/5 text-primary">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className="h-9 uppercase font-bold text-[10px] gap-2 border-primary/20 hover:bg-primary/5 text-primary"
+            onClick={handlePrint}
+          >
+            <Printer className="h-4 w-4" /> Imprimir
+          </Button>
+          <Button variant="outline" size="sm" className="h-9 uppercase font-bold text-[10px] gap-2 border-primary/20 hover:bg-primary/5 text-primary">
             <Download className="h-4 w-4" /> Exportar
           </Button>
         </div>
       </div>
 
       <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
-        <CardHeader className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 p-4 bg-muted/5 border-b">
+        <CardHeader className="flex flex-col lg:flex-row items-stretch lg:items-center gap-4 p-4 bg-muted/5 border-b print:hidden">
           <div className="relative flex-1">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
@@ -182,20 +219,20 @@ export default function FrequenciaPage() {
         <CardContent className="p-0">
           <div className="overflow-x-auto">
             <Table>
-              <TableHeader className="bg-muted/20">
+              <TableHeader className="bg-muted/20 print:bg-slate-100">
                 <TableRow className="hover:bg-transparent border-b">
-                  <TableHead className="font-bold uppercase text-[11px] w-[50px] text-center">Nº</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] min-w-[80px]">MATRÍCULA</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] min-w-[200px]">NOME COMPLETO</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center bg-blue-50/50 text-blue-700">PRESENÇA</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center">ESPECIAL</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center">FOLGA/TRE</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center">FÉRIAS</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center">ATESTADO</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center">ABONO</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center">FALTA</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center">LICENÇA</TableHead>
-                  <TableHead className="font-bold uppercase text-[11px] text-center bg-muted/30">TOTAL</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] w-[50px] text-center print:text-black">Nº</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] min-w-[80px] print:text-black">MATRÍCULA</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] min-w-[200px] print:text-black">NOME COMPLETO</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center bg-blue-50/50 text-blue-700 print:text-black print:bg-transparent">PRESENÇA</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center print:text-black">ESPECIAL</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center print:text-black">FOLGA/TRE</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center print:text-black">FÉRIAS</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center print:text-black">ATESTADO</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center print:text-black">ABONO</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center print:text-black">FALTA</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center print:text-black">LICENÇA</TableHead>
+                  <TableHead className="font-bold uppercase text-[11px] text-center bg-muted/30 print:text-black print:bg-transparent">TOTAL</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -257,24 +294,24 @@ export default function FrequenciaPage() {
                     const finalTotal = presence + totalAbsences;
 
                     return (
-                      <TableRow key={emp.id} className="hover:bg-blue-50/30 transition-colors">
-                        <TableCell className="font-mono text-[11px] text-center text-muted-foreground">{index + 1}</TableCell>
-                        <TableCell className="font-mono text-[12px] uppercase font-bold text-slate-600">{emp.matricula}</TableCell>
+                      <TableRow key={emp.id} className="hover:bg-blue-50/30 transition-colors border-b print:hover:bg-transparent">
+                        <TableCell className="font-mono text-[11px] text-center text-muted-foreground print:text-black">{index + 1}</TableCell>
+                        <TableCell className="font-mono text-[12px] uppercase font-bold text-slate-600 print:text-black">{emp.matricula}</TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="font-bold text-[13px] uppercase text-slate-800 leading-tight">{emp.name}</span>
-                            <span className="text-[10px] text-primary uppercase font-bold tracking-tighter">QRA: {emp.qra}</span>
+                            <span className="font-bold text-[13px] uppercase text-slate-800 leading-tight print:text-black">{emp.name}</span>
+                            <span className="text-[10px] text-primary uppercase font-bold tracking-tighter print:text-slate-500">QRA: {emp.qra}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-center font-mono text-[14px] font-black text-blue-700 bg-blue-50/20">{presence}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] font-bold text-amber-600">{special || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px]">{folga || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px]">{ferias || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px]">{atestado || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px]">{abono || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px] text-red-600 font-bold">{falta || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[12px]">{licenca || "0"}</TableCell>
-                        <TableCell className="text-center font-mono text-[14px] font-black bg-muted/5">{finalTotal}</TableCell>
+                        <TableCell className="text-center font-mono text-[14px] font-black text-blue-700 bg-blue-50/20 print:text-black print:bg-transparent">{presence}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] font-bold text-amber-600 print:text-black">{special || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] print:text-black">{folga || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] print:text-black">{ferias || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] print:text-black">{atestado || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] print:text-black">{abono || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] text-red-600 font-bold print:text-black">{falta || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[12px] print:text-black">{licenca || "0"}</TableCell>
+                        <TableCell className="text-center font-mono text-[14px] font-black bg-muted/5 print:text-black print:bg-transparent">{finalTotal}</TableCell>
                       </TableRow>
                     );
                   })

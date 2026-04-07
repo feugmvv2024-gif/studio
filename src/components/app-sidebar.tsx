@@ -127,7 +127,7 @@ export function AppSidebar() {
   }
 
   return (
-    <Sidebar collapsible="icon">
+    <Sidebar collapsible="icon" className="print:hidden">
       <SidebarHeader className="border-b p-2">
         <div className="flex items-center justify-between w-full group-data-[collapsible=icon]:justify-center">
           <div className="flex items-center gap-2 font-headline font-bold text-primary group-data-[collapsible=icon]:hidden px-4">
