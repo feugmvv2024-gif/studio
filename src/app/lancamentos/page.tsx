@@ -347,7 +347,7 @@ export default function LancamentosPage() {
   const isDaysRequired = React.useMemo(() => {
     if (!selectedType) return false;
     const normalizedType = normalizeStr(selectedType);
-    return ["ESCALA GSE", "ESCALA ESPECIAL", "TRE CREDITO", "TRE DEBITO", "FERIAS", "LICENCA", "ATESTADO"].includes(normalizedType);
+    return ["ESCALA GSE", "ESCALA ESPECIAL", "TRE CREDITO", "TRE DEBITO", "FERIAS", "LICENCA", "ATESTADO", "ABONO", "FALTA", "FOLGA"].includes(normalizedType);
   }, [selectedType]);
 
   const renderFormFields = (isEdit: boolean) => (
