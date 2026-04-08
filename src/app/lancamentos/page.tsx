@@ -263,7 +263,7 @@ export default function LancamentosPage() {
           if (!existing.startDate || !existing.endDate) return false;
 
           // Tipos que impedem duplicidade (Afastamentos e Ausências)
-          const blockTypes = ["FERIAS", "LICENCA", "ATESTADO", "FOLGA", "ABONO"];
+          const blockTypes = ["FERIAS", "FERIAS - GOZO", "LICENCA", "ATESTADO", "FOLGA", "ABONO"];
           const normExistingType = normalizeStr(existing.type || "");
           const normNewType = normalizeStr(launchData.type || "");
 
@@ -347,7 +347,7 @@ export default function LancamentosPage() {
   const isDaysRequired = React.useMemo(() => {
     if (!selectedType) return false;
     const normalizedType = normalizeStr(selectedType);
-    return ["ESCALA GSE", "ESCALA ESPECIAL", "TRE CREDITO", "TRE DEBITO", "FERIAS", "LICENCA", "ATESTADO", "ABONO", "FALTA", "FOLGA"].includes(normalizedType);
+    return ["ESCALA GSE", "ESCALA ESPECIAL", "TRE CREDITO", "TRE DEBITO", "FERIAS", "FERIAS - GOZO", "LICENCA", "ATESTADO", "ABONO", "FALTA", "FOLGA"].includes(normalizedType);
   }, [selectedType]);
 
   const renderFormFields = (isEdit: boolean) => (
