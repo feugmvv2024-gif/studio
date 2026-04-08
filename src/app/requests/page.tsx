@@ -370,6 +370,16 @@ export default function RequestsPage() {
 
   async function handleProcessRequest(request: any, action: 'approve' | 'deny') {
     if (!firestore || !user) return;
+
+    // VALIDAÇÃO: Se for negar, o rascunho de resposta é obrigatório
+    if (action === 'deny' && !adminResponseDraft[request.id]?.trim()) {
+      toast({ 
+        variant: "destructive", 
+        title: "JUSTIFICATIVA OBRIGATÓRIA", 
+        description: "INFORME O MOTIVO DO INDEFERIMENTO NO CAMPO 'SEU PARECER'." 
+      });
+      return;
+    }
     
     let nextStatus = "";
     let actorPrefix = "";
