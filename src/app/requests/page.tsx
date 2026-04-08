@@ -127,7 +127,7 @@ export default function RequestsPage() {
 
   const allEmployeesRef = React.useMemo(() => firestore ? collection(firestore, 'employees') : null, [firestore]);
   const myLaunchesRef = React.useMemo(() => (firestore && employeeData?.id) ? query(collection(firestore, 'launches'), where('employeeId', '==', employeeData.id)) : null, [firestore, employeeData?.id]);
-  const shiftPeriodsRef = React.useMemo(() => firestore ? collection(firestore, 'shiftPeriods') : null, [firestore]);
+  const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
 
   const { data: myRequests, loading: loadingRequests } = useCollection(requestsQuery);
   const { data: managementRequests, loading: loadingManagement } = useCollection(managementQuery);
@@ -276,6 +276,18 @@ export default function RequestsPage() {
 
     if (selectedChefias.length === 0) {
       toast({ variant: "destructive", title: "ATENÇÃO", description: "SELECIONE AO MENOS UMA CHEFIA." });
+      return;
+    }
+
+    // Validação de Chefias Duplicadas
+    const uids = selectedChefias.map(c => c.uid);
+    const hasDuplicateChefia = new Set(uids).size !== uids.length;
+    if (hasDuplicateChefia) {
+      toast({ 
+        variant: "destructive", 
+        title: "CHEFIA DUPLICADA", 
+        description: "SELECIONE CHEFIAS DIFERENTES PARA CADA UNIDADE." 
+      });
       return;
     }
 
@@ -438,7 +450,7 @@ export default function RequestsPage() {
         description: nextStatus === "Pendente" ? "PARECER REGISTRADO. AGUARDANDO OUTRA CHEFIA." : "REQUERIMENTO AVANÇOU NO FLUXO." 
       });
     } catch (err) {
-      toast({ variant: "destructive", title: "ERRO AO PROCESSAR" });
+      toast({ variant: "destructive", title: "ERRO AO PROCESSSAR" });
     }
   }
 
@@ -737,7 +749,11 @@ export default function RequestsPage() {
                           {row.uid && <Check className="absolute right-2 top-1/2 -translate-y-1/2 h-3 w-3 text-green-600" />}
                           {row.show && row.term && (
                             <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-xl max-h-32 overflow-y-auto">
-                              {allEmployees?.filter(e => ["INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(normalizeStr(e.role || "")) && (normalizeStr(e.name).includes(row.term) || normalizeStr(e.qra).includes(row.term))).map(c => (
+                              {allEmployees?.filter(e => 
+                                ["INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(normalizeStr(e.role || "")) && 
+                                (normalizeStr(e.name).includes(row.term) || normalizeStr(e.qra).includes(row.term)) &&
+                                !chefiaRows.some((r, i) => i !== index && r.uid === e.uid)
+                              ).map(c => (
                                 <button key={c.id} type="button" onMouseDown={() => updateChefiaRow(index, { uid: c.uid, term: `${c.name} (${c.qra})`, show: false })} className="w-full px-3 py-1.5 text-left hover:bg-muted text-[9px] uppercase border-b last:border-0">
                                   {c.name} ({c.qra})
                                 </button>
