@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -16,7 +17,9 @@ import {
   Stethoscope,
   Info,
   X,
-  Calendar
+  Calendar,
+  Filter,
+  ArrowRight
 } from "lucide-react"
 import {
   BarChart,
@@ -50,6 +53,13 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { cn } from "@/lib/utils"
 
 // Utilitários de cálculo
@@ -84,12 +94,21 @@ const formatDateBR = (dateStr: string) => {
   return dateStr.split('-').reverse().join('/');
 };
 
+const MONTHS = [
+  "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+  "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+];
+
 export default function Dashboard() {
   const firestore = useFirestore();
   const { toast } = useToast();
 
   const [isAbsentModalOpen, setIsAbsentModalOpen] = React.useState(false);
   const [isAfastadosModalOpen, setIsAfastadosModalOpen] = React.useState(false);
+
+  // Estados para o Resumo Mensal
+  const [summaryMonth, setSummaryMonth] = React.useState(new Date().getMonth());
+  const [summaryYear, setSummaryYear] = React.useState(new Date().getFullYear());
 
   const employeesRef = React.useMemo(() => collection(firestore, 'employees'), [firestore]);
   const launchesRef = React.useMemo(() => collection(firestore, 'launches'), [firestore]);
@@ -193,6 +212,37 @@ export default function Dashboard() {
     
     return summary;
   }, [launches, todayReports]);
+
+  // Resumo Mensal de Atividades (Filtrado por Mês/Ano)
+  const monthlySummary = React.useMemo(() => {
+    if (!launches) return [];
+    
+    const filtered = launches.filter(l => {
+      if (!l.date) return false;
+      const d = new Date(l.date + "T00:00:00");
+      return d.getMonth() === summaryMonth && d.getFullYear() === summaryYear;
+    });
+
+    const summaryMap: Record<string, number> = {};
+    filtered.forEach(l => {
+      const type = normalizeStr(l.type || "OUTROS");
+      // Se for especial ou GSE, contamos a quantidade de escalas se houver, caso contrário contamos 1 registro
+      const increment = (type.includes("ESPECIAL") || type.includes("GSE")) 
+        ? (Number(l.qtdEscala) || 1) 
+        : (Number(l.days) || 1);
+      
+      summaryMap[type] = (summaryMap[type] || 0) + increment;
+    });
+
+    const summaryList = Object.entries(summaryMap).map(([type, total]) => ({ type, total }));
+    
+    // Ordenação: FOLGA primeiro, depois por volume (maior para menor)
+    return summaryList.sort((a, b) => {
+      if (a.type === "FOLGA") return -1;
+      if (b.type === "FOLGA") return 1;
+      return b.total - a.total;
+    });
+  }, [launches, summaryMonth, summaryYear]);
 
   // Listas para os Modais (Mescla lançamentos e faltas de relatórios)
   const absentList = React.useMemo(() => {
@@ -520,13 +570,14 @@ export default function Dashboard() {
         </Dialog>
       </div>
 
-      <div className="grid gap-4 grid-cols-1">
-        <Card className="card-shadow border-none rounded-2xl overflow-hidden">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
+        {/* Gráfico de Pizza - Personnel Stats */}
+        <Card className="card-shadow border-none rounded-2xl overflow-hidden flex flex-col h-full">
           <CardHeader>
-            <CardTitle className="text-lg sm:text-xl uppercase">PERCENTUAL DE EFETIVO</CardTitle>
-            <CardDescription className="text-xs sm:text-sm uppercase text-[9px]">COMPOSIÇÃO PROPORCIONAL DA UNIDADE.</CardDescription>
+            <CardTitle className="text-lg sm:text-xl uppercase">COMPOSIÇÃO PROPORCIONAL</CardTitle>
+            <CardDescription className="text-xs sm:text-sm uppercase text-[9px]">DISTRIBUIÇÃO ATUAL DO EFETIVO DA UNIDADE.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="flex-1 flex flex-col justify-between">
              <div className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -561,17 +612,113 @@ export default function Dashboard() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+            <div className="mt-6 grid grid-cols-2 sm:grid-cols-3 gap-2">
               {personnelStats.map((stat) => (
-                <div key={stat.name} className="flex flex-col items-center p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <div className="h-2 w-full rounded-full mb-2" style={{ backgroundColor: stat.color }} />
-                  <span className="text-[10px] font-black uppercase text-slate-600">{stat.name}</span>
-                  <span className="text-lg font-black text-slate-900">{stat.value}</span>
-                  <span className="text-[9px] font-bold text-muted-foreground uppercase">{stats.total > 0 ? Math.round((stat.value / stats.total) * 100) : 0}%</span>
+                <div key={stat.name} className="flex flex-col items-center p-2 bg-slate-50 rounded-xl border border-slate-100">
+                  <div className="h-1.5 w-full rounded-full mb-1.5" style={{ backgroundColor: stat.color }} />
+                  <span className="text-[9px] font-black uppercase text-slate-600">{stat.name}</span>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-base font-black text-slate-900">{stat.value}</span>
+                    <span className="text-[8px] font-bold text-muted-foreground">{stats.total > 0 ? Math.round((stat.value / stats.total) * 100) : 0}%</span>
+                  </div>
                 </div>
               ))}
             </div>
           </CardContent>
+        </Card>
+
+        {/* NOVO CARD: RESUMO MENSAL DE ATIVIDADES */}
+        <Card className="card-shadow border-none rounded-2xl overflow-hidden flex flex-col h-full">
+          <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b bg-muted/5 p-6">
+            <div className="space-y-1">
+              <CardTitle className="text-lg sm:text-xl uppercase flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-primary" />
+                Resumo de Atividades
+              </CardTitle>
+              <CardDescription className="text-xs uppercase text-[9px] font-bold">Consolidado Mensal de Lançamentos.</CardDescription>
+            </div>
+            
+            <div className="flex items-center gap-2 w-full sm:w-auto">
+              <Select value={summaryMonth.toString()} onValueChange={(v) => setSummaryMonth(parseInt(v))}>
+                <SelectTrigger className="h-9 w-[120px] uppercase text-[10px] font-bold bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {MONTHS.map((m, idx) => (
+                    <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">{m}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={summaryYear.toString()} onValueChange={(v) => setSummaryYear(parseInt(v))}>
+                <SelectTrigger className="h-9 w-[80px] uppercase text-[10px] font-bold bg-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                    <SelectItem key={y} value={y.toString()} className="uppercase text-[10px] font-bold">{y}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent className="p-0 flex-1">
+            <ScrollArea className="h-[400px]">
+              <Table>
+                <TableHeader className="bg-muted/20 sticky top-0 z-10">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="font-bold uppercase text-[10px] h-10 px-6">Tipo de Lançamento</TableHead>
+                    <TableHead className="font-bold uppercase text-[10px] h-10 text-right pr-6">Total Acumulado</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {monthlySummary.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={2} className="h-40 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                        Sem lançamentos para este período.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    monthlySummary.map((item, idx) => (
+                      <TableRow key={idx} className={cn(
+                        "hover:bg-muted/5 transition-colors",
+                        item.type === "FOLGA" && "bg-blue-50/30 font-black"
+                      )}>
+                        <TableCell className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              item.type === "FOLGA" ? "bg-blue-600" :
+                              item.type.includes("FALTA") ? "bg-red-600" :
+                              item.type.includes("TRE") ? "bg-purple-600" : "bg-slate-400"
+                            )} />
+                            <span className="text-[11px] uppercase tracking-tight">{item.type}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-right pr-6 py-4">
+                          <Badge variant="secondary" className={cn(
+                            "text-[11px] font-mono font-black border-none",
+                            item.type === "FOLGA" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"
+                          )}>
+                            {item.total}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          </CardContent>
+          <div className="p-4 bg-muted/5 border-t mt-auto">
+            <div className="flex items-center justify-between text-[9px] font-bold uppercase text-muted-foreground">
+              <span>Referência: {MONTHS[summaryMonth]} / {summaryYear}</span>
+              <div className="flex items-center gap-1">
+                <Info className="h-3 w-3" />
+                <span>Base: Lançamentos RH</span>
+              </div>
+            </div>
+          </div>
         </Card>
       </div>
     </div>
