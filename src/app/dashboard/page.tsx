@@ -263,7 +263,7 @@ export default function Dashboard() {
       // Seção 4: Horas
       if (type === "BANCO DE HORAS CREDITO") {
         summary.horas.credito += minutes;
-      } else if (type === "BANCO DE HORAS DEBITO") {
+      } else if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") {
         summary.horas.debito += minutes;
       }
     });
