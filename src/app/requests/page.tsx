@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -100,6 +101,18 @@ export default function RequestsPage() {
 
   const [chefiaRows, setChefiaRows] = React.useState([{ id: "", uid: "", term: "", show: false }]);
   const [adminResponseDraft, setAdminResponseDraft] = React.useState<{ [key: string]: string }>({});
+
+  // Regra de Dupla Chefia para Permuta
+  React.useEffect(() => {
+    if (requestType === "PERMUTA") {
+      if (chefiaRows.length < 2) {
+        setChefiaRows([
+          { id: "c1", uid: "", term: "", show: false },
+          { id: "c2", uid: "", term: "", show: false }
+        ]);
+      }
+    }
+  }, [requestType]);
 
   // Consultas
   const requestsQuery = React.useMemo(() => {
@@ -211,6 +224,12 @@ export default function RequestsPage() {
         return req.partnerId === user.uid;
       }
       if (req.status === "Pendente") {
+        // Para permuta, só mostra se o usuário for uma das chefias E ainda não aprovou
+        if (req.type === "PERMUTA") {
+          const isTargetChefia = req.chefiaIds?.includes(user.uid);
+          const alreadyApproved = req.approvedChefiaIds?.includes(user.uid);
+          return isTargetChefia && !alreadyApproved;
+        }
         return req.chefiaIds?.includes(user.uid);
       }
       if (req.status === "Aprovado pela Chefia") {
@@ -228,10 +247,14 @@ export default function RequestsPage() {
     filteredManagementRequests.length
   , [filteredManagementRequests]);
 
-  const addChefiaRow = () => setChefiaRows([...chefiaRows, { id: "", uid: "", term: "", show: false }]);
+  const addChefiaRow = () => setChefiaRows([...chefiaRows, { id: Math.random().toString(), uid: "", term: "", show: false }]);
   const removeChefiaRow = (index: number) => {
+    if (requestType === "PERMUTA" && chefiaRows.length <= 2) {
+      toast({ variant: "destructive", title: "OBRIGATÓRIO", description: "A PERMUTA EXIGE DUAS CHEFIAS." });
+      return;
+    }
     const newRows = chefiaRows.filter((_, i) => i !== index);
-    setChefiaRows(newRows.length ? newRows : [{ id: "", uid: "", term: "", show: false }]);
+    setChefiaRows(newRows.length ? newRows : [{ id: Math.random().toString(), uid: "", term: "", show: false }]);
   };
   const updateChefiaRow = (index: number, updates: Partial<{id: string, uid: string, term: string, show: boolean}>) => {
     setChefiaRows(prev => {
@@ -246,6 +269,11 @@ export default function RequestsPage() {
     if (!firestore || !user) return;
 
     const selectedChefias = chefiaRows.filter(r => r.uid);
+    if (requestType === "PERMUTA" && selectedChefias.length < 2) {
+      toast({ variant: "destructive", title: "ATENÇÃO", description: "SELECIONE AS DUAS CHEFIAS (SOLICITANTE E PARCEIRO)." });
+      return;
+    }
+
     if (selectedChefias.length === 0) {
       toast({ variant: "destructive", title: "ATENÇÃO", description: "SELECIONE AO MENOS UMA CHEFIA." });
       return;
@@ -294,6 +322,7 @@ export default function RequestsPage() {
       partnerName: requestType === "PERMUTA" ? (permutaPartnerData?.name || null) : null,
       chefiaImediata: selectedChefias.map(c => c.term).join(" / "),
       chefiaIds: selectedChefias.map(c => c.uid),
+      approvedChefiaIds: [], // Inicializa lista de aprovações
       createdAt: serverTimestamp()
     };
 
@@ -312,7 +341,7 @@ export default function RequestsPage() {
   const resetForm = () => {
     setRequestType("");
     setMultiDates([""]);
-    setChefiaRows([{ id: "", uid: "", term: "", show: false }]);
+    setChefiaRows([{ id: Math.random().toString(), uid: "", term: "", show: false }]);
     setPermutaPartnerData(null);
     setPermutaPartnerTerm("");
     setPermutaMyOriginalDate("");
@@ -328,10 +357,11 @@ export default function RequestsPage() {
   };
 
   async function handleProcessRequest(request: any, action: 'approve' | 'deny') {
-    if (!firestore) return;
+    if (!firestore || !user) return;
     
     let nextStatus = "";
     let actorPrefix = "";
+    let newApprovedList = request.approvedChefiaIds || [];
     const userQra = (employeeData?.qra || "SISTEMA").toLowerCase();
     
     if (request.status === "Aguardando Parceiro") actorPrefix = `PARCEIRO (${userQra})`;
@@ -344,7 +374,19 @@ export default function RequestsPage() {
       if (request.status === "Aguardando Parceiro") {
         nextStatus = "Pendente";
       } else if (request.status === "Pendente") {
-        nextStatus = "Aprovado pela Chefia";
+        if (request.type === "PERMUTA") {
+          if (!newApprovedList.includes(user.uid)) {
+            newApprovedList.push(user.uid);
+          }
+          // Regra: se atingiu o total de chefias designadas (geralmente 2), avança
+          if (newApprovedList.length >= (request.chefiaIds?.length || 2)) {
+            nextStatus = "Aprovado pela Chefia";
+          } else {
+            nextStatus = "Pendente"; // Mantém pendente até a outra chefia assinar
+          }
+        } else {
+          nextStatus = "Aprovado pela Chefia";
+        }
       } else if (request.status === "Aprovado pela Chefia") {
         nextStatus = "Aprovado";
       }
@@ -373,11 +415,17 @@ export default function RequestsPage() {
         ? `${currentResponse} | ${formattedNewResponse}` 
         : formattedNewResponse;
 
-      await updateDoc(docRef, { 
+      const updates: any = { 
         status: nextStatus, 
         adminResponse: finalResponse, 
         updatedAt: serverTimestamp() 
-      });
+      };
+
+      if (request.type === "PERMUTA") {
+        updates.approvedChefiaIds = newApprovedList;
+      }
+
+      await updateDoc(docRef, updates);
       
       setAdminResponseDraft(prev => {
         const next = { ...prev };
@@ -385,7 +433,10 @@ export default function RequestsPage() {
         return next;
       });
       
-      toast({ title: "SOLICITAÇÃO PROCESSADA" });
+      toast({ 
+        title: "SOLICITAÇÃO PROCESSADA", 
+        description: nextStatus === "Pendente" ? "PARECER REGISTRADO. AGUARDANDO OUTRA CHEFIA." : "REQUERIMENTO AVANÇOU NO FLUXO." 
+      });
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO PROCESSAR" });
     }
@@ -660,16 +711,22 @@ export default function RequestsPage() {
                 <div className="pt-3 border-t space-y-2">
                   <div className="flex items-center justify-between">
                     <Label className="text-[9px] font-black uppercase text-primary tracking-widest flex items-center gap-1.5">
-                      <ShieldCheck className="h-3.5 w-3.5" /> Chefia Imediata (Ciência)
+                      <ShieldCheck className="h-3.5 w-3.5" /> 
+                      {requestType === "PERMUTA" ? "As duas Chefias Imediatas (Solicitante e Parceiro)" : "Chefia Imediata (Ciência)"}
                     </Label>
-                    <Button type="button" variant="ghost" size="sm" onClick={addChefiaRow} className="h-5 text-[8px] font-black uppercase text-primary px-2 hover:bg-primary/5">
-                      <Plus className="h-3 w-3 mr-1" /> Adicionar Outra
-                    </Button>
+                    {requestType !== "PERMUTA" && (
+                      <Button type="button" variant="ghost" size="sm" onClick={addChefiaRow} className="h-5 text-[8px] font-black uppercase text-primary px-2 hover:bg-primary/5">
+                        <Plus className="h-3.5 w-3.5 mr-1" /> Adicionar Outra
+                      </Button>
+                    )}
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {chefiaRows.map((row, index) => (
-                      <div key={index} className="flex gap-1.5 relative">
+                      <div key={row.id} className="flex gap-1.5 relative">
                         <div className="relative flex-1">
+                          <Label className="text-[7px] font-black uppercase text-muted-foreground absolute -top-2 left-2 bg-background px-1 z-10">
+                            {requestType === "PERMUTA" ? (index === 0 ? "Chefia Solicitante" : "Chefia Parceiro") : `Chefia ${index + 1}`}
+                          </Label>
                           <Input 
                             placeholder="BUSCAR CHEFIA..."
                             value={row.term}
@@ -688,7 +745,11 @@ export default function RequestsPage() {
                             </div>
                           )}
                         </div>
-                        {chefiaRows.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeChefiaRow(index)} className="h-8 w-8 text-destructive/50 hover:text-destructive"><Trash2 className="h-3 w-3" /></Button>}
+                        {requestType !== "PERMUTA" && chefiaRows.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" onClick={() => removeChefiaRow(index)} className="h-8 w-8 text-destructive/50 hover:text-destructive">
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
                       </div>
                     ))}
                   </div>
@@ -795,7 +856,7 @@ export default function RequestsPage() {
 
                         {req.adminResponse && (
                           <div className="bg-blue-50/30 p-3 rounded-lg border-l-4 border-primary animate-in slide-in-from-left-1">
-                            <p className="text-[9px] font-black uppercase text-primary mb-1">Respostas RH/Chefia:</p>
+                            <p className="text-[9px] font-black uppercase text-primary mb-1">Histórico de Respostas:</p>
                             <div className="space-y-1.5">
                               {req.adminResponse.split('|').map((resp: string, i: number) => (
                                 <p key={i} className="text-[11px] uppercase font-bold text-slate-800 leading-snug border-b border-blue-100/50 last:border-0 pb-1 last:pb-0">
@@ -833,7 +894,14 @@ export default function RequestsPage() {
                 
                 let label = "PROCESSAR";
                 if (isAwaitingPartner) label = "ACEITAR PERMUTA";
-                else if (isPending) label = "DAR PARECER (CHEFIA)";
+                else if (isPending) {
+                  if (req.type === "PERMUTA") {
+                    const alreadyApprovedCount = req.approvedChefiaIds?.length || 0;
+                    label = alreadyApprovedCount === 0 ? "1ª APROVAÇÃO (CHEFIA)" : "2ª APROVAÇÃO (CHEFIA)";
+                  } else {
+                    label = "DAR PARECER (CHEFIA)";
+                  }
+                }
                 else if (isAwaitingRH) label = "HOMOLOGAR (RH)";
 
                 return (
@@ -852,6 +920,15 @@ export default function RequestsPage() {
                           "w-full justify-center border-none uppercase text-[9px] font-black h-6",
                           isAwaitingPartner ? "bg-indigo-100 text-indigo-700" : "bg-amber-100 text-amber-700"
                         )}>{req.status}</Badge>
+                        {req.type === "PERMUTA" && req.status === "Pendente" && (
+                          <div className="space-y-1 mt-2">
+                            <p className="text-[8px] font-black uppercase text-muted-foreground">Aprovação Dupla:</p>
+                            <div className="flex gap-1">
+                              <div className={cn("h-1.5 flex-1 rounded-full", (req.approvedChefiaIds?.length || 0) >= 1 ? "bg-green-500" : "bg-slate-200")} />
+                              <div className={cn("h-1.5 flex-1 rounded-full", (req.approvedChefiaIds?.length || 0) >= 2 ? "bg-green-500" : "bg-slate-200")} />
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       <div className="flex-1 flex flex-col min-w-0">
