@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -702,15 +701,15 @@ export default function Dashboard() {
                   <div className="grid gap-2">
                     <div className="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
                       <span className="text-[11px] font-bold uppercase text-slate-700">Folga & TRE Débito</span>
-                      <Badge className="bg-blue-600 text-white font-mono font-black border-none">{monthlySummary?.dias.folgaTre}D</Badge>
+                      <Badge className="bg-blue-600 text-white font-mono font-black border-none">{monthlySummary?.dias.folgaTre}</Badge>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                       <span className="text-[11px] font-bold uppercase text-slate-700">Faltas</span>
-                      <Badge variant="secondary" className="bg-red-50 text-red-700 font-mono font-black border-none">{monthlySummary?.dias.faltas}D</Badge>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700 font-mono font-black border-none">{monthlySummary?.dias.faltas}</Badge>
                     </div>
                     <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                       <span className="text-[11px] font-bold uppercase text-slate-700">Abono</span>
-                      <Badge variant="secondary" className="bg-orange-50 text-orange-700 font-mono font-black border-none">{monthlySummary?.dias.abono}D</Badge>
+                      <Badge variant="secondary" className="bg-orange-50 text-orange-700 font-mono font-black border-none">{monthlySummary?.dias.abono}</Badge>
                     </div>
                   </div>
                 </div>
@@ -742,11 +741,11 @@ export default function Dashboard() {
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100 flex flex-col gap-1">
                       <span className="text-[9px] font-bold uppercase text-slate-500">Escala Especial</span>
-                      <span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.especial} <small className="text-[9px] font-bold uppercase opacity-60">Unid.</small></span>
+                      <span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.especial} <small className="text-[9px] font-bold uppercase opacity-60">Escala</small></span>
                     </div>
                     <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100 flex flex-col gap-1">
                       <span className="text-[9px] font-bold uppercase text-slate-500">Escala GSE</span>
-                      <span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.gse} <small className="text-[9px] font-bold uppercase opacity-60">Unid.</small></span>
+                      <span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.gse} <small className="text-[9px] font-bold uppercase opacity-60">Escala</small></span>
                     </div>
                   </div>
                 </div>
