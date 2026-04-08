@@ -19,7 +19,9 @@ import {
   X,
   Calendar,
   Filter,
-  ArrowRight
+  ArrowRight,
+  Briefcase,
+  History
 } from "lucide-react"
 import {
   BarChart,
@@ -213,9 +215,9 @@ export default function Dashboard() {
     return summary;
   }, [launches, todayReports]);
 
-  // Resumo Mensal de Atividades (Filtrado por Mês/Ano)
+  // Resumo Mensal de Atividades (Categorizado)
   const monthlySummary = React.useMemo(() => {
-    if (!launches) return [];
+    if (!launches) return null;
     
     const filtered = launches.filter(l => {
       if (!l.date) return false;
@@ -223,25 +225,51 @@ export default function Dashboard() {
       return d.getMonth() === summaryMonth && d.getFullYear() === summaryYear;
     });
 
-    const summaryMap: Record<string, number> = {};
+    const summary = {
+      dias: { folgaTre: 0, faltas: 0, abono: 0 },
+      lancamentos: { atestado: 0, licenca: 0 },
+      escalas: { especial: 0, gse: 0 },
+      horas: { credito: 0, debito: 0 }
+    };
+
     filtered.forEach(l => {
-      const type = normalizeStr(l.type || "OUTROS");
-      // Se for especial ou GSE, contamos a quantidade de escalas se houver, caso contrário contamos 1 registro
-      const increment = (type.includes("ESPECIAL") || type.includes("GSE")) 
-        ? (Number(l.qtdEscala) || 1) 
-        : (Number(l.days) || 1);
-      
-      summaryMap[type] = (summaryMap[type] || 0) + increment;
+      const type = normalizeStr(l.type || "");
+      const days = Number(l.days) || 0;
+      const qtdEscala = Number(l.qtdEscala) || 0;
+      const minutes = hhmmToMinutes(l.hours || "00:00");
+
+      // Seção 1: Dias
+      if (type.includes("FOLGA") || type.includes("TRE DEBITO")) {
+        summary.dias.folgaTre += days;
+      } else if (type.includes("FALTA")) {
+        summary.dias.faltas += days;
+      } else if (type.includes("ABONO")) {
+        summary.dias.abono += days;
+      }
+
+      // Seção 2: Lançamentos (Ocorrências)
+      if (type.includes("ATESTADO")) {
+        summary.lancamentos.atestado += 1;
+      } else if (type.includes("LICENCA")) {
+        summary.lancamentos.licenca += 1;
+      }
+
+      // Seção 3: Quantidade de Escalas
+      if (type.includes("ESPECIAL")) {
+        summary.escalas.especial += qtdEscala;
+      } else if (type.includes("GSE")) {
+        summary.escalas.gse += qtdEscala;
+      }
+
+      // Seção 4: Horas
+      if (type === "BANCO DE HORAS CREDITO") {
+        summary.horas.credito += minutes;
+      } else if (type === "BANCO DE HORAS DEBITO") {
+        summary.horas.debito += minutes;
+      }
     });
 
-    const summaryList = Object.entries(summaryMap).map(([type, total]) => ({ type, total }));
-    
-    // Ordenação: FOLGA primeiro, depois por volume (maior para menor)
-    return summaryList.sort((a, b) => {
-      if (a.type === "FOLGA") return -1;
-      if (b.type === "FOLGA") return 1;
-      return b.total - a.total;
-    });
+    return summary;
   }, [launches, summaryMonth, summaryYear]);
 
   // Listas para os Modais (Mescla lançamentos e faltas de relatórios)
@@ -627,15 +655,15 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* NOVO CARD: RESUMO MENSAL DE ATIVIDADES */}
+        {/* CARD: RESUMO MENSAL DE ATIVIDADES (CATEGORIZADO) */}
         <Card className="card-shadow border-none rounded-2xl overflow-hidden flex flex-col h-full">
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b bg-muted/5 p-6">
             <div className="space-y-1">
               <CardTitle className="text-lg sm:text-xl uppercase flex items-center gap-2">
-                <Calendar className="h-5 w-5 text-primary" />
+                <TrendingUp className="h-5 w-5 text-primary" />
                 Resumo de Atividades
               </CardTitle>
-              <CardDescription className="text-xs uppercase text-[9px] font-bold">Consolidado Mensal de Lançamentos.</CardDescription>
+              <CardDescription className="text-xs uppercase text-[9px] font-bold">Consolidado Mensal de Operações.</CardDescription>
             </div>
             
             <div className="flex items-center gap-2 w-full sm:w-auto">
@@ -662,52 +690,85 @@ export default function Dashboard() {
               </Select>
             </div>
           </CardHeader>
-          <CardContent className="p-0 flex-1">
-            <ScrollArea className="h-[400px]">
-              <Table>
-                <TableHeader className="bg-muted/20 sticky top-0 z-10">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="font-bold uppercase text-[10px] h-10 px-6">Tipo de Lançamento</TableHead>
-                    <TableHead className="font-bold uppercase text-[10px] h-10 text-right pr-6">Total Acumulado</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {monthlySummary.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={2} className="h-40 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
-                        Sem lançamentos para este período.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    monthlySummary.map((item, idx) => (
-                      <TableRow key={idx} className={cn(
-                        "hover:bg-muted/5 transition-colors",
-                        item.type === "FOLGA" && "bg-blue-50/30 font-black"
-                      )}>
-                        <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={cn(
-                              "w-1.5 h-1.5 rounded-full",
-                              item.type === "FOLGA" ? "bg-blue-600" :
-                              item.type.includes("FALTA") ? "bg-red-600" :
-                              item.type.includes("TRE") ? "bg-purple-600" : "bg-slate-400"
-                            )} />
-                            <span className="text-[11px] uppercase tracking-tight">{item.type}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right pr-6 py-4">
-                          <Badge variant="secondary" className={cn(
-                            "text-[11px] font-mono font-black border-none",
-                            item.type === "FOLGA" ? "bg-blue-600 text-white" : "bg-slate-100 text-slate-700"
-                          )}>
-                            {item.total}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+          <CardContent className="p-0 flex-1 overflow-hidden">
+            <ScrollArea className="h-[450px]">
+              <div className="p-6 space-y-8">
+                {/* SEÇÃO 1: MÉTRICA EM DIAS */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <Calendar className="h-4 w-4 text-blue-600" />
+                    <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica em Dias</h4>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
+                      <span className="text-[11px] font-bold uppercase text-slate-700">Folga & TRE Débito</span>
+                      <Badge className="bg-blue-600 text-white font-mono font-black border-none">{monthlySummary?.dias.folgaTre}D</Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <span className="text-[11px] font-bold uppercase text-slate-700">Faltas</span>
+                      <Badge variant="secondary" className="bg-red-50 text-red-700 font-mono font-black border-none">{monthlySummary?.dias.faltas}D</Badge>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <span className="text-[11px] font-bold uppercase text-slate-700">Abono</span>
+                      <Badge variant="secondary" className="bg-orange-50 text-orange-700 font-mono font-black border-none">{monthlySummary?.dias.abono}D</Badge>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SEÇÃO 2: MÉTRICA POR LANÇAMENTOS */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <History className="h-4 w-4 text-purple-600" />
+                    <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica por Lançamentos</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-purple-50/30 rounded-xl border border-purple-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold uppercase text-slate-500">Atestados</span>
+                      <span className="text-xl font-black text-purple-700">{monthlySummary?.lancamentos.atestado} <small className="text-[9px] font-bold uppercase opacity-60">Reg.</small></span>
+                    </div>
+                    <div className="p-3 bg-purple-50/30 rounded-xl border border-purple-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold uppercase text-slate-500">Licenças</span>
+                      <span className="text-xl font-black text-purple-700">{monthlySummary?.lancamentos.licenca} <small className="text-[9px] font-bold uppercase opacity-60">Reg.</small></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SEÇÃO 3: MÉTRICA POR ESCALAS */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <Briefcase className="h-4 w-4 text-amber-600" />
+                    <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica por Quantidade de Escalas</h4>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold uppercase text-slate-500">Escala Especial</span>
+                      <span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.especial} <small className="text-[9px] font-bold uppercase opacity-60">Unid.</small></span>
+                    </div>
+                    <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100 flex flex-col gap-1">
+                      <span className="text-[9px] font-bold uppercase text-slate-500">Escala GSE</span>
+                      <span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.gse} <small className="text-[9px] font-bold uppercase opacity-60">Unid.</small></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* SEÇÃO 4: MÉTRICA EM HORAS */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica em Horas</h4>
+                  </div>
+                  <div className="grid gap-2">
+                    <div className="flex items-center justify-between p-3 bg-green-50/30 rounded-xl border border-green-100">
+                      <span className="text-[11px] font-bold uppercase text-slate-700">BH Crédito</span>
+                      <span className="text-sm font-black font-mono text-green-700">+{minutesToHHmm(monthlySummary?.horas.credito || 0)}H</span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-red-50/30 rounded-xl border border-red-100">
+                      <span className="text-[11px] font-bold uppercase text-slate-700">BH Débito</span>
+                      <span className="text-sm font-black font-mono text-red-700">-{minutesToHHmm(monthlySummary?.horas.debito || 0)}H</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </ScrollArea>
           </CardContent>
           <div className="p-4 bg-muted/5 border-t mt-auto">
