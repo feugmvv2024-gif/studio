@@ -393,7 +393,9 @@ export default function RelatoriosPage() {
         name: l.employeeName,
         qra: l.employeeQra,
         type: l.type,
-        endDate: l.endDate
+        endDate: l.endDate,
+        escala: l.escala,
+        turno: l.turno
       })),
       specialSchedule: especialRows.filter(r => !!r.empId).map(r => ({
         id: r.empId,
@@ -523,7 +525,15 @@ export default function RelatoriosPage() {
       const isSameShiftAndSchedule = emp.escala === selectedInspetor.escala && emp.turno === selectedInspetor.turno;
       const isOrdinario = normalizeStr(emp.escala || "") === "ORDINARIO";
       return isSameShiftAndSchedule || isOrdinario;
-    }).map(l => ({ ...l, unit: allEmployees.find(e => e.id === l.employeeId)?.unit || "N/A" }))
+    }).map(l => {
+      const emp = allEmployees.find(e => e.id === l.employeeId);
+      return { 
+        ...l, 
+        unit: emp?.unit || "N/A",
+        escala: emp?.escala || "N/A",
+        turno: emp?.turno || "N/A"
+      }
+    })
       .sort((a, b) => (a.employeeName || "").localeCompare(b.employeeName || ""));
   }, [allLaunches, allEmployees, inspetorId, defaultDate]);
 
@@ -815,14 +825,20 @@ export default function RelatoriosPage() {
                               <div className="space-y-2">
                                 {report.absentTodayList?.map((aus: any, idx: number) => (
                                   <div key={`af-${idx}`} className="p-2 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
-                                    <span className="text-[11px] font-black uppercase text-slate-700">{aus.name} ({aus.qra})</span>
+                                    <div className="flex flex-col">
+                                      <span className="text-[11px] font-black uppercase text-slate-700">{aus.name} ({aus.qra})</span>
+                                      <span className="text-[9px] font-bold text-muted-foreground uppercase">{aus.escala} / {aus.turno}</span>
+                                    </div>
                                     <Badge variant="secondary" className="text-[8px] font-bold uppercase">{aus.type}</Badge>
                                   </div>
                                 ))}
                                 {report.absences?.map((aus: any, idx: number) => (
                                   <div key={`ms-${idx}`} className="p-2 bg-red-50/30 rounded-lg border border-red-100 flex justify-between items-center">
-                                    <span className="text-[11px] font-black uppercase text-red-900">{aus.name} ({aus.qra})</span>
-                                    <Badge variant="outline" className="text-[8px] border-red-200 text-red-700 font-bold">{aus.info}</Badge>
+                                    <div className="flex flex-col">
+                                      <span className="text-[11px] font-black uppercase text-red-900">{aus.name} ({aus.qra})</span>
+                                      <span className="text-[9px] font-bold text-red-700/70 uppercase">{aus.info}</span>
+                                    </div>
+                                    <Badge variant="outline" className="text-[8px] border-red-200 text-red-700 font-bold">FALTA</Badge>
                                   </div>
                                 ))}
                               </div>
@@ -839,9 +855,10 @@ export default function RelatoriosPage() {
                                       <div key={idx} className="p-2 bg-amber-50/30 rounded-lg border border-amber-100 flex justify-between items-center">
                                         <div className="flex flex-col">
                                           <span className="text-[11px] font-black uppercase text-amber-900">{esp.name} ({esp.qra})</span>
-                                          <span className="text-[8px] font-bold text-amber-600 uppercase">{esp.periodName}</span>
+                                          <span className="text-[9px] font-bold text-amber-700/70 uppercase">{esp.info}</span>
+                                          <span className="text-[8px] font-black text-amber-600 uppercase mt-0.5">ESPECIAL: {esp.periodName}</span>
                                         </div>
-                                        <Badge variant="outline" className="text-[8px] border-red-200 text-red-700 font-bold">{esp.info}</Badge>
+                                        <Badge variant="outline" className="text-[8px] border-amber-200 text-amber-700 font-bold">ESPECIAL</Badge>
                                       </div>
                                     ))}
                                   </div>
