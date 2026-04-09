@@ -841,7 +841,7 @@ export default function RelatoriosPage() {
                                           <span className="text-[11px] font-black uppercase text-amber-900">{esp.name} ({esp.qra})</span>
                                           <span className="text-[8px] font-bold text-amber-600 uppercase">{esp.periodName}</span>
                                         </div>
-                                        <Badge variant="outline" className="text-[8px] border-amber-200 text-amber-700 font-bold">{esp.info}</Badge>
+                                        <Badge variant="outline" className="text-[8px] border-red-200 text-red-700 font-bold">{esp.info}</Badge>
                                       </div>
                                     ))}
                                   </div>
@@ -1226,7 +1226,7 @@ export default function RelatoriosPage() {
                               <SelectContent><SelectItem value="SETOR 1" className="uppercase text-xs font-bold">SETOR 1</SelectItem><SelectItem value="SETOR 2" className="uppercase text-xs font-bold">SETOR 2</SelectItem><SelectItem value="SETOR 3" className="uppercase text-xs font-bold">SETOR 3</SelectItem><SelectItem value="COVV" className="uppercase text-xs font-bold">COVV</SelectItem></SelectContent>
                             </Select>
                           </div>
-                          <div className="w-full">{renderAutocomplete("Chefia Responsável", sector.chiefData.term, (v) => updateSectorChiefData(sIdx, { term: v }), (v) => updateSectorChiefData(sIdx, { id: v }), sector.chiefData.id, sector.chiefData.show, (v) => updateSectorChiefData(sIdx, { show: v }), (v) => updateSectorChiefData(sIdx, { info: v }), availableChiefsForSectors, sectorBlocks.filter((_, i) => i !== sIdx).map(s => s.chiefData.id).filter(Boolean))}</div>
+                          <div className="w-full">{renderAutocomplete("Chefia Responsável", sector.chiefData.term, (v) => updateSectorChiefData(sIdx, { term: v }), (v) => updateSectorChiefData(sIdx, { id: v }), sector.chiefData.id, sector.chiefData.show, (v) => updateSectorChiefData(sIdx, { show: v }), (v) => updateSectorChiefData(sIdx, { info: v }), availableChiefsForSectors, [])}</div>
                           <Button type="button" variant="ghost" size="icon" onClick={() => removeSectorBlock(sIdx)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                         <div className="space-y-2">
