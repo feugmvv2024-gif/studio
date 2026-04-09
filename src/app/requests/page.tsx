@@ -78,7 +78,7 @@ export default function RequestsPage() {
   const [requestType, setRequestType] = React.useState<string>("");
   const [multiDates, setMultiDates] = React.useState<string[]>([""]);
   
-  // Estados Reprogramação de Férias
+  // Estados Reprogramação de FÉRIAS
   const [currentVacationStart, setCurrentVacationStart] = React.useState("");
   const [currentVacationEnd, setCurrentVacationEnd] = React.useState("");
   const [newVacationStart, setNewVacationStart] = React.useState("");
@@ -336,7 +336,7 @@ export default function RequestsPage() {
     } else if (requestType === "PERMUTA") {
       finalDate = `EU: ${formatDateBR(permutaMyOriginalDate)}->${formatDateBR(permutaMyNewDate)} | PERMUTA COM ${permutaPartnerData?.name || "N/A"}: ${formatDateBR(permutaMyNewDate)}->${formatDateBR(permutaMyOriginalDate)}`;
     } else if (requestType === "ATESTADO MÉDICO") {
-      finalDate = `CONSULTA: ${formatDateBR(atestadoConsultaDate)} | PERÍODO: ${formatDateBR(atestadoConsultaDate)} À ${formatDateBR(atestadoEndDate)} | CID: ${atestadoCid || 'N/I'}`;
+      finalDate = `CONSULTA: ${formatDateBR(atestadoConsultaDate)} - ${atestadoQtdDias} DIAS | PERÍODO: ${formatDateBR(atestadoConsultaDate)} À ${formatDateBR(atestadoEndDate)} | CID: ${atestadoCid || 'N/I'}`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
