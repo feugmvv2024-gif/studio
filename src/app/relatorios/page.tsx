@@ -431,7 +431,7 @@ export default function RelatoriosPage() {
       action: editingReportId ? "Relatório Re-enviado para Correção" : "Novo Relatório Enviado",
       user: employeeData.name,
       qra: employeeData.qra,
-      notes: editingReportId ? "Correction performed as requested." : "First submission."
+      notes: editingReportId ? "Correção realizada conforme solicitado." : "Primeira submissão."
     };
 
     try {
@@ -613,7 +613,7 @@ export default function RelatoriosPage() {
   const removePostFromSector = (sectorIndex: number, postIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts = newBlocks[sectorIndex].posts.filter((_: any, i: number) => i !== postIndex); setSectorBlocks(newBlocks); };
   const addMemberToPost = (sectorIndex: number, postIndex: number) => {
     const newBlocks = [...sectorBlocks]; const post = newBlocks[sectorIndex].posts[postIndex]; const isVTR = post.type === "VTR"; const limit = isVTR ? 4 : 15;
-    if (post.members.length >= limit) { toast({ variant: "destructive", title: "LIMITE ATINGIDO", description: `MAXIMUM ${limit} EMPLOYEES.` }); return; }
+    if (post.members.length >= limit) { toast({ variant: "destructive", title: "LIMITE ATINGIDO", description: `MÁXIMO DE ${limit} INTEGRANTES.` }); return; }
     post.members.push({ id: generateId(), empId: "", term: "", show: false }); setSectorBlocks(newBlocks);
   };
   const removeMemberFromPost = (sectorIndex: number, postIndex: number, memberIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts[postIndex].members = newBlocks[sectorIndex].posts[postIndex].members.filter((_: any, i: number) => i !== memberIndex); setSectorBlocks(newBlocks); };
@@ -625,7 +625,7 @@ export default function RelatoriosPage() {
       <div className="space-y-1 relative flex-1">
         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><User className="h-3 w-3" /> {label}</Label>
         <div className="relative">
-          <Input placeholder={`SEARCH...`} className="h-11 uppercase font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" value={term} onChange={(e) => { const val = e.target.value.toUpperCase(); setTerm(val); setShow(true); if (!val) { setId(""); setInfo(""); } }} onFocus={() => setShow(true)} required={!isOptional} />
+          <Input placeholder={`BUSCAR...`} className="h-11 uppercase font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" value={term} onChange={(e) => { const val = e.target.value.toUpperCase(); setTerm(val); setShow(true); if (!val) { setId(""); setInfo(""); } }} onFocus={() => setShow(true)} required={!isOptional} />
           {id && <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /><Check className="h-4 w-4 text-green-600" /></div>}
         </div>
         {show && term && (
@@ -635,7 +635,7 @@ export default function RelatoriosPage() {
                 <span className="text-[11px] font-black text-slate-900 uppercase">{emp.name}</span>
                 <div className="flex items-center gap-2 mt-0.5"><Badge variant="secondary" className="text-[8px] font-bold bg-blue-50 text-blue-700 border-blue-100 uppercase">{emp.role}</Badge><span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">QRA: {emp.qra}</span></div>
               </button>
-            )) : <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">None available.</div>}
+            )) : <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">NENHUM REGISTRO ENCONTRADO.</div>}
           </div>
         )}
         {show && <div className="fixed inset-0 z-[90]" onClick={() => setShow(false)} />}
@@ -647,7 +647,7 @@ export default function RelatoriosPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-2 border-b pb-2">
         <History className="h-4 w-4 text-primary" />
-        <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Audit Timeline</h4>
+        <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">LINHA DO TEMPO (AUDITORIA)</h4>
       </div>
       <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
         {history?.map((entry, idx) => (
@@ -780,21 +780,21 @@ export default function RelatoriosPage() {
                           <div className="space-y-4">
                             <div className="flex items-center gap-2 border-b pb-2">
                               <Users className="h-4 w-4 text-blue-600" />
-                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Shift Composition</h4>
+                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">COMPOSIÇÃO DAS GUARNIÇÕES</h4>
                             </div>
                             <div className="space-y-6">
                               {report.sectors?.map((sector: any, sIdx: number) => (
                                 <div key={sIdx} className="space-y-3 bg-slate-50/30 p-4 rounded-2xl border border-slate-100 shadow-inner">
                                   <div className="flex items-center justify-between">
                                     <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] px-3">{sector.sectorType}</Badge>
-                                    <span className="text-[10px] font-black uppercase text-slate-600">Chief: {sector.chief?.name} ({sector.chief?.qra})</span>
+                                    <span className="text-[10px] font-black uppercase text-slate-600">CHEFE: {sector.chief?.name} ({sector.chief?.qra})</span>
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {sector.posts?.map((post: any, pIdx: number) => (
                                       <div key={pIdx} className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm space-y-2">
                                         <div className="flex items-center justify-between border-b pb-1">
                                           <span className="text-[9px] font-black uppercase text-slate-500">{post.type} {post.vtrNumber ? `• VTR ${post.vtrNumber}` : ""}</span>
-                                          <Badge variant="outline" className="text-[8px] font-bold">{post.members?.length} Members</Badge>
+                                          <Badge variant="outline" className="text-[8px] font-bold">{post.members?.length} INTEGRANTES</Badge>
                                         </div>
                                         <div className="flex flex-wrap gap-1.5">
                                           {post.members?.map((m: any, mIdx: number) => (
@@ -813,7 +813,7 @@ export default function RelatoriosPage() {
                             <div className="space-y-4">
                               <div className="flex items-center gap-2 border-b pb-2">
                                 <UserX className="h-4 w-4 text-red-600" />
-                                <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Absences & Absences</h4>
+                                <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">AUSÊNCIAS E FALTAS</h4>
                               </div>
                               <div className="space-y-2">
                                 {report.absentTodayList?.map((aus: any, idx: number) => (
@@ -841,7 +841,7 @@ export default function RelatoriosPage() {
                                 <div className="space-y-4">
                                   <div className="flex items-center gap-2 border-b pb-2">
                                     <Star className="h-4 w-4 text-amber-600" />
-                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Special Scale</h4>
+                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">ESCALA ESPECIAL</h4>
                                   </div>
                                   <div className="space-y-2">
                                     {report.specialSchedule.map((esp: any, idx: number) => (
@@ -862,14 +862,14 @@ export default function RelatoriosPage() {
                                 <div className="space-y-4">
                                   <div className="flex items-center gap-2 border-b pb-2">
                                     <TrendingUp className="h-4 w-4 text-emerald-600" />
-                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Overtime</h4>
+                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">HORAS EXCEDENTES</h4>
                                   </div>
                                   <div className="space-y-2">
                                     {report.overtime.map((o: any, idx: number) => (
                                       <div key={idx} className="p-2 bg-emerald-50 rounded-lg border border-emerald-100 flex justify-between items-center">
                                         <div className="flex flex-col">
                                           <span className="text-[11px] font-black uppercase text-emerald-900">{o.name} ({o.qra})</span>
-                                          <span className="text-[8px] font-bold text-emerald-600 uppercase">PERIOD: {o.shiftEnd} AS {o.overtimeEnd}</span>
+                                          <span className="text-[8px] font-bold text-emerald-600 uppercase">PERÍODO: {o.shiftEnd} AS {o.overtimeEnd}</span>
                                         </div>
                                         <Badge className="bg-emerald-600 text-white font-mono font-black text-[10px]">{o.total}H</Badge>
                                       </div>
@@ -885,7 +885,7 @@ export default function RelatoriosPage() {
                           <div className="space-y-4">
                             <div className="flex items-center gap-2 border-b pb-2">
                               <MessageSquare className="h-4 w-4 text-slate-600" />
-                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Occurrence Report</h4>
+                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">RELATO DE OCORRÊNCIAS</h4>
                             </div>
                             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 italic text-[11px] text-slate-700 uppercase leading-relaxed whitespace-pre-wrap">
                               {report.observations || "NENHUMA OCORRÊNCIA REGISTRADA."}
