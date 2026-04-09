@@ -143,7 +143,7 @@ const calculateTimeDuration = (start: string, end: string) => {
   
   const diffMinutes = totalMinutesEnd - totalMinutesStart;
   const h = Math.floor(diffMinutes / 60);
-  const m = diffMinutes % 60;
+  const m = absMinutes % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
@@ -339,6 +339,13 @@ export default function RelatoriosPage() {
     return shiftPeriods
       .filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"))
       .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
+  }, [shiftPeriods]);
+
+  const regularPeriodsList = React.useMemo(() => {
+    if (!shiftPeriods) return [];
+    return shiftPeriods
+      .filter(p => !normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"))
+      .sort((a, b) => (a.escalaName || "").localeCompare(b.escalaName || ""));
   }, [shiftPeriods]);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -1225,7 +1232,7 @@ export default function RelatoriosPage() {
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Clock className="h-3 w-3" /> Horário</Label><input type="time" value={defaultTime} onChange={(e) => setDefaultTime(e.target.value)} className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" required /></div>
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Briefcase className="h-3 w-3" /> Escala de Serviço</Label>
                     <Select value={selectedEscalaId} onValueChange={setSelectedEscalaId} required><SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                      <SelectContent>{shiftPeriods?.map((p: any) => (<SelectItem key={p.id} value={p.id} className="uppercase text-xs font-bold">{p.escalaName} ({p.startTime} AS {p.endTime})</SelectItem>))}</SelectContent>
+                      <SelectContent>{regularPeriodsList?.map((p: any) => (<SelectItem key={p.id} value={p.id} className="uppercase text-xs font-bold">{p.escalaName} ({p.startTime} AS {p.endTime})</SelectItem>))}</SelectContent>
                     </Select>
                   </div>
                 </div>
