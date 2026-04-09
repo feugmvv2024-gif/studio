@@ -33,7 +33,8 @@ import {
   RotateCcw,
   Plane,
   Stethoscope,
-  Info
+  Info,
+  TrendingUp
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -120,6 +121,31 @@ const formatDateBR = (dateStr: string) => {
 
 const generateId = () => Math.random().toString(36).substr(2, 9);
 
+const applyTimeMask = (value: string) => {
+  let v = value.replace(/\D/g, "");
+  if (v.length > 4) v = v.slice(0, 4);
+  if (v.length <= 2) return v;
+  return `${v.slice(0, 2)}:${v.slice(2)}`;
+};
+
+const calculateTimeDuration = (start: string, end: string) => {
+  if (!start || !end || start.length !== 5 || end.length !== 5) return "";
+  const [h1, m1] = start.split(':').map(Number);
+  const [h2, m2] = end.split(':').map(Number);
+  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
+  
+  let totalMinutesStart = h1 * 60 + m1;
+  let totalMinutesEnd = h2 * 60 + m2;
+  
+  // Se o fim é menor que o início, assume que passou para o dia seguinte
+  if (totalMinutesEnd <= totalMinutesStart) totalMinutesEnd += 24 * 60;
+  
+  const diffMinutes = totalMinutesEnd - totalMinutesStart;
+  const h = Math.floor(diffMinutes / 60);
+  const m = diffMinutes % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
 export default function RelatoriosPage() {
   const { toast } = useToast()
   const firestore = useFirestore()
@@ -134,6 +160,7 @@ export default function RelatoriosPage() {
   const [isAbsencesOpen, setIsAbsencesOpen] = React.useState(false)
   const [isAfastadosOpen, setIsAfastadosOpen] = React.useState(false)
   const [isEspecialOpen, setIsEspecialOpen] = React.useState(false)
+  const [isOvertimeOpen, setIsOvertimeOpen] = React.useState(false)
   const [isTeamOpen, setIsTeamOpen] = React.useState(false)
 
   // Estados para valores padrão
@@ -188,6 +215,11 @@ export default function RelatoriosPage() {
     { id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }
   ]);
 
+  // Estados para Horas Excedentes (Dinâmico)
+  const [overtimeRows, setOvertimeRows] = React.useState([
+    { id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }
+  ]);
+
   // ESTRUTURA: EQUIPE DO DIA (Setores -> Postos -> Membros)
   const [sectorBlocks, setSectorBlocks] = React.useState<any[]>([
     {
@@ -220,6 +252,7 @@ export default function RelatoriosPage() {
     setSubinspetorRows([{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
     setFaltaRows([{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
     setEspecialRows([{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
+    setOvertimeRows([{ id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
     setSectorBlocks([{ id: generateId(), sectorType: "", chiefData: { id: "", term: "", info: "", show: false }, posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }] }]);
     localStorage.removeItem('nrg_relatorio_draft');
   };
@@ -237,22 +270,27 @@ export default function RelatoriosPage() {
     setInspetorInfo(report.inspector.info);
 
     // Subinspetores
-    setSubinspetorRows(report.subinspectors.length ? report.subinspectors.map((s: any) => ({
+    setSubinspetorRows(report.subinspectors?.length ? report.subinspectors.map((s: any) => ({
       id: generateId(), term: `${s.name} (${s.qra})`, info: s.info, show: false, empId: s.id
     })) : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
 
     // Faltas
-    setFaltaRows(report.absences.length ? report.absences.map((f: any) => ({
+    setFaltaRows(report.absences?.length ? report.absences.map((f: any) => ({
       id: generateId(), term: `${f.name} (${f.qra})`, info: f.info, show: false, empId: f.id
     })) : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
 
     // Especial
-    setEspecialRows(report.specialSchedule.length ? report.specialSchedule.map((e: any) => ({
+    setEspecialRows(report.specialSchedule?.length ? report.specialSchedule.map((e: any) => ({
       id: generateId(), term: `${e.name} (${e.qra})`, info: e.info, show: false, periodId: e.periodId, empId: e.id
     })) : [{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
 
+    // Horas Excedentes
+    setOvertimeRows(report.overtime?.length ? report.overtime.map((o: any) => ({
+      id: generateId(), term: `${o.name} (${o.qra})`, empId: o.id, show: false, shiftEnd: o.shiftEnd, overtimeEnd: o.overtimeEnd, total: o.total
+    })) : [{ id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
+
     // Equipe do Dia (Reconstruir estrutura complexa)
-    setSectorBlocks(report.sectors.map((s: any) => ({
+    setSectorBlocks(report.sectors?.map((s: any) => ({
       id: s.id || generateId(),
       sectorType: s.sectorType,
       chiefData: { id: s.chief.id, term: `${s.chief.name} (${s.chief.qra})`, info: "", show: false },
@@ -262,7 +300,7 @@ export default function RelatoriosPage() {
         vtrNumber: p.vtrNumber,
         members: p.members.map((m: any) => ({ id: generateId(), empId: m.id, term: m.qra, show: false }))
       }))
-    })));
+    })) || [{ id: generateId(), sectorType: "", chiefData: { id: "", term: "", info: "", show: false }, posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }] }]);
 
     setActiveTab("new");
     toast({ title: "RELATÓRIO CARREGADO", description: "Corrija os dados conforme solicitado pelo RH." });
@@ -364,6 +402,14 @@ export default function RelatoriosPage() {
         info: r.info,
         periodId: r.periodId,
         periodName: specialPeriodsList.find((p: any) => p.id === r.periodId)?.escalaName || "N/A"
+      })),
+      overtime: overtimeRows.filter(r => !!r.empId).map(r => ({
+        id: r.empId,
+        name: r.term.split(' (')[0],
+        qra: r.term.match(/\(([^)]+)\)/)?.[1] || r.term,
+        shiftEnd: r.shiftEnd,
+        overtimeEnd: r.overtimeEnd,
+        total: r.total
       })),
       sectors: sectorBlocks.map(s => ({
         id: s.id,
@@ -513,10 +559,11 @@ export default function RelatoriosPage() {
   const subTeamFilled = subinspetorRows.some(r => !!r.empId);
   const absencesFilled = faltaRows.some(r => !!r.empId);
   const especialFilled = especialRows.some(r => !!r.empId);
+  const overtimeFilled = overtimeRows.some(r => !!r.empId);
   const teamFilled = sectorBlocks.some(s => s.sectorType && s.posts.some((p: any) => p.members.some((m: any) => !!m.empId)));
   const afastadosFilled = absentTodayList.length > 0;
 
-  // Funções de manipulação de linhas (Subinspetor, Faltas, Especial, Setores)
+  // Funções de manipulação de linhas (Subinspetor, Faltas, Especial, Overtime, Setores)
   const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: generateId(), term: "", info: "", show: false, empId: "" }]);
   const removeSubinspetorRow = (index: number) => {
     const newRows = subinspetorRows.filter((_, i) => i !== index);
@@ -542,6 +589,26 @@ export default function RelatoriosPage() {
   };
   const updateEspecialRow = (index: number, updates: any) => {
     setEspecialRows(prev => { const newRows = [...prev]; newRows[index] = { ...newRows[index], ...updates }; return newRows; });
+  };
+
+  const addOvertimeRow = () => setOvertimeRows([...overtimeRows, { id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
+  const removeOvertimeRow = (index: number) => {
+    const newRows = overtimeRows.filter((_, i) => i !== index);
+    setOvertimeRows(newRows.length ? newRows : [{ id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
+  };
+  const updateOvertimeRow = (index: number, updates: any) => {
+    setOvertimeRows(prev => {
+      const newRows = [...prev];
+      const updatedRow = { ...newRows[index], ...updates };
+      
+      // Cálculo automático do total se as horas mudarem
+      if (updates.shiftEnd !== undefined || updates.overtimeEnd !== undefined) {
+        updatedRow.total = calculateTimeDuration(updatedRow.shiftEnd, updatedRow.overtimeEnd);
+      }
+      
+      newRows[index] = updatedRow;
+      return newRows;
+    });
   };
 
   const addSectorBlock = () => setSectorBlocks([...sectorBlocks, { id: generateId(), sectorType: "", chiefData: { id: "", term: "", info: "", show: false }, posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }] }]);
@@ -643,6 +710,7 @@ export default function RelatoriosPage() {
                 <div className="flex flex-wrap gap-1">
                   <Badge variant="outline" className="text-[8px] uppercase font-bold">{report.sectors?.length} Setores</Badge>
                   <Badge variant="outline" className="text-[8px] uppercase font-bold">{report.specialSchedule?.length} Esc. Especial</Badge>
+                  <Badge variant="outline" className="text-[8px] uppercase font-bold">{report.overtime?.length} Horas Exc.</Badge>
                 </div>
                 <div className="flex items-center justify-end gap-2">
                   {report.status === 'EM REVISÃO' && report.createdBy === currentUser?.uid && (
@@ -759,25 +827,47 @@ export default function RelatoriosPage() {
                                 ))}
                               </div>
                             </div>
-                            {report.specialSchedule?.length > 0 && (
-                              <div className="space-y-4">
-                                <div className="flex items-center gap-2 border-b pb-2">
-                                  <Star className="h-4 w-4 text-amber-600" />
-                                  <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Escala Especial</h4>
-                                </div>
-                                <div className="space-y-2">
-                                  {report.specialSchedule.map((esp: any, idx: number) => (
-                                    <div key={idx} className="p-2 bg-amber-50/30 rounded-lg border border-amber-100 flex justify-between items-center">
-                                      <div className="flex flex-col">
-                                        <span className="text-[11px] font-black uppercase text-amber-900">{esp.name} ({esp.qra})</span>
-                                        <span className="text-[8px] font-bold text-amber-600 uppercase">{esp.periodName}</span>
+                            <div className="space-y-8">
+                              {report.specialSchedule?.length > 0 && (
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-2 border-b pb-2">
+                                    <Star className="h-4 w-4 text-amber-600" />
+                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Escala Especial</h4>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {report.specialSchedule.map((esp: any, idx: number) => (
+                                      <div key={idx} className="p-2 bg-amber-50/30 rounded-lg border border-amber-100 flex justify-between items-center">
+                                        <div className="flex flex-col">
+                                          <span className="text-[11px] font-black uppercase text-amber-900">{esp.name} ({esp.qra})</span>
+                                          <span className="text-[8px] font-bold text-amber-600 uppercase">{esp.periodName}</span>
+                                        </div>
+                                        <Badge variant="outline" className="text-[8px] border-amber-200 text-amber-700 font-bold">{esp.info}</Badge>
                                       </div>
-                                      <Badge variant="outline" className="text-[8px] border-amber-200 text-amber-700 font-bold">{esp.info}</Badge>
-                                    </div>
-                                  ))}
+                                    ))}
+                                  </div>
                                 </div>
-                              </div>
-                            )}
+                              )}
+
+                              {report.overtime?.length > 0 && (
+                                <div className="space-y-4">
+                                  <div className="flex items-center gap-2 border-b pb-2">
+                                    <TrendingUp className="h-4 w-4 text-emerald-600" />
+                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Horas Excedentes</h4>
+                                  </div>
+                                  <div className="space-y-2">
+                                    {report.overtime.map((o: any, idx: number) => (
+                                      <div key={idx} className="p-2 bg-emerald-50 rounded-lg border border-emerald-100 flex justify-between items-center">
+                                        <div className="flex flex-col">
+                                          <span className="text-[11px] font-black uppercase text-emerald-900">{o.name} ({o.qra})</span>
+                                          <span className="text-[8px] font-bold text-emerald-600 uppercase">PERÍODO: {o.shiftEnd} ÀS {o.overtimeEnd}</span>
+                                        </div>
+                                        <Badge className="bg-emerald-600 text-white font-mono font-black text-[10px]">{o.total}H</Badge>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </div>
 
                           {/* Auditoria Histórica */}
@@ -822,6 +912,7 @@ export default function RelatoriosPage() {
                 setDefaultDate(tempDraft.defaultDate); setDefaultTime(tempDraft.defaultTime); setSelectedEscalaId(tempDraft.selectedEscalaId);
                 setInspetorTerm(tempDraft.inspetorTerm); setInspetorId(tempDraft.inspetorId); setInspetorInfo(tempDraft.inspetorInfo);
                 setSubinspetorRows(tempDraft.subinspetorRows); setFaltaRows(tempDraft.faltaRows); setEspecialRows(tempDraft.especialRows);
+                setOvertimeRows(tempDraft.overtimeRows || [{ id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
                 setSectorBlocks(tempDraft.sectorBlocks); setObservations(tempDraft.observations); setIsDraftDialogOpen(false);
               }
             }} className="h-12 uppercase font-black text-xs tracking-widest bg-amber-600 hover:bg-amber-700 shadow-xl shadow-amber-100">CARREGAR</AlertDialogAction>
@@ -1064,6 +1155,56 @@ export default function RelatoriosPage() {
                   </CollapsibleContent>
                 </Collapsible>
 
+                {/* Horas Excedentes */}
+                <Collapsible open={isOvertimeOpen} onOpenChange={setIsOvertimeOpen} className="space-y-6">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                    <div className="flex items-center gap-3">
+                      <CollapsibleTrigger asChild><button type="button" className={cn("p-2 rounded-xl transition-colors border shadow-sm", overtimeFilled ? "bg-blue-50 text-blue-600 border-blue-100" : "bg-red-50 text-red-500 border-red-100")}><TrendingUp className="h-5 w-5" /></button></CollapsibleTrigger>
+                      <div className="flex flex-col"><h4 className="text-sm font-black uppercase text-slate-700 tracking-widest leading-none">Horas Excedentes</h4><span className="text-[9px] font-bold text-muted-foreground uppercase mt-1 tracking-tighter">{overtimeFilled ? "SESSÃO PREENCHIDA" : "NENHUM LANÇAMENTO"}</span></div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Button type="button" variant="outline" size="sm" onClick={addOvertimeRow} className="h-8 text-[10px] font-black uppercase gap-1.5 rounded-xl border-primary/20 text-primary hover:bg-primary/5"><Plus className="h-3.5 w-3.5" /> ADICIONAR</Button>
+                      <CollapsibleTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 rounded-full">{isOvertimeOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}</Button></CollapsibleTrigger>
+                    </div>
+                  </div>
+                  <CollapsibleContent className="space-y-4">
+                    {overtimeRows.map((row, index) => (
+                      <div key={row.id} className="grid grid-cols-1 md:grid-cols-[2fr_1fr_1fr_1fr_auto] gap-4 items-end bg-slate-50/20 p-4 rounded-xl border border-dashed border-slate-200 animate-in fade-in slide-in-from-top-2 duration-300">
+                        {renderAutocomplete("Servidor", row.term, (v) => updateOvertimeRow(index, { term: v }), (v) => updateOvertimeRow(index, { empId: v }), row.empId, row.show, (v) => updateOvertimeRow(index, { show: v }), () => {}, allEmployees || [], [...trulyAbsentIds, ...overtimeRows.map(r => r.empId).filter(id => id !== row.empId)])}
+                        
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Fim Escala</Label>
+                          <Input 
+                            placeholder="00:00" 
+                            className="h-11 text-center font-mono font-bold bg-white" 
+                            value={row.shiftEnd} 
+                            onChange={(e) => updateOvertimeRow(index, { shiftEnd: applyTimeMask(e.target.value) })}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Fim Excedente</Label>
+                          <Input 
+                            placeholder="00:00" 
+                            className="h-11 text-center font-mono font-bold bg-white" 
+                            value={row.overtimeEnd} 
+                            onChange={(e) => updateOvertimeRow(index, { overtimeEnd: applyTimeMask(e.target.value) })}
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label className="text-[10px] font-bold uppercase text-muted-foreground">Total</Label>
+                          <div className="h-11 flex items-center justify-center px-3 rounded-md border bg-blue-50 text-blue-700 font-mono font-black text-xs">
+                            {row.total ? `${row.total}H` : "--:--"}
+                          </div>
+                        </div>
+
+                        <Button type="button" variant="ghost" size="icon" onClick={() => removeOvertimeRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
+                      </div>
+                    ))}
+                  </CollapsibleContent>
+                </Collapsible>
+
                 {/* Equipe do Dia */}
                 <Collapsible open={isTeamOpen} onOpenChange={setIsTeamOpen} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1136,7 +1277,7 @@ export default function RelatoriosPage() {
                 </div>
               </CardContent>
               <CardFooter className="bg-slate-50 border-t p-6 flex flex-col sm:flex-row gap-4">
-                <Button type="button" variant="outline" onClick={() => { localStorage.setItem('nrg_relatorio_draft', JSON.stringify({ defaultDate, defaultTime, selectedEscalaId, inspetorTerm, inspetorId, inspetorInfo, subinspetorRows, faltaRows, especialRows, sectorBlocks, observations })); toast({ title: "RASCUNHO SALVO LOCALMENTE" }); }} className="w-full sm:w-auto h-14 uppercase font-black text-xs tracking-widest border-primary/20 text-primary hover:bg-primary/5"><Save className="h-5 w-5 mr-2" /> Salvar Rascunho</Button>
+                <Button type="button" variant="outline" onClick={() => { localStorage.setItem('nrg_relatorio_draft', JSON.stringify({ defaultDate, defaultTime, selectedEscalaId, inspetorTerm, inspetorId, inspetorInfo, subinspetorRows, faltaRows, especialRows, overtimeRows, sectorBlocks, observations })); toast({ title: "RASCUNHO SALVO LOCALMENTE" }); }} className="w-full sm:w-auto h-14 uppercase font-black text-xs tracking-widest border-primary/20 text-primary hover:bg-primary/5"><Save className="h-5 w-5 mr-2" /> Salvar Rascunho</Button>
                 <Button type="submit" disabled={loading || loadingEmployees} className="flex-1 h-14 uppercase font-black text-xs tracking-widest bg-primary hover:bg-primary/90 shadow-xl shadow-blue-200 transition-all active:scale-95">{loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Send className="h-5 w-5 mr-2" />} {editingReportId ? "Enviar Correção" : "Enviar Relatório"}</Button>
               </CardFooter>
             </form>

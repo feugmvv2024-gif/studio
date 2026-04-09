@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Employee": {
@@ -89,6 +88,7 @@
         "absences": { "type": "array", "items": { "type": "object" } },
         "absentTodayList": { "type": "array", "items": { "type": "object" } },
         "specialSchedule": { "type": "array", "items": { "type": "object" } },
+        "overtime": { "type": "array", "items": { "type": "object" }, "description": "Lista de horas excedentes registradas no turno." },
         "sectors": { "type": "array", "items": { "type": "object" } },
         "observations": { "type": "string" },
         "status": { "type": "string", "enum": ["PENDENTE", "EM REVISÃO", "ARQUIVADO"] },
