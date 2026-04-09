@@ -83,7 +83,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/components/ui/tabs"
+} from "@/tabs"
 import {
   Dialog,
   DialogContent,
@@ -143,7 +143,7 @@ const calculateTimeDuration = (start: string, end: string) => {
   
   const diffMinutes = totalMinutesEnd - totalMinutesStart;
   const h = Math.floor(diffMinutes / 60);
-  const m = absMinutes % 60;
+  const m = diffMinutes % 60;
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
@@ -1306,7 +1306,7 @@ export default function RelatoriosPage() {
                                     isVacation ? "bg-blue-600 text-white" :
                                     isMedical ? "bg-red-600 text-white" :
                                     isLeave ? "bg-purple-600 text-white" :
-                                    "bg-orange-500 text-white"
+                                    "bg-orange-50 text-white"
                                   )}>{aus.type}</Badge>
                                 </div>
                               </div>
@@ -1451,7 +1451,15 @@ export default function RelatoriosPage() {
                                 <div className="flex flex-col md:flex-row items-stretch md:items-end gap-4">
                                   <div className="flex-1 space-y-1.5"><Label className="text-[9px] font-bold uppercase text-muted-foreground">Posto / Serviço</Label>
                                     <Select value={post.type} onValueChange={(v) => { const newPosts = [...sector.posts]; newPosts[pIdx].type = v; if (v === "VTR" && newPosts[pIdx].members.length > 4) newPosts[pIdx].members = newPosts[pIdx].members.slice(0, 4); updateSectorBlock(sIdx, { posts: newPosts }); }}><SelectTrigger className="h-10 uppercase text-xs font-bold bg-slate-50/50"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                                      <SelectContent><SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem><SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem><SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem><SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem></SelectContent>
+                                      <SelectContent>
+                                        <SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem>
+                                        <SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem>
+                                        <SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem>
+                                        <SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem>
+                                        <SelectItem value="ADMINISTRATIVO" className="uppercase text-xs font-bold">ADMINISTRATIVO</SelectItem>
+                                        <SelectItem value="BIKE" className="uppercase text-xs font-bold">BIKE</SelectItem>
+                                        <SelectItem value="QUADRICICLO" className="uppercase text-xs font-bold">QUADRICICLO</SelectItem>
+                                      </SelectContent>
                                     </Select>
                                   </div>
                                   <div className="flex items-center gap-2">
