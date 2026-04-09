@@ -531,6 +531,7 @@ export default function RequestsPage() {
                         <SelectItem value="FOLGA" className="uppercase text-[10px]">FOLGA (BANCO DE HORAS)</SelectItem>
                         <SelectItem value="ABONO DE ANIVERSÁRIO" className="uppercase text-[10px]">ABONO DE ANIVERSÁRIO</SelectItem>
                         <SelectItem value="ABONO TRE" className="uppercase text-[10px]">ABONO TRE</SelectItem>
+                        <SelectItem value="ATESTADO MÉDICO" className="uppercase text-[10px]">ATESTADO MÉDICO</SelectItem>
                         <SelectItem value="REPROGRAMAÇÃO DE FÉRIAS" className="uppercase text-[10px]">REPROGRAMAÇÃO DE FÉRIAS</SelectItem>
                         <SelectItem value="ESCALA ESPECIAL" className="uppercase text-[10px]">ESCALA ESPECIAL</SelectItem>
                         <SelectItem value="TROCA DE ESCALA" className="uppercase text-[10px]">TROCA DE ESCALA</SelectItem>
