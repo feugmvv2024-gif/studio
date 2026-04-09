@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -34,7 +35,8 @@ import {
   Plane,
   Stethoscope,
   Info,
-  TrendingUp
+  TrendingUp,
+  Printer
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -153,6 +155,7 @@ export default function RelatoriosPage() {
   const [loading, setLoading] = React.useState(false)
   const [activeTab, setActiveTab] = React.useState("new")
   const [editingReportId, setEditingReportId] = React.useState<string | null>(null)
+  const [reportToPrint, setReportToPrint] = React.useState<any>(null)
 
   const [isSubTeamOpen, setIsSubTeamOpen] = React.useState(false)
   const [isAbsencesOpen, setIsAbsencesOpen] = React.useState(false)
@@ -288,6 +291,14 @@ export default function RelatoriosPage() {
     toast({ title: "RELATÓRIO CARREGADO", description: "Corrija os dados conforme solicitado pelo RH." });
   };
 
+  const handlePrintReport = (report: any) => {
+    setReportToPrint(report);
+    setTimeout(() => {
+      window.print();
+      setReportToPrint(null);
+    }, 200);
+  };
+
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
   const allLaunchesRef = React.useMemo(() => {
@@ -381,7 +392,7 @@ export default function RelatoriosPage() {
           qra: r.term.match(/\(([^)]+)\)/)?.[1] || r.term,
           info: r.info,
           periodId: r.periodId,
-          periodName: period ? `${period.escalaName} ${period.startTime} ÀS ${period.endTime}` : "N/A"
+          periodName: period ? `ESCALA ESPECIAL ${period.startTime} AS ${period.endTime}` : "N/A"
         };
       }),
       overtime: overtimeRows.filter(r => !!r.empId).map(r => ({
@@ -420,7 +431,7 @@ export default function RelatoriosPage() {
       action: editingReportId ? "Relatório Re-enviado para Correção" : "Novo Relatório Enviado",
       user: employeeData.name,
       qra: employeeData.qra,
-      notes: editingReportId ? "Correção realizada conforme solicitado." : "Primeiro envio."
+      notes: editingReportId ? "Correction performed as requested." : "First submission."
     };
 
     try {
@@ -602,7 +613,7 @@ export default function RelatoriosPage() {
   const removePostFromSector = (sectorIndex: number, postIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts = newBlocks[sectorIndex].posts.filter((_: any, i: number) => i !== postIndex); setSectorBlocks(newBlocks); };
   const addMemberToPost = (sectorIndex: number, postIndex: number) => {
     const newBlocks = [...sectorBlocks]; const post = newBlocks[sectorIndex].posts[postIndex]; const isVTR = post.type === "VTR"; const limit = isVTR ? 4 : 15;
-    if (post.members.length >= limit) { toast({ variant: "destructive", title: "LIMITE ATINGIDO", description: `MÁXIMO DE ${limit} SERVIDORES.` }); return; }
+    if (post.members.length >= limit) { toast({ variant: "destructive", title: "LIMITE ATINGIDO", description: `MAXIMUM ${limit} EMPLOYEES.` }); return; }
     post.members.push({ id: generateId(), empId: "", term: "", show: false }); setSectorBlocks(newBlocks);
   };
   const removeMemberFromPost = (sectorIndex: number, postIndex: number, memberIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts[postIndex].members = newBlocks[sectorIndex].posts[postIndex].members.filter((_: any, i: number) => i !== memberIndex); setSectorBlocks(newBlocks); };
@@ -614,7 +625,7 @@ export default function RelatoriosPage() {
       <div className="space-y-1 relative flex-1">
         <Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><User className="h-3 w-3" /> {label}</Label>
         <div className="relative">
-          <Input placeholder={`BUSCAR...`} className="h-11 uppercase font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" value={term} onChange={(e) => { const val = e.target.value.toUpperCase(); setTerm(val); setShow(true); if (!val) { setId(""); setInfo(""); } }} onFocus={() => setShow(true)} required={!isOptional} />
+          <Input placeholder={`SEARCH...`} className="h-11 uppercase font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" value={term} onChange={(e) => { const val = e.target.value.toUpperCase(); setTerm(val); setShow(true); if (!val) { setId(""); setInfo(""); } }} onFocus={() => setShow(true)} required={!isOptional} />
           {id && <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5"><div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" /><Check className="h-4 w-4 text-green-600" /></div>}
         </div>
         {show && term && (
@@ -624,7 +635,7 @@ export default function RelatoriosPage() {
                 <span className="text-[11px] font-black text-slate-900 uppercase">{emp.name}</span>
                 <div className="flex items-center gap-2 mt-0.5"><Badge variant="secondary" className="text-[8px] font-bold bg-blue-50 text-blue-700 border-blue-100 uppercase">{emp.role}</Badge><span className="text-[9px] text-muted-foreground uppercase font-bold tracking-wider">QRA: {emp.qra}</span></div>
               </button>
-            )) : <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">Nenhum disponível.</div>}
+            )) : <div className="px-4 py-4 text-[10px] text-muted-foreground italic uppercase text-center font-bold">None available.</div>}
           </div>
         )}
         {show && <div className="fixed inset-0 z-[90]" onClick={() => setShow(false)} />}
@@ -636,7 +647,7 @@ export default function RelatoriosPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-2 border-b pb-2">
         <History className="h-4 w-4 text-primary" />
-        <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Linha do Tempo / Auditoria</h4>
+        <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Audit Timeline</h4>
       </div>
       <div className="relative space-y-6 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
         {history?.map((entry, idx) => (
@@ -701,6 +712,11 @@ export default function RelatoriosPage() {
                       <RotateCcw className="h-4 w-4" /> Corrigir
                     </Button>
                   )}
+                  {report.status === 'ARQUIVADO' && (
+                    <Button variant="ghost" size="sm" onClick={() => handlePrintReport(report)} className="h-9 w-9 p-0 text-slate-600 hover:bg-slate-50">
+                      <Printer className="h-4 w-4" />
+                    </Button>
+                  )}
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button variant="ghost" size="sm" className="h-9 w-9 p-0 text-blue-600 hover:bg-blue-50">
@@ -717,16 +733,23 @@ export default function RelatoriosPage() {
                               <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest mt-1">Ref: {formatDateBR(report.date)} • {report.escalaName} • STATUS: {report.status}</p>
                             </div>
                           </div>
-                          {canManage && report.status === 'PENDENTE' && (
-                            <div className="flex items-center gap-2">
-                              <Button onClick={() => { setReportToReturn(report); setIsReturnDialogOpen(true); }} size="sm" variant="ghost" className="text-white hover:bg-white/10 font-black uppercase text-[10px] h-9 border border-white/20">
-                                <ArrowRight className="h-4 w-4 mr-2" /> Devolver
+                          <div className="flex items-center gap-2">
+                            {report.status === 'ARQUIVADO' && (
+                              <Button onClick={() => handlePrintReport(report)} size="sm" variant="ghost" className="text-white hover:bg-white/10 font-black uppercase text-[10px] h-9 border border-white/20">
+                                <Printer className="h-4 w-4 mr-2" /> Imprimir
                               </Button>
-                              <Button onClick={() => handleArchiveReport(report.id)} size="sm" className="bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-9 gap-2 shadow-lg shadow-green-900/20">
-                                <CheckCircle2 className="h-4 w-4" /> Homologar
-                              </Button>
-                            </div>
-                          )}
+                            )}
+                            {canManage && report.status === 'PENDENTE' && (
+                              <>
+                                <Button onClick={() => { setReportToReturn(report); setIsReturnDialogOpen(true); }} size="sm" variant="ghost" className="text-white hover:bg-white/10 font-black uppercase text-[10px] h-9 border border-white/20">
+                                  <ArrowRight className="h-4 w-4 mr-2" /> Devolver
+                                </Button>
+                                <Button onClick={() => handleArchiveReport(report.id)} size="sm" className="bg-green-500 hover:bg-green-600 text-white font-black uppercase text-[10px] h-9 gap-2 shadow-lg shadow-green-900/20">
+                                  <CheckCircle2 className="h-4 w-4" /> Homologar
+                                </Button>
+                              </>
+                            )}
+                          </div>
                         </div>
                       </DialogHeader>
                       <ScrollArea className="max-h-[70vh]">
@@ -757,21 +780,21 @@ export default function RelatoriosPage() {
                           <div className="space-y-4">
                             <div className="flex items-center gap-2 border-b pb-2">
                               <Users className="h-4 w-4 text-blue-600" />
-                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Composição de Turno</h4>
+                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Shift Composition</h4>
                             </div>
                             <div className="space-y-6">
                               {report.sectors?.map((sector: any, sIdx: number) => (
                                 <div key={sIdx} className="space-y-3 bg-slate-50/30 p-4 rounded-2xl border border-slate-100 shadow-inner">
                                   <div className="flex items-center justify-between">
                                     <Badge className="bg-blue-600 text-white font-black uppercase text-[10px] px-3">{sector.sectorType}</Badge>
-                                    <span className="text-[10px] font-black uppercase text-slate-600">Chefe: {sector.chief?.name} ({sector.chief?.qra})</span>
+                                    <span className="text-[10px] font-black uppercase text-slate-600">Chief: {sector.chief?.name} ({sector.chief?.qra})</span>
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {sector.posts?.map((post: any, pIdx: number) => (
                                       <div key={pIdx} className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm space-y-2">
                                         <div className="flex items-center justify-between border-b pb-1">
                                           <span className="text-[9px] font-black uppercase text-slate-500">{post.type} {post.vtrNumber ? `• VTR ${post.vtrNumber}` : ""}</span>
-                                          <Badge variant="outline" className="text-[8px] font-bold">{post.members?.length} Membros</Badge>
+                                          <Badge variant="outline" className="text-[8px] font-bold">{post.members?.length} Members</Badge>
                                         </div>
                                         <div className="flex flex-wrap gap-1.5">
                                           {post.members?.map((m: any, mIdx: number) => (
@@ -790,7 +813,7 @@ export default function RelatoriosPage() {
                             <div className="space-y-4">
                               <div className="flex items-center gap-2 border-b pb-2">
                                 <UserX className="h-4 w-4 text-red-600" />
-                                <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Ausências & Faltas</h4>
+                                <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Absences & Absences</h4>
                               </div>
                               <div className="space-y-2">
                                 {report.absentTodayList?.map((aus: any, idx: number) => (
@@ -818,7 +841,7 @@ export default function RelatoriosPage() {
                                 <div className="space-y-4">
                                   <div className="flex items-center gap-2 border-b pb-2">
                                     <Star className="h-4 w-4 text-amber-600" />
-                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Escala Especial</h4>
+                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Special Scale</h4>
                                   </div>
                                   <div className="space-y-2">
                                     {report.specialSchedule.map((esp: any, idx: number) => (
@@ -839,14 +862,14 @@ export default function RelatoriosPage() {
                                 <div className="space-y-4">
                                   <div className="flex items-center gap-2 border-b pb-2">
                                     <TrendingUp className="h-4 w-4 text-emerald-600" />
-                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Horas Excedentes</h4>
+                                    <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Overtime</h4>
                                   </div>
                                   <div className="space-y-2">
                                     {report.overtime.map((o: any, idx: number) => (
                                       <div key={idx} className="p-2 bg-emerald-50 rounded-lg border border-emerald-100 flex justify-between items-center">
                                         <div className="flex flex-col">
                                           <span className="text-[11px] font-black uppercase text-emerald-900">{o.name} ({o.qra})</span>
-                                          <span className="text-[8px] font-bold text-emerald-600 uppercase">PERÍODO: {o.shiftEnd} ÀS {o.overtimeEnd}</span>
+                                          <span className="text-[8px] font-bold text-emerald-600 uppercase">PERIOD: {o.shiftEnd} AS {o.overtimeEnd}</span>
                                         </div>
                                         <Badge className="bg-emerald-600 text-white font-mono font-black text-[10px]">{o.total}H</Badge>
                                       </div>
@@ -862,7 +885,7 @@ export default function RelatoriosPage() {
                           <div className="space-y-4">
                             <div className="flex items-center gap-2 border-b pb-2">
                               <MessageSquare className="h-4 w-4 text-slate-600" />
-                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Relato de Ocorrências</h4>
+                              <h4 className="text-xs font-black uppercase text-slate-900 tracking-widest">Occurrence Report</h4>
                             </div>
                             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 italic text-[11px] text-slate-700 uppercase leading-relaxed whitespace-pre-wrap">
                               {report.observations || "NENHUMA OCORRÊNCIA REGISTRADA."}
@@ -882,7 +905,215 @@ export default function RelatoriosPage() {
   );
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-12 print:p-0">
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { size: A4 portrait; margin: 1.5cm; }
+          
+          body, main, [data-sidebar="inset"], .flex-1 { 
+            overflow: visible !important; 
+            height: auto !important; 
+            display: block !important;
+            background: white !important;
+          }
+
+          .print-hidden, .print-hidden *, header, nav, footer, button, .tabs-list {
+            display: none !important;
+          }
+
+          .printable-report {
+            display: block !important;
+            width: 100% !important;
+            color: black !important;
+          }
+
+          .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 1rem;
+          }
+
+          .report-table th, .report-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+          }
+
+          .report-table th {
+            background-color: #f8f9fa !important;
+            -webkit-print-color-adjust: exact;
+            font-weight: bold;
+          }
+
+          .signature-section {
+            margin-top: 4rem;
+            display: flex;
+            justify-content: space-around;
+            page-break-inside: avoid;
+          }
+
+          .sig-box {
+            text-align: center;
+            width: 250px;
+            border-top: 1px solid black;
+            padding-top: 8px;
+            font-size: 10px;
+            font-weight: bold;
+            text-transform: uppercase;
+          }
+
+          .section-title {
+            background-color: #eee !important;
+            -webkit-print-color-adjust: exact;
+            padding: 4px 8px;
+            font-weight: black;
+            font-size: 11px;
+            text-transform: uppercase;
+            margin: 1rem 0 0.5rem 0;
+            border-left: 4px solid #000;
+          }
+        }
+      ` }} />
+
+      {/* ÁREA DE IMPRESSÃO (Oculta na tela) */}
+      <div className="hidden printable-report">
+        {reportToPrint && (
+          <div className="space-y-6">
+            <div className="flex justify-between items-end border-b-2 border-black pb-4">
+              <div>
+                <h1 className="text-xl font-black uppercase tracking-tight">GUARDA MUNICIPAL DE VILA VELHA</h1>
+                <p className="text-sm font-bold uppercase">NÚCLEO DE RECURSOS HUMANOS - NRH</p>
+                <h2 className="text-lg font-black uppercase mt-2">Relatório Operacional Diário</h2>
+              </div>
+              <div className="text-right">
+                <p className="text-[10px] font-bold uppercase">Ref: {formatDateBR(reportToPrint.date)}</p>
+                <p className="text-[10px] font-bold uppercase">Turno: {reportToPrint.time}</p>
+                <p className="text-[10px] font-bold uppercase">Escala: {reportToPrint.escalaName}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4 border p-3 rounded">
+              <div>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Inspetor Responsável</p>
+                <p className="text-xs font-black uppercase">{reportToPrint.inspector?.name} ({reportToPrint.inspector?.qra})</p>
+                <p className="text-[10px] font-medium uppercase">{reportToPrint.inspector?.info}</p>
+              </div>
+              <div>
+                <p className="text-[9px] font-bold text-slate-500 uppercase">Subinspetoria</p>
+                {reportToPrint.subinspectors?.map((s: any, i: number) => (
+                  <p key={i} className="text-xs font-bold uppercase">{s.name} ({s.qra})</p>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <div className="section-title">Composição de Guarnições</div>
+              {reportToPrint.sectors?.map((sector: any, sIdx: number) => (
+                <div key={sIdx} className="mb-4 border rounded p-2">
+                  <div className="flex justify-between border-b pb-1 mb-2">
+                    <span className="text-[10px] font-black uppercase">{sector.sectorType}</span>
+                    <span className="text-[10px] font-bold uppercase">Chefe: {sector.chief?.name} ({sector.chief?.qra})</span>
+                  </div>
+                  <table className="report-table">
+                    <thead>
+                      <tr>
+                        <th className="w-1/3">Posto / Serviço</th>
+                        <th>Integrantes (QRA)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sector.posts?.map((post: any, pIdx: number) => (
+                        <tr key={pIdx}>
+                          <td>{post.type} {post.vtrNumber ? `• VTR ${post.vtrNumber}` : ""}</td>
+                          <td>{post.members?.map((m: any) => m.qra).join(", ")}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <div className="section-title">Ausências e Faltas</div>
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Servidor</th>
+                      <th>Tipo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportToPrint.absentTodayList?.map((aus: any, i: number) => (
+                      <tr key={i}>
+                        <td>{aus.name} ({aus.qra})</td>
+                        <td>{aus.type}</td>
+                      </tr>
+                    ))}
+                    {reportToPrint.absences?.map((aus: any, i: number) => (
+                      <tr key={i}>
+                        <td>{aus.name} ({aus.qra})</td>
+                        <td>FALTA</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <div className="section-title">Escala Especial / Horas Exc.</div>
+                <table className="report-table">
+                  <thead>
+                    <tr>
+                      <th>Servidor</th>
+                      <th>Informação</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {reportToPrint.specialSchedule?.map((esp: any, i: number) => (
+                      <tr key={i}>
+                        <td>{esp.name} ({esp.qra})</td>
+                        <td>{esp.periodName}</td>
+                      </tr>
+                    ))}
+                    {reportToPrint.overtime?.map((o: any, i: number) => (
+                      <tr key={i}>
+                        <td>{o.name} ({o.qra})</td>
+                        <td>EXTCEDENTE: {o.total}H</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div>
+              <div className="section-title">Relato de Ocorrências</div>
+              <div className="p-3 border rounded text-[10px] uppercase italic whitespace-pre-wrap leading-relaxed">
+                {reportToPrint.observations || "NENHUMA OCORRÊNCIA REGISTRADA."}
+              </div>
+            </div>
+
+            <div className="signature-section">
+              <div className="sig-box">
+                <p>{reportToPrint.inspector?.name}</p>
+                <p>Inspetor do Turno</p>
+              </div>
+              <div className="sig-box">
+                <p>NÚCLEO DE RH - GMVV</p>
+                <p>Homologação / Conferência</p>
+              </div>
+            </div>
+
+            <div className="mt-8 text-[8px] text-slate-400 uppercase text-center border-t pt-2">
+              Gerado pelo Sistema NRH-GMVV em {new Date().toLocaleString('pt-BR')}
+            </div>
+          </div>
+        )}
+      </div>
+
       <AlertDialog open={isDraftDialogOpen} onOpenChange={setIsDraftDialogOpen}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
@@ -932,7 +1163,7 @@ export default function RelatoriosPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 print-hidden">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl"><FileText className="h-6 w-6 text-blue-600" /></div>
           <div>
@@ -942,7 +1173,7 @@ export default function RelatoriosPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full print-hidden">
         <TabsList className="grid w-full grid-cols-3 lg:w-[600px] h-12 bg-muted/50 p-1 rounded-xl">
           <TabsTrigger value="new" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
             {editingReportId ? <RotateCcw className="h-3.5 w-3.5" /> : <Plus className="h-3.5 w-3.5" />} 
@@ -994,7 +1225,7 @@ export default function RelatoriosPage() {
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Clock className="h-3 w-3" /> Horário</Label><input type="time" value={defaultTime} onChange={(e) => setDefaultTime(e.target.value)} className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" required /></div>
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Briefcase className="h-3 w-3" /> Escala de Serviço</Label>
                     <Select value={selectedEscalaId} onValueChange={setSelectedEscalaId} required><SelectTrigger className="h-11 uppercase text-xs font-bold bg-slate-50/50"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                      <SelectContent>{shiftPeriods?.map((p: any) => (<SelectItem key={p.id} value={p.id} className="uppercase text-xs font-bold">{p.escalaName} ({p.startTime} ÀS {p.endTime})</SelectItem>))}</SelectContent>
+                      <SelectContent>{shiftPeriods?.map((p: any) => (<SelectItem key={p.id} value={p.id} className="uppercase text-xs font-bold">{p.escalaName} ({p.startTime} AS {p.endTime})</SelectItem>))}</SelectContent>
                     </Select>
                   </div>
                 </div>
@@ -1067,7 +1298,8 @@ export default function RelatoriosPage() {
                                     "text-[8px] font-black uppercase px-1.5 h-4 border-none",
                                     isVacation ? "bg-blue-600 text-white" :
                                     isMedical ? "bg-red-600 text-white" :
-                                    isLeave ? "bg-purple-600 text-white" : "bg-orange-500 text-white"
+                                    isLeave ? "bg-purple-600 text-white" :
+                                    "bg-orange-500 text-white"
                                   )}>{aus.type}</Badge>
                                 </div>
                               </div>
@@ -1123,7 +1355,7 @@ export default function RelatoriosPage() {
                         <div className="w-full space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Escala e Turno</Label><Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-white border-dashed cursor-not-allowed" /></div>
                         <div className="w-full space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-2"><Timer className="h-3 w-3" /> Horário Especial</Label>
                           <Select value={row.periodId} onValueChange={(v) => updateEspecialRow(index, { periodId: v })}><SelectTrigger className="h-11 uppercase text-[9px] font-bold bg-white"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
-                            <SelectContent>{specialPeriodsList.map((p: any) => (<SelectItem key={p.id} value={p.id} className="uppercase text-[9px] font-bold">{p.escalaName} ({p.startTime} ÀS {p.endTime})</SelectItem>))}</SelectContent>
+                            <SelectContent>{specialPeriodsList.map((p: any) => (<SelectItem key={p.id} value={p.id} className="uppercase text-[9px] font-bold">{p.escalaName} ({p.startTime} AS {p.endTime})</SelectItem>))}</SelectContent>
                           </Select>
                         </div>
                         <Button type="button" variant="ghost" size="icon" onClick={() => removeEspecialRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
