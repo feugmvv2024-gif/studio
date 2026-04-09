@@ -310,7 +310,9 @@ export default function RelatoriosPage() {
 
   const specialPeriodsList = React.useMemo(() => {
     if (!shiftPeriods) return [];
-    return shiftPeriods.filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"));
+    return shiftPeriods
+      .filter(p => normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"))
+      .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
   }, [shiftPeriods]);
 
   // Lógica de Envio Real
