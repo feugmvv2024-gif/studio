@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -83,7 +82,7 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "@/tabs"
+} from "@/components/ui/tabs"
 import {
   Dialog,
   DialogContent,
