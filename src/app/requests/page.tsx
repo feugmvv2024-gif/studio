@@ -16,7 +16,8 @@ import {
   MessageSquare,
   User,
   Plus,
-  AlertCircle
+  AlertCircle,
+  Stethoscope
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -99,6 +100,12 @@ export default function RequestsPage() {
   const [permutaPartnerShow, setPermutaPartnerShow] = React.useState(false);
   const [permutaPartnerData, setPermutaPartnerData] = React.useState<any>(null);
 
+  // Estados Atestado Médico
+  const [atestadoConsultaDate, setAtestadoConsultaDate] = React.useState("");
+  const [atestadoCid, setAtestadoCid] = React.useState("");
+  const [atestadoQtdDias, setAtestadoQtdDias] = React.useState<number | "">("");
+  const [atestadoEndDate, setAtestadoEndDate] = React.useState("");
+
   const [chefiaRows, setChefiaRows] = React.useState([{ id: "", uid: "", term: "", show: false }]);
   const [adminResponseDraft, setAdminResponseDraft] = React.useState<{ [key: string]: string }>({});
 
@@ -113,6 +120,18 @@ export default function RequestsPage() {
       }
     }
   }, [requestType]);
+
+  // Cálculo Automático de Data Fim de Atestado
+  React.useEffect(() => {
+    if (atestadoConsultaDate && typeof atestadoQtdDias === 'number' && atestadoQtdDias > 0) {
+      const start = new Date(atestadoConsultaDate + "T00:00:00");
+      const end = new Date(start);
+      end.setDate(start.getDate() + (atestadoQtdDias - 1));
+      setAtestadoEndDate(end.toISOString().split('T')[0]);
+    } else {
+      setAtestadoEndDate("");
+    }
+  }, [atestadoConsultaDate, atestadoQtdDias]);
 
   // Consultas
   const requestsQuery = React.useMemo(() => {
@@ -316,6 +335,8 @@ export default function RequestsPage() {
       finalDate = `DE: ${formatDateBR(swapFromDate)} | PARA: ${formatDateBR(swapToDate)}`;
     } else if (requestType === "PERMUTA") {
       finalDate = `EU: ${formatDateBR(permutaMyOriginalDate)}->${formatDateBR(permutaMyNewDate)} | PERMUTA COM ${permutaPartnerData?.name || "N/A"}: ${formatDateBR(permutaMyNewDate)}->${formatDateBR(permutaMyOriginalDate)}`;
+    } else if (requestType === "ATESTADO MÉDICO") {
+      finalDate = `CONSULTA: ${formatDateBR(atestadoConsultaDate)} | PERÍODO: ${formatDateBR(atestadoConsultaDate)} À ${formatDateBR(atestadoEndDate)} | CID: ${atestadoCid || 'N/I'}`;
     } else {
       finalDate = formatDateBR(formData.get('date') as string || "");
     }
@@ -366,6 +387,10 @@ export default function RequestsPage() {
     setNewVacationEnd("");
     setSwapFromDate("");
     setSwapToDate("");
+    setAtestadoConsultaDate("");
+    setAtestadoCid("");
+    setAtestadoQtdDias("");
+    setAtestadoEndDate("");
   };
 
   async function handleProcessRequest(request: any, action: 'approve' | 'deny') {
@@ -559,6 +584,54 @@ export default function RequestsPage() {
                     </div>
                   )}
                 </div>
+
+                {requestType === "ATESTADO MÉDICO" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-3 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
+                    <div className="grid gap-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                        <CalendarDays className="h-3 w-3" /> Data da Consulta
+                      </Label>
+                      <Input 
+                        type="date" 
+                        value={atestadoConsultaDate} 
+                        onChange={(e) => setAtestadoConsultaDate(e.target.value)} 
+                        required 
+                        className="h-9 text-[10px] font-bold bg-white" 
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground flex items-center gap-1.5">
+                        <Stethoscope className="h-3 w-3" /> CID (Opcional)
+                      </Label>
+                      <Input 
+                        placeholder="EX: Z00" 
+                        value={atestadoCid} 
+                        onChange={(e) => setAtestadoCid(e.target.value.toUpperCase())} 
+                        className="h-9 text-[10px] font-bold bg-white uppercase" 
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">Qtd. Dias</Label>
+                      <Input 
+                        type="number" 
+                        min="1" 
+                        value={atestadoQtdDias} 
+                        onChange={(e) => setAtestadoQtdDias(e.target.value === "" ? "" : Number(e.target.value))} 
+                        required 
+                        className="h-9 text-[10px] font-bold bg-white" 
+                      />
+                    </div>
+                    <div className="grid gap-1">
+                      <Label className="text-[9px] font-bold uppercase text-muted-foreground">Data Final</Label>
+                      <Input 
+                        type="date" 
+                        value={atestadoEndDate} 
+                        readOnly 
+                        className="h-9 text-[10px] font-bold bg-muted/30 cursor-not-allowed" 
+                      />
+                    </div>
+                  </div>
+                )}
 
                 {requestType === "REPROGRAMAÇÃO DE FÉRIAS" && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3 bg-slate-50 border rounded-xl animate-in slide-in-from-top-2 duration-300">
@@ -814,7 +887,7 @@ export default function RequestsPage() {
                 const isTre = req.type === "ABONO TRE";
                 const dateCount = req.date ? req.date.split(',').length : 0;
 
-                const isSpecialType = ["REPROGRAMAÇÃO DE FÉRIAS", "PERMUTA", "TROCA DE ESCALA"].includes(req.type);
+                const isSpecialType = ["REPROGRAMAÇÃO DE FÉRIAS", "PERMUTA", "TROCA DE ESCALA", "ATESTADO MÉDICO"].includes(req.type);
 
                 return (
                   <Card key={req.id} className="card-shadow border-none rounded-xl overflow-hidden hover:shadow-md transition-all group">
