@@ -137,7 +137,6 @@ const calculateTimeDuration = (start: string, end: string) => {
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
   
-  // Se o fim é menor que o início, assume que passou para o dia seguinte
   if (totalMinutesEnd <= totalMinutesStart) totalMinutesEnd += 24 * 60;
   
   const diffMinutes = totalMinutesEnd - totalMinutesStart;
@@ -155,7 +154,6 @@ export default function RelatoriosPage() {
   const [activeTab, setActiveTab] = React.useState("new")
   const [editingReportId, setEditingReportId] = React.useState<string | null>(null)
 
-  // Estados de Colapso
   const [isSubTeamOpen, setIsSubTeamOpen] = React.useState(false)
   const [isAbsencesOpen, setIsAbsencesOpen] = React.useState(false)
   const [isAfastadosOpen, setIsAfastadosOpen] = React.useState(false)
@@ -163,18 +161,15 @@ export default function RelatoriosPage() {
   const [isOvertimeOpen, setIsOvertimeOpen] = React.useState(false)
   const [isTeamOpen, setIsTeamOpen] = React.useState(false)
 
-  // Estados para valores padrão
   const [defaultDate, setDefaultDate] = React.useState("")
   const [defaultTime, setDefaultTime] = React.useState("")
   const [selectedEscalaId, setSelectedEscalaId] = React.useState("")
   const [observations, setObservations] = React.useState("")
 
-  // Estado para Devolução (Modal do Gestor)
   const [isReturnDialogOpen, setIsReturnDialogOpen] = React.useState(false)
   const [reportToReturn, setReportToReturn] = React.useState<any>(null)
   const [returnReason, setReturnReason] = React.useState("")
 
-  // Estados do Rascunho
   const [isDraftDialogOpen, setIsDraftDialogOpen] = React.useState(false)
   const [tempDraft, setTempDraft] = React.useState<any>(null)
 
@@ -194,33 +189,27 @@ export default function RelatoriosPage() {
     }
   }, []);
 
-  // Estados para Inspetor (Fixo)
   const [inspetorTerm, setInspetorTerm] = React.useState("")
   const [inspetorId, setInspetorId] = React.useState("")
   const [inspetorInfo, setInspetorInfo] = React.useState("")
   const [showInspetorSuggestions, setShowInspetorSuggestions] = React.useState(false)
 
-  // Estados para Subinspetores (Dinâmico)
   const [subinspetorRows, setSubinspetorRows] = React.useState([
     { id: generateId(), term: "", info: "", show: false, empId: "" }
   ]);
 
-  // Estados para Faltas (Dinâmico)
   const [faltaRows, setFaltaRows] = React.useState([
     { id: generateId(), term: "", info: "", show: false, empId: "" }
   ]);
 
-  // Estados para Escala Especial (Dinâmico)
   const [especialRows, setEspecialRows] = React.useState([
     { id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }
   ]);
 
-  // Estados para Horas Excedentes (Dinâmico)
   const [overtimeRows, setOvertimeRows] = React.useState([
     { id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }
   ]);
 
-  // ESTRUTURA: EQUIPE DO DIA (Setores -> Postos -> Membros)
   const [sectorBlocks, setSectorBlocks] = React.useState<any[]>([
     {
       id: generateId(),
@@ -239,7 +228,6 @@ export default function RelatoriosPage() {
     }
   ]);
 
-  // Funções de Gerenciamento de Formulário
   const resetForm = () => {
     setEditingReportId(null);
     setObservations("");
@@ -264,32 +252,26 @@ export default function RelatoriosPage() {
     setSelectedEscalaId(report.escalaId);
     setObservations(report.observations);
     
-    // Inspetor
     setInspetorId(report.inspector.id);
     setInspetorTerm(`${report.inspector.name} (${report.inspector.qra})`);
     setInspetorInfo(report.inspector.info);
 
-    // Subinspetores
     setSubinspetorRows(report.subinspectors?.length ? report.subinspectors.map((s: any) => ({
       id: generateId(), term: `${s.name} (${s.qra})`, info: s.info, show: false, empId: s.id
     })) : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
 
-    // Faltas
     setFaltaRows(report.absences?.length ? report.absences.map((f: any) => ({
       id: generateId(), term: `${f.name} (${f.qra})`, info: f.info, show: false, empId: f.id
     })) : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
 
-    // Especial
     setEspecialRows(report.specialSchedule?.length ? report.specialSchedule.map((e: any) => ({
       id: generateId(), term: `${e.name} (${e.qra})`, info: e.info, show: false, periodId: e.periodId, empId: e.id
     })) : [{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
 
-    // Horas Excedentes
     setOvertimeRows(report.overtime?.length ? report.overtime.map((o: any) => ({
       id: generateId(), term: `${o.name} (${o.qra})`, empId: o.id, show: false, shiftEnd: o.shiftEnd, overtimeEnd: o.overtimeEnd, total: o.total
     })) : [{ id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
 
-    // Equipe do Dia (Reconstruir estrutura complexa)
     setSectorBlocks(report.sectors?.map((s: any) => ({
       id: s.id || generateId(),
       sectorType: s.sectorType,
@@ -306,7 +288,6 @@ export default function RelatoriosPage() {
     toast({ title: "RELATÓRIO CARREGADO", description: "Corrija os dados conforme solicitado pelo RH." });
   };
 
-  // Coleções
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
   const allLaunchesRef = React.useMemo(() => {
@@ -314,20 +295,16 @@ export default function RelatoriosPage() {
     return query(collection(firestore, 'launches'), where('startDate', '<=', defaultDate));
   }, [firestore, defaultDate]);
 
-  // Auditoria e Gestão
   const pendingReportsRef = React.useMemo(() => firestore ? query(collection(firestore, 'dailyReports'), where('status', '==', 'PENDENTE'), orderBy('createdAt', 'desc')) : null, [firestore]);
   
-  // Lógica de visibilidade dinâmica da aba Arquivo
   const archivedReportsRef = React.useMemo(() => {
     if (!firestore || !currentUser || !employeeData) return null;
     const isRH = normalizeStr(employeeData.role || "").includes("GESTOR DE RH");
     
     const baseQuery = collection(firestore, 'dailyReports');
     if (isRH) {
-      // Gestor vê tudo
       return query(baseQuery, where('status', '==', 'ARQUIVADO'), orderBy('createdAt', 'desc'));
     } else {
-      // Usuário comum vê apenas os próprios
       return query(
         baseQuery, 
         where('status', '==', 'ARQUIVADO'), 
@@ -353,7 +330,6 @@ export default function RelatoriosPage() {
       .sort((a, b) => (a.startTime || "").localeCompare(b.startTime || ""));
   }, [shiftPeriods]);
 
-  // Lógica de Envio Real
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!firestore || !currentUser || !employeeData) return;
@@ -397,14 +373,17 @@ export default function RelatoriosPage() {
         escala: l.escala,
         turno: l.turno
       })),
-      specialSchedule: especialRows.filter(r => !!r.empId).map(r => ({
-        id: r.empId,
-        name: r.term.split(' (')[0],
-        qra: r.term.match(/\(([^)]+)\)/)?.[1] || r.term,
-        info: r.info,
-        periodId: r.periodId,
-        periodName: specialPeriodsList.find((p: any) => p.id === r.periodId)?.escalaName || "N/A"
-      })),
+      specialSchedule: especialRows.filter(r => !!r.empId).map(r => {
+        const period = specialPeriodsList.find((p: any) => p.id === r.periodId);
+        return {
+          id: r.empId,
+          name: r.term.split(' (')[0],
+          qra: r.term.match(/\(([^)]+)\)/)?.[1] || r.term,
+          info: r.info,
+          periodId: r.periodId,
+          periodName: period ? `${period.escalaName} ${period.startTime} ÀS ${period.endTime}` : "N/A"
+        };
+      }),
       overtime: overtimeRows.filter(r => !!r.empId).map(r => ({
         id: r.empId,
         name: r.term.split(' (')[0],
@@ -436,7 +415,6 @@ export default function RelatoriosPage() {
       updatedAt: serverTimestamp()
     };
 
-    // Histórico de Auditoria
     const auditEntry = {
       timestamp: new Date().toISOString(),
       action: editingReportId ? "Relatório Re-enviado para Correção" : "Novo Relatório Enviado",
@@ -565,7 +543,6 @@ export default function RelatoriosPage() {
     return allEmployees.filter(emp => subTeamIds.includes(emp.id));
   }, [allEmployees, subTeamIds]);
 
-  // Auxiliares Visuais
   const subTeamFilled = subinspetorRows.some(r => !!r.empId);
   const absencesFilled = faltaRows.some(r => !!r.empId);
   const especialFilled = especialRows.some(r => !!r.empId);
@@ -573,7 +550,6 @@ export default function RelatoriosPage() {
   const teamFilled = sectorBlocks.some(s => s.sectorType && s.posts.some((p: any) => p.members.some((m: any) => !!m.empId)));
   const afastadosFilled = absentTodayList.length > 0;
 
-  // Funções de manipulação de linhas (Subinspetor, Faltas, Especial, Overtime, Setores)
   const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: generateId(), term: "", info: "", show: false, empId: "" }]);
   const removeSubinspetorRow = (index: number) => {
     const newRows = subinspetorRows.filter((_, i) => i !== index);
@@ -610,12 +586,9 @@ export default function RelatoriosPage() {
     setOvertimeRows(prev => {
       const newRows = [...prev];
       const updatedRow = { ...newRows[index], ...updates };
-      
-      // Cálculo automático do total se as horas mudarem
       if (updates.shiftEnd !== undefined || updates.overtimeEnd !== undefined) {
         updatedRow.total = calculateTimeDuration(updatedRow.shiftEnd, updatedRow.overtimeEnd);
       }
-      
       newRows[index] = updatedRow;
       return newRows;
     });
@@ -758,7 +731,6 @@ export default function RelatoriosPage() {
                       </DialogHeader>
                       <ScrollArea className="max-h-[70vh]">
                         <div className="p-6 space-y-8 pb-12">
-                          {/* Resumo Inspetoria */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div className="space-y-2">
                               <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-widest">Inspetor / Responsável</Label>
@@ -782,7 +754,6 @@ export default function RelatoriosPage() {
                             )}
                           </div>
 
-                          {/* Equipe do Dia Hierárquico */}
                           <div className="space-y-4">
                             <div className="flex items-center gap-2 border-b pb-2">
                               <Users className="h-4 w-4 text-blue-600" />
@@ -815,7 +786,6 @@ export default function RelatoriosPage() {
                             </div>
                           </div>
 
-                          {/* Ausentes e Especial */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                             <div className="space-y-4">
                               <div className="flex items-center gap-2 border-b pb-2">
@@ -826,7 +796,7 @@ export default function RelatoriosPage() {
                                 {report.absentTodayList?.map((aus: any, idx: number) => (
                                   <div key={`af-${idx}`} className="p-2 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
                                     <div className="flex flex-col">
-                                      <span className="text-[11px] font-black uppercase text-slate-700">{aus.name} ({aus.qra})</span>
+                                      <span className="text-[11px] font-black uppercase text-slate-900">{aus.name} ({aus.qra})</span>
                                       <span className="text-[9px] font-bold text-muted-foreground uppercase">{aus.escala} / {aus.turno}</span>
                                     </div>
                                     <Badge variant="secondary" className="text-[8px] font-bold uppercase">{aus.type}</Badge>
@@ -854,9 +824,9 @@ export default function RelatoriosPage() {
                                     {report.specialSchedule.map((esp: any, idx: number) => (
                                       <div key={idx} className="p-2 bg-amber-50/30 rounded-lg border border-amber-100 flex justify-between items-center">
                                         <div className="flex flex-col">
-                                          <span className="text-[11px] font-black uppercase text-amber-900">{esp.name} ({esp.qra})</span>
-                                          <span className="text-[9px] font-bold text-amber-700/70 uppercase">{esp.info}</span>
-                                          <span className="text-[8px] font-black text-amber-600 uppercase mt-0.5">ESPECIAL: {esp.periodName}</span>
+                                          <span className="text-[11px] font-black uppercase text-slate-900">{esp.name} ({esp.qra})</span>
+                                          <span className="text-[9px] font-bold text-muted-foreground uppercase">{esp.info}</span>
+                                          <span className="text-[10px] font-black text-amber-600 uppercase mt-1">{esp.periodName}</span>
                                         </div>
                                         <Badge variant="outline" className="text-[8px] border-amber-200 text-amber-700 font-bold">ESPECIAL</Badge>
                                       </div>
@@ -887,10 +857,8 @@ export default function RelatoriosPage() {
                             </div>
                           </div>
 
-                          {/* Auditoria Histórica */}
                           {renderAuditHistory(report.auditHistory || [])}
 
-                          {/* Relato Final */}
                           <div className="space-y-4">
                             <div className="flex items-center gap-2 border-b pb-2">
                               <MessageSquare className="h-4 w-4 text-slate-600" />
@@ -937,7 +905,6 @@ export default function RelatoriosPage() {
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Modal de Devolução */}
       <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
         <DialogContent className="rounded-2xl border-none shadow-2xl p-6">
           <DialogHeader>
@@ -989,7 +956,6 @@ export default function RelatoriosPage() {
         </TabsList>
 
         <TabsContent value="new" className="mt-6 space-y-6">
-          {/* Alertas de Relatórios Devolvidos para o Usuário Logado */}
           {inReviewReports?.filter(r => r.createdBy === currentUser?.uid).map(report => (
             <Card key={report.id} className="border-amber-200 bg-amber-50/50 shadow-sm rounded-2xl animate-in zoom-in-95 duration-300">
               <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -1023,7 +989,6 @@ export default function RelatoriosPage() {
                 </div>
               </CardHeader>
               <CardContent className="p-6 space-y-10">
-                {/* Campos Base: Data, Hora, Escala */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Calendar className="h-3 w-3" /> Data</Label><input type="date" value={defaultDate} onChange={(e) => setDefaultDate(e.target.value)} className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" required /></div>
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest flex items-center gap-2"><Clock className="h-3 w-3" /> Horário</Label><input type="time" value={defaultTime} onChange={(e) => setDefaultTime(e.target.value)} className="h-11 font-bold text-xs bg-slate-50/50 focus:bg-white transition-colors border rounded-md px-3 outline-none w-full" required /></div>
@@ -1034,13 +999,11 @@ export default function RelatoriosPage() {
                   </div>
                 </div>
 
-                {/* Inspetor */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {renderAutocomplete("Inspetor / Responsável", inspetorTerm, setInspetorTerm, setInspetorId, inspetorId, showInspetorSuggestions, setShowInspetorSuggestions, setInspetorInfo, chefiaList, [...trulyAbsentIds, ...subTeamIds.filter(id => id !== inspetorId)])}
                   <div className="space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Escala e Turno (Inspetor)</Label><Input value={inspetorInfo} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" /></div>
                 </div>
 
-                {/* Seções Dinâmicas */}
                 <Collapsible open={isSubTeamOpen} onOpenChange={setIsSubTeamOpen} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
@@ -1063,7 +1026,6 @@ export default function RelatoriosPage() {
                   </CollapsibleContent>
                 </Collapsible>
 
-                {/* Ausentes (Oficial) */}
                 <Collapsible open={isAfastadosOpen} onOpenChange={setIsAfastadosOpen} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
@@ -1121,7 +1083,6 @@ export default function RelatoriosPage() {
                   </CollapsibleContent>
                 </Collapsible>
 
-                {/* Faltas */}
                 <Collapsible open={isAbsencesOpen} onOpenChange={setIsAbsencesOpen} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
@@ -1144,7 +1105,6 @@ export default function RelatoriosPage() {
                   </CollapsibleContent>
                 </Collapsible>
 
-                {/* Especial */}
                 <Collapsible open={isEspecialOpen} onOpenChange={setIsEspecialOpen} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
@@ -1172,7 +1132,6 @@ export default function RelatoriosPage() {
                   </CollapsibleContent>
                 </Collapsible>
 
-                {/* Horas Excedentes */}
                 <Collapsible open={isOvertimeOpen} onOpenChange={setIsOvertimeOpen} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
@@ -1222,7 +1181,6 @@ export default function RelatoriosPage() {
                   </CollapsibleContent>
                 </Collapsible>
 
-                {/* Equipe do Dia */}
                 <Collapsible open={isTeamOpen} onOpenChange={setIsTeamOpen} className="space-y-6">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                     <div className="flex items-center gap-3">
