@@ -11,7 +11,9 @@ import {
   Check,
   X,
   Info,
-  RefreshCw
+  RefreshCw,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -69,7 +71,6 @@ import {
   query, 
   orderBy, 
   updateDoc, 
-  limit, 
   serverTimestamp,
   getDocs,
   where
@@ -102,6 +103,8 @@ const applyHoursMask = (value: string) => {
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
+const ITEMS_PER_PAGE = 50;
+
 export default function LancamentosPage() {
   const [isAddOpen, setIsAddOpen] = React.useState(false)
   const [isEditOpen, setIsEditOpen] = React.useState(false)
@@ -111,6 +114,9 @@ export default function LancamentosPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   
+  // Estado de Paginação
+  const [currentPage, setCurrentPage] = React.useState(1);
+
   // Estados do Formulário
   const [hoursInput, setHoursInput] = React.useState("")
   const [selectedEmployeeId, setSelectedEmployeeId] = React.useState<string>("")
@@ -130,13 +136,11 @@ export default function LancamentosPage() {
   const { toast } = useToast()
 
   // Queries
-  const launchesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'launches'), orderBy('createdAt', 'desc'), limit(100)) : null, [firestore]);
-  const totalLaunchesQuery = React.useMemo(() => firestore ? collection(firestore, 'launches') : null, [firestore]);
+  const launchesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'launches'), orderBy('createdAt', 'desc')) : null, [firestore]);
   const employeesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const launchTypesQuery = React.useMemo(() => firestore ? query(collection(firestore, 'launchTypes'), orderBy('name', 'asc')) : null, [firestore]);
 
   const { data: launches, loading: loadingLaunches } = useCollection(launchesQuery)
-  const { data: totalLaunches } = useCollection(totalLaunchesQuery)
   const { data: employees } = useCollection(employeesQuery)
   const { data: launchTypes } = useCollection(launchTypesQuery)
 
@@ -178,6 +182,18 @@ export default function LancamentosPage() {
       l.launchNumber?.toString().includes(term)
     );
   }, [launches, searchTerm]);
+
+  // Reseta página quando busca muda
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm]);
+
+  const paginatedLaunches = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLaunches.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredLaunches, currentPage]);
+
+  const totalPages = Math.ceil(filteredLaunches.length / ITEMS_PER_PAGE);
 
   const filteredEmployeesForSelection = React.useMemo(() => {
     if (!employees) return [];
@@ -286,7 +302,7 @@ export default function LancamentosPage() {
       }
 
       if (!isUpdate) {
-        const q = query(collection(firestore, 'launches'), orderBy('launchNumber', 'desc'), limit(1));
+        const q = query(collection(firestore, 'launches'), orderBy('launchNumber', 'desc'));
         const querySnapshot = await getDocs(q);
         let nextNumber = 1;
         if (!querySnapshot.empty) {
@@ -532,7 +548,7 @@ export default function LancamentosPage() {
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">
             LANÇAMENTOS
             <Badge variant="secondary" className="ml-2 bg-blue-50 text-blue-600 border-blue-100 font-bold px-2 py-0.5 rounded-lg text-xs">
-              {totalLaunches?.length || 0}
+              {launches?.length || 0}
             </Badge>
           </h2>
           <p className="text-muted-foreground uppercase text-[10px]">GESTOR DE BANCO DE HORAS E AFASTAMENTOS.</p>
@@ -592,86 +608,149 @@ export default function LancamentosPage() {
         <CardHeader className="p-4 border-b bg-muted/5">
           <div className="relative max-w-md">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="BUSCAR POR SERVIDOR, TIPO OU Nº..." className="pl-8 uppercase h-9 text-[10px] border-muted/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Input placeholder="BUSCAR POR SERVIDOR, TIPO OU Nº..." className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
           </div>
         </CardHeader>
         <CardContent className="p-0">
           {loadingLaunches ? <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-muted/20">
-                  <TableRow className="hover:bg-transparent border-b">
-                    <TableHead className="w-[60px] font-bold uppercase text-[9px] px-4">Nº</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">DATA</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">SERVIDOR</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">ESCALA/TURNO</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[110px]">TIPO</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[60px] leading-tight text-center">
-                      QTD <br /> ESCALAS
-                    </TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[60px] text-center">DIAS</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[70px] text-center">HORAS</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">INÍCIO</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">FIM</TableHead>
-                    <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">OBSERVAÇÕES</TableHead>
-                    <TableHead className="text-right font-bold uppercase text-[9px] pr-4">AÇÕES</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLaunches.map((launch) => {
-                    const normType = normalizeStr(launch.type);
-                    const isBhDebit = normType === "BANCO DE HORAS DEBITO" || normType === "FOLGA";
-                    const isTreDebit = normType === "TRE DEBITO";
-                    
-                    const isVacation = normType.includes("FERIAS");
-                    const isMedical = normType.includes("ATESTADO");
-                    const isLeave = normType.includes("LICENCA");
+            <>
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader className="bg-muted/20">
+                    <TableRow className="hover:bg-transparent border-b">
+                      <TableHead className="w-[60px] font-bold uppercase text-[9px] px-4">Nº</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">DATA</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">SERVIDOR</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">ESCALA/TURNO</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[110px]">TIPO</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[60px] leading-tight text-center">
+                        QTD <br /> ESCALAS
+                      </TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[60px] text-center">DIAS</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[70px] text-center">HORAS</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">INÍCIO</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[90px]">FIM</TableHead>
+                      <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">OBSERVAÇÕES</TableHead>
+                      <TableHead className="text-right font-bold uppercase text-[9px] pr-4">AÇÕES</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {paginatedLaunches.map((launch) => {
+                      const normType = normalizeStr(launch.type);
+                      const isBhDebit = normType === "BANCO DE HORAS DEBITO" || normType === "FOLGA";
+                      const isTreDebit = normType === "TRE DEBITO";
+                      
+                      const isVacation = normType.includes("FERIAS");
+                      const isMedical = normType.includes("ATESTADO");
+                      const isLeave = normType.includes("LICENCA");
 
-                    return (
-                      <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
-                        <TableCell className="font-mono font-bold text-[10px] px-4 text-primary">
-                          {launch.launchNumber || "-"}
-                        </TableCell>
-                        <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/') || "-"}</TableCell>
-                        <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
-                        <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className={cn(
-                            "text-[9px] uppercase font-bold",
-                            isVacation ? "bg-blue-600 text-white border-none" :
-                            isMedical ? "bg-red-600 text-white border-none" :
-                            isLeave ? "bg-purple-600 text-white border-none" :
-                            isBhDebit || isTreDebit ? "text-red-700 bg-red-50/50 border-red-200" : "text-blue-700 bg-blue-50/50 border-blue-200"
-                          )}>
-                            {launch.type || "-"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || "-"}</TableCell>
-                        <TableCell className={cn("text-[11px] font-bold text-center", isTreDebit && "text-red-600")}>
-                          {launch.days ? `${isTreDebit ? '-' : ''}${launch.days}` : "-"}
-                        </TableCell>
-                        <TableCell className={cn("text-[11px] font-black text-center", isBhDebit ? "text-red-600" : "text-blue-600")}>
-                          {launch.hours ? `${isBhDebit ? '-' : ''}${launch.hours}H` : "-"}
-                        </TableCell>
-                        <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/') || "-"}</TableCell>
-                        <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/') || "-"}</TableCell>
-                        <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">{launch.observations || "-"}</TableCell>
-                        <TableCell className="text-right pr-4">
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
-                              <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50 cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50 cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                      return (
+                        <TableRow key={launch.id} className="hover:bg-blue-50/30 transition-colors">
+                          <TableCell className="font-mono font-bold text-[10px] px-4 text-primary">
+                            {launch.launchNumber || "-"}
+                          </TableCell>
+                          <TableCell className="text-[11px] whitespace-nowrap font-medium">{launch.date?.split('-').reverse().join('/') || "-"}</TableCell>
+                          <TableCell><div className="flex flex-col"><span className="font-bold text-[11px] uppercase text-slate-800">{launch.employeeName || "-"}</span><span className="text-[9px] text-muted-foreground uppercase">{launch.employeeQra || "-"}</span></div></TableCell>
+                          <TableCell className="text-[10px] uppercase font-medium">{launch.escala} / {launch.turno}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className={cn(
+                              "text-[9px] uppercase font-bold",
+                              isVacation ? "bg-blue-600 text-white border-none" :
+                              isMedical ? "bg-red-600 text-white border-none" :
+                              isLeave ? "bg-purple-600 text-white border-none" :
+                              isBhDebit || isTreDebit ? "text-red-700 bg-red-50/50 border-red-200" : "text-blue-700 bg-blue-50/50 border-blue-200"
+                            )}>
+                              {launch.type || "-"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-[11px] font-medium text-center">{launch.qtdEscala || "-"}</TableCell>
+                          <TableCell className={cn("text-[11px] font-bold text-center", isTreDebit && "text-red-600")}>
+                            {launch.days ? `${isTreDebit ? '-' : ''}${launch.days}` : "-"}
+                          </TableCell>
+                          <TableCell className={cn("text-[11px] font-black text-center", isBhDebit ? "text-red-600" : "text-blue-600")}>
+                            {launch.hours ? `${isBhDebit ? '-' : ''}${launch.hours}H` : "-"}
+                          </TableCell>
+                          <TableCell className="text-[10px] whitespace-nowrap">{launch.startDate?.split('-').reverse().join('/') || "-"}</TableCell>
+                          <TableCell className="text-[10px] whitespace-nowrap">{launch.endDate?.split('-').reverse().join('/') || "-"}</TableCell>
+                          <TableCell className="max-w-[200px] truncate text-[10px] uppercase text-muted-foreground italic">{launch.observations || "-"}</TableCell>
+                          <TableCell className="text-right pr-4">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="rounded-xl shadow-xl border-muted/50">
+                                <DropdownMenuItem onSelect={() => { setSelectedLaunch(launch); setTimeout(() => setIsEditOpen(true), 150); }} className="uppercase text-[10px] py-2 px-3 focus:bg-blue-50 cursor-pointer"><Edit className="mr-2 h-3.5 w-3.5 text-blue-600" /> EDITAR</DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem onSelect={() => { setLaunchToDelete(launch.id); setTimeout(() => setIsDeleteAlertOpen(true), 150); }} className="text-destructive uppercase text-[10px] py-2 px-3 focus:bg-red-50 cursor-pointer"><Trash2 className="mr-2 h-3.5 w-3.5" /> EXCLUIR</DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                    {paginatedLaunches.length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={12} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic">
+                          NENHUM REGISTRO ENCONTRADO PARA OS FILTROS APLICADOS.
                         </TableCell>
                       </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+
+              {totalPages > 1 && (
+                <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                    Exibindo {paginatedLaunches.length} de {filteredLaunches.length} registros (Página {currentPage} de {totalPages})
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </Button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                        let pageNum = i + 1;
+                        if (totalPages > 5 && currentPage > 3) {
+                          pageNum = Math.min(currentPage - 2 + i, totalPages - 4 + i);
+                        }
+                        if (pageNum > totalPages || pageNum <= 0) return null;
+
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={cn(
+                              "h-8 w-8 p-0 text-[10px] font-bold",
+                              currentPage === pageNum ? "bg-primary text-white" : ""
+                            )}
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      className="h-8 w-8 p-0"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
