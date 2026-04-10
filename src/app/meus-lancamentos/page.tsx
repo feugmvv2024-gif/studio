@@ -14,7 +14,9 @@ import {
   Briefcase,
   Filter,
   X,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { 
@@ -67,6 +69,8 @@ const formatDate = (dateStr: string) => {
   return dateStr.split('-').reverse().join('/');
 };
 
+const ITEMS_PER_PAGE = 50;
+
 export default function MeusLancamentosPage() {
   const { employeeData, loading: loadingAuth } = useAuth();
   const firestore = useFirestore();
@@ -76,6 +80,9 @@ export default function MeusLancamentosPage() {
   const [filterType, setFilterType] = React.useState("");
   const [filterStartDate, setFilterStartDate] = React.useState("");
   const [filterEndDate, setFilterEndDate] = React.useState("");
+
+  // Estado de Paginação
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   // Busca apenas os lançamentos do servidor logado, ordenados pelo mais recente
   const myLaunchesRef = React.useMemo(() => {
@@ -114,6 +121,19 @@ export default function MeusLancamentosPage() {
       return matchesSearch && matchesType && matchesDate;
     }).sort((a, b) => (b.launchNumber || 0) - (a.launchNumber || 0));
   }, [myLaunches, searchTerm, filterType, filterStartDate, filterEndDate]);
+
+  // Reseta para a primeira página quando os filtros mudam
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterType, filterStartDate, filterEndDate]);
+
+  // Dados paginados
+  const paginatedLaunches = React.useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredLaunches.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredLaunches, currentPage]);
+
+  const totalPages = Math.ceil(filteredLaunches.length / ITEMS_PER_PAGE);
 
   // Cálculo de Saldos Individuais (Agora reflete o resultado dos filtros)
   const myStats = React.useMemo(() => {
@@ -338,14 +358,14 @@ export default function MeusLancamentosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLaunches.length === 0 ? (
+                {paginatedLaunches.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={8} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic">
                       Nenhum registro encontrado para os filtros aplicados.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredLaunches.map((launch) => {
+                  paginatedLaunches.map((launch) => {
                     const normType = normalizeStr(launch.type || "");
                     const isBhDebit = normType === "BANCO DE HORAS DEBITO" || normType === "FOLGA";
                     const isTreDebit = normType === "TRE DEBITO";
@@ -393,6 +413,60 @@ export default function MeusLancamentosPage() {
               </TableBody>
             </Table>
           </div>
+          
+          {totalPages > 1 && (
+            <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                Exibindo {paginatedLaunches.length} de {filteredLaunches.length} registros (Página {currentPage} de {totalPages})
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (totalPages > 5 && currentPage > 3) {
+                      pageNum = Math.min(currentPage - 2 + i, totalPages - 4 + i);
+                    }
+                    if (pageNum > totalPages || pageNum <= 0) return null;
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setCurrentPage(pageNum)}
+                        className={cn(
+                          "h-8 w-8 p-0 text-[10px] font-bold",
+                          currentPage === pageNum ? "bg-primary text-white" : ""
+                        )}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  className="h-8 w-8 p-0"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
