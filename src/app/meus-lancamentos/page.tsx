@@ -92,7 +92,7 @@ export default function MeusLancamentosPage() {
   const { data: myLaunches, loading: loadingLaunches } = useCollection(myLaunchesRef);
   const { data: launchTypes } = useCollection(launchTypesRef);
 
-  // Filtragem dos dados (Tabela)
+  // Filtragem dos dados (Tabela) com ordenação por launchNumber decrescente
   const filteredLaunches = React.useMemo(() => {
     if (!myLaunches) return [];
     const term = searchTerm.toLowerCase();
@@ -112,7 +112,7 @@ export default function MeusLancamentosPage() {
       );
 
       return matchesSearch && matchesType && matchesDate;
-    });
+    }).sort((a, b) => (b.launchNumber || 0) - (a.launchNumber || 0));
   }, [myLaunches, searchTerm, filterType, filterStartDate, filterEndDate]);
 
   // Cálculo de Saldos Individuais (Agora reflete o resultado dos filtros)
