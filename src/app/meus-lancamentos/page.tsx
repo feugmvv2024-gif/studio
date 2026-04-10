@@ -16,7 +16,8 @@ import {
   X,
   Calendar as CalendarIcon,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Printer
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { 
@@ -165,6 +166,10 @@ export default function MeusLancamentosPage() {
     setSearchTerm("");
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const hasActiveFilters = filterType !== "" || filterStartDate !== "" || filterEndDate !== "";
 
   if (loadingAuth || loadingLaunches) {
@@ -179,8 +184,124 @@ export default function MeusLancamentosPage() {
   const treTotalDays = myStats.treCredit - myStats.treDebit;
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-      <div className="flex flex-col gap-2">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12 print:p-0">
+      {/* Estilos de Impressão */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { size: A4 portrait; margin: 1.5cm; }
+          
+          html, body, main, [data-sidebar="inset"], .flex-1 { 
+            overflow: visible !important; 
+            height: auto !important; 
+            display: block !important;
+            background: white !important;
+          }
+
+          .print-hidden, header, nav, footer, aside, .sidebar-provider, .tabs-list, .pagination-controls, .nota-conferencia, .filters-container, .dashboard-stats-cards {
+            display: none !important;
+          }
+
+          .printable-content {
+            display: block !important;
+            width: 100% !important;
+            color: black !important;
+          }
+
+          .report-header {
+            margin-bottom: 2rem;
+            border-bottom: 2px solid black;
+            padding-bottom: 1rem;
+          }
+
+          .report-header h1 {
+            font-size: 18pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+          }
+
+          .server-info-grid {
+            display: grid;
+            grid-template-cols: 1fr 1fr;
+            gap: 0.5rem;
+            font-size: 10pt;
+            text-transform: uppercase;
+            font-weight: bold;
+          }
+
+          .report-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 1rem;
+          }
+
+          .report-table th, .report-table td {
+            border: 1px solid #000;
+            padding: 6px 4px;
+            font-size: 8.5pt;
+            text-align: center;
+            text-transform: uppercase;
+          }
+
+          .report-table th {
+            background-color: #f0f0f0 !important;
+            -webkit-print-color-adjust: exact;
+            font-weight: 900;
+          }
+
+          .report-table td.observations {
+            text-align: left;
+            font-size: 7.5pt;
+            font-style: italic;
+          }
+        }
+      ` }} />
+
+      {/* ÁREA DE IMPRESSÃO EXCLUSIVA */}
+      <div className="hidden printable-content">
+        <div className="report-header">
+          <h1>Extrato Individual de Lançamentos</h1>
+          <div className="server-info-grid">
+            <div><span className="opacity-60">Servidor:</span> {employeeData?.name}</div>
+            <div><span className="opacity-60">QRA:</span> {employeeData?.qra}</div>
+            <div><span className="opacity-60">Matrícula:</span> {employeeData?.matricula}</div>
+            <div><span className="opacity-60">Escala:</span> {employeeData?.escala}</div>
+            <div><span className="opacity-60">Turno:</span> {employeeData?.turno}</div>
+            <div><span className="opacity-60">Gerado em:</span> {new Date().toLocaleString('pt-BR')}</div>
+          </div>
+        </div>
+
+        <table className="report-table">
+          <thead>
+            <tr>
+              <th style={{ width: '40px' }}>Nº</th>
+              <th style={{ width: '80px' }}>Data</th>
+              <th>Tipo</th>
+              <th style={{ width: '50px' }}>Esc.</th>
+              <th style={{ width: '50px' }}>Dias</th>
+              <th style={{ width: '60px' }}>Horas</th>
+              <th>Período</th>
+              <th>Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredLaunches.map((launch) => (
+              <tr key={launch.id}>
+                <td style={{ fontWeight: 'bold' }}>{launch.launchNumber || "-"}</td>
+                <td>{formatDate(launch.date)}</td>
+                <td>{launch.type}</td>
+                <td>{launch.qtdEscala || "0"}</td>
+                <td>{launch.days || "0"}</td>
+                <td style={{ fontWeight: 'bold' }}>{launch.hours || "00:00"}</td>
+                <td>{launch.startDate ? `${formatDate(launch.startDate)} À ${formatDate(launch.endDate)}` : "-"}</td>
+                <td className="observations">{launch.observations || "-"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex flex-col gap-2 print-hidden">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
             <History className="h-6 w-6 text-blue-600" />
@@ -192,7 +313,7 @@ export default function MeusLancamentosPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 print-hidden dashboard-stats-cards">
         {/* 1. BANCO DE HORAS INDIVIDUAL */}
         <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -281,8 +402,8 @@ export default function MeusLancamentosPage() {
         </Card>
       </div>
 
-      <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
-        <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 bg-muted/5 border-b">
+      <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border print:border-none">
+        <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 bg-muted/5 border-b print-hidden filters-container">
           <div className="space-y-1 flex-1">
             <CardTitle className="text-lg font-bold uppercase">Extrato Detalhado</CardTitle>
             <CardDescription className="text-[9px] uppercase font-bold text-muted-foreground">
@@ -299,51 +420,62 @@ export default function MeusLancamentosPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant={hasActiveFilters ? "default" : "outline"} size="sm" className="gap-2 h-9 font-bold text-xs uppercase border-muted/50">
-                  <Filter className="h-4 w-4" /> 
-                  FILTROS
-                  {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-4 w-4 p-0 flex items-center justify-center rounded-full text-[8px] bg-white text-primary">!</Badge>}
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-4 rounded-xl shadow-2xl border-muted/20" align="end">
-                <div className="grid gap-4">
-                  <div className="flex items-center justify-between border-b pb-2">
-                    <h4 className="font-bold uppercase text-[10px] tracking-widest text-primary">FILTROS DE PESQUISA</h4>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}><X className="h-4 w-4" /></Button>
-                  </div>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={handlePrint}
+                className="gap-2 h-9 font-bold text-xs uppercase border-muted/50 text-slate-600"
+              >
+                <Printer className="h-4 w-4" />
+                IMPRIMIR
+              </Button>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant={hasActiveFilters ? "default" : "outline"} size="sm" className="gap-2 h-9 font-bold text-xs uppercase border-muted/50">
+                    <Filter className="h-4 w-4" /> 
+                    FILTROS
+                    {hasActiveFilters && <Badge variant="secondary" className="ml-1 h-4 w-4 p-0 flex items-center justify-center rounded-full text-[8px] bg-white text-primary">!</Badge>}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[calc(100vw-2rem)] sm:w-[400px] p-4 rounded-xl shadow-2xl border-muted/20" align="end">
                   <div className="grid gap-4">
-                    <div className="grid gap-1.5">
-                      <Label className="text-[9px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                        <CalendarIcon className="h-3 w-3" /> PERÍODO (DE / ATÉ)
-                      </Label>
-                      <div className="grid grid-cols-2 gap-2">
-                        <Input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="h-9 text-[10px] bg-muted/30 border-none" />
-                        <Input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="h-9 text-[10px] bg-muted/30 border-none" />
+                    <div className="flex items-center justify-between border-b pb-2">
+                      <h4 className="font-bold uppercase text-[10px] tracking-widest text-primary">FILTROS DE PESQUISA</h4>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={clearFilters}><X className="h-4 w-4" /></Button>
+                    </div>
+                    <div className="grid gap-4">
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] uppercase font-bold text-muted-foreground flex items-center gap-2">
+                          <CalendarIcon className="h-3 w-3" /> PERÍODO (DE / ATÉ)
+                        </Label>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className="h-9 text-[10px] bg-muted/30 border-none" />
+                          <Input type="date" value={filterEndDate} onChange={(e) => setFilterEndDate(e.target.value)} className="h-9 text-[10px] bg-muted/30 border-none" />
+                        </div>
+                      </div>
+                      <div className="grid gap-1.5">
+                        <Label className="text-[9px] uppercase font-bold text-muted-foreground">TIPO DE LANÇAMENTO</Label>
+                        <Select value={filterType} onValueChange={setFilterType}>
+                          <SelectTrigger className="h-9 text-[10px] uppercase bg-muted/30 border-none">
+                            <SelectValue placeholder="TODOS OS TIPOS" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ALL" className="uppercase text-[10px]">TODOS OS TIPOS</SelectItem>
+                            {launchTypes?.map((t: any) => <SelectItem key={t.id} value={t.name} className="uppercase text-[10px]">{t.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
-                    <div className="grid gap-1.5">
-                      <Label className="text-[9px] uppercase font-bold text-muted-foreground">TIPO DE LANÇAMENTO</Label>
-                      <Select value={filterType} onValueChange={setFilterType}>
-                        <SelectTrigger className="h-9 text-[10px] uppercase bg-muted/30 border-none">
-                          <SelectValue placeholder="TODOS OS TIPOS" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="ALL" className="uppercase text-[10px]">TODOS OS TIPOS</SelectItem>
-                          {launchTypes?.map((t: any) => <SelectItem key={t.id} value={t.name} className="uppercase text-[10px]">{t.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <Button size="sm" className="w-full uppercase text-[10px] font-bold" onClick={clearFilters}>LIMPAR TUDO</Button>
                   </div>
-                  <Button size="sm" className="w-full uppercase text-[10px] font-bold" onClick={clearFilters}>LIMPAR TUDO</Button>
-                </div>
-              </PopoverContent>
-            </Popover>
+                </PopoverContent>
+              </Popover>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto print-hidden">
             <Table>
               <TableHeader className="bg-muted/20">
                 <TableRow className="hover:bg-transparent border-b">
@@ -415,7 +547,7 @@ export default function MeusLancamentosPage() {
           </div>
           
           {totalPages > 1 && (
-            <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5">
+            <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5 print-hidden pagination-controls">
               <p className="text-[10px] font-bold uppercase text-muted-foreground">
                 Exibindo {paginatedLaunches.length} de {filteredLaunches.length} registros (Página {currentPage} de {totalPages})
               </p>
@@ -470,7 +602,7 @@ export default function MeusLancamentosPage() {
         </CardContent>
       </Card>
 
-      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-4 shadow-sm animate-in slide-in-from-bottom-4 duration-700">
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-4 shadow-sm animate-in slide-in-from-bottom-4 duration-700 print-hidden nota-conferencia">
         <div className="bg-white p-2 rounded-lg border shadow-sm shrink-0">
           <Info className="h-5 w-5 text-blue-500" />
         </div>
