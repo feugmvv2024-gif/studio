@@ -225,7 +225,16 @@ export default function RequestsPage() {
 
   const hasInsufficientBalance = requestType === "FOLGA" && simulatedRemainingMinutes < 0;
   const hasInsufficientTreBalance = requestType === "ABONO TRE" && simulatedRemainingTreDays < 0;
-  const hasInvalidAbonoDate = requestType === "ABONO DE ANIVERSÁRIO" && birthdayDate && abonoDate && abonoDate < birthdayDate;
+  
+  // Validação Abono de Aniversário (Prazo de 0 a 30 dias)
+  const hasInvalidAbonoDate = React.useMemo(() => {
+    if (requestType !== "ABONO DE ANIVERSÁRIO" || !birthdayDate || !abonoDate) return false;
+    const b = new Date(birthdayDate + "T00:00:00");
+    const a = new Date(abonoDate + "T00:00:00");
+    const l = new Date(b);
+    l.setDate(b.getDate() + 30); // Limite de 30 dias
+    return a < b || a > l;
+  }, [requestType, birthdayDate, abonoDate]);
 
   const isManagement = React.useMemo(() => {
     if (!employeeData) return false;
@@ -670,11 +679,13 @@ export default function RequestsPage() {
                       <Label className="text-[9px] font-bold uppercase text-muted-foreground">Data Aniversário</Label>
                       <Input type="date" value={birthdayDate} onChange={(e) => setBirthdayDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
                     </div>
-                    <div className="grid gap-1">
+                    <div className="grid gap-1 relative">
                       <Label className="text-[9px] font-bold uppercase text-muted-foreground">Data da Folga</Label>
                       <Input type="date" value={abonoDate} onChange={(e) => setAbonoDate(e.target.value)} required className="h-9 text-[10px] font-bold bg-white" />
-                      {birthdayDate && abonoDate && abonoDate < birthdayDate && (
-                        <p className="text-[8px] text-destructive font-black uppercase absolute mt-9">A folga deve ser após o aniversário.</p>
+                      {birthdayDate && abonoDate && hasInvalidAbonoDate && (
+                        <p className="text-[8px] text-destructive font-black uppercase absolute mt-9 whitespace-nowrap">
+                          {abonoDate < birthdayDate ? "A folga deve ser após o aniversário." : "LIMITE DE 30 DIAS EXCEDIDO."}
+                        </p>
                       )}
                     </div>
                   </div>
