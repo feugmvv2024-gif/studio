@@ -225,7 +225,7 @@ export default function LancamentosPage() {
     const formData = new FormData(e.currentTarget);
     const today = getSaoPauloDate();
     
-    // Captura e formatação da observação com o QRA do administrador logado e os dois pontos
+    // Captura e formatação da observação
     const rawObservations = (formData.get('observations') as string || "").toUpperCase().trim();
     const adminQra = (employeeData?.qra || "SISTEMA").toUpperCase();
     const finalObservations = `${adminQra}: ${rawObservations}`;
@@ -263,10 +263,11 @@ export default function LancamentosPage() {
           if (!existing.startDate || !existing.endDate) return false;
 
           // Tipos que impedem duplicidade (Afastamentos e Ausências)
-          const blockTypes = ["FERIAS", "FERIAS - GOZO", "LICENCA", "ATESTADO", "FOLGA", "ABONO"];
+          const blockTypes = ["FERIAS", "FERIAS - GOZO", "LICENCA", "ATESTADO", "FOLGA", "ABONO", "FALTA", "TRE DEBITO"];
           const normExistingType = normalizeStr(existing.type || "");
           const normNewType = normalizeStr(launchData.type || "");
 
+          // Verifica se ambos os tipos estão na lista de bloqueio e se há intersecção de datas
           if (blockTypes.some(t => normExistingType.includes(t)) && blockTypes.some(t => normNewType.includes(t))) {
              return (launchData.startDate <= existing.endDate && launchData.endDate >= existing.startDate);
           }
