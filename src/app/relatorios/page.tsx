@@ -144,7 +144,7 @@ const calculateTimeDuration = (start: string, end: string) => {
   if (!start || !end || start.length !== 5 || end.length !== 5) return "";
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
-  if (isNaN(h1) || iNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
+  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
   
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
@@ -435,6 +435,7 @@ export default function RelatoriosPage() {
         name: l.employeeName,
         qra: l.employeeQra,
         type: l.type,
+        startDate: l.startDate,
         endDate: l.endDate,
         escala: l.escala,
         turno: l.turno
@@ -509,7 +510,8 @@ export default function RelatoriosPage() {
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO SALVAR", description: "Verifique sua conexão." });
     } finally {
-      }
+      setLoading(false);
+    }
   };
 
   const handleArchiveReport = async (reportId: string) => {
@@ -885,6 +887,11 @@ export default function RelatoriosPage() {
                                     <div className="flex flex-col">
                                       <span className="text-[11px] font-black uppercase text-slate-900">{aus.name} ({aus.qra})</span>
                                       <span className="text-[9px] font-bold text-muted-foreground uppercase">{aus.escala} / {aus.turno}</span>
+                                      {aus.startDate && aus.endDate && (
+                                        <span className="text-[8px] font-black text-blue-600 uppercase mt-0.5">
+                                          Período: {formatDateBR(aus.startDate)} à {formatDateBR(aus.endDate)}
+                                        </span>
+                                      )}
                                     </div>
                                     <Badge variant="secondary" className="text-[8px] font-bold uppercase">{aus.type}</Badge>
                                   </div>
@@ -1113,7 +1120,14 @@ export default function RelatoriosPage() {
                   <tbody>
                     {reportToPrint.absentTodayList?.map((aus: any, i: number) => (
                       <tr key={i}>
-                        <td>{aus.name} ({aus.qra}){getEmployeeShiftInfo(aus.id)}</td>
+                        <td>
+                          <div className="font-black">{aus.name} ({aus.qra}){getEmployeeShiftInfo(aus.id)}</div>
+                          {aus.startDate && aus.endDate && (
+                            <div className="text-[8px] mt-0.5 opacity-70">
+                              PERÍODO: {formatDateBR(aus.startDate)} À {formatDateBR(aus.endDate)}
+                            </div>
+                          )}
+                        </td>
                         <td>{aus.type}</td>
                       </tr>
                     ))}
