@@ -351,12 +351,13 @@ export default function RelatoriosPage() {
   
   const archivedReportsRef = React.useMemo(() => {
     if (!firestore || !currentUser || !employeeData) return null;
-    const isRH = normalizeStr(employeeData.role || "").includes("GESTOR DE RH");
     
     const baseQuery = collection(firestore, 'dailyReports');
-    if (isRH) {
+    // Se for RH, Inspetor Geral ou Comandante, vê todos
+    if (canManageAudit) {
       return query(baseQuery, where('status', '==', 'ARQUIVADO'), orderBy('createdAt', 'desc'));
     } else {
+      // Caso contrário, vê apenas os próprios
       return query(
         baseQuery, 
         where('status', '==', 'ARQUIVADO'), 
@@ -364,7 +365,7 @@ export default function RelatoriosPage() {
         orderBy('createdAt', 'desc')
       );
     }
-  }, [firestore, currentUser, employeeData]);
+  }, [firestore, currentUser, employeeData, canManageAudit]);
 
   const inReviewReportsRef = React.useMemo(() => firestore ? query(collection(firestore, 'dailyReports'), where('status', '==', 'EM REVISÃO'), orderBy('createdAt', 'desc')) : null, [firestore]);
 
