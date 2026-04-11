@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -553,7 +552,7 @@ export default function RelatoriosPage() {
     const selectedInspetor = allEmployees.find(e => e.id === inspetorId);
     if (!selectedInspetor) return [];
     const targetDate = defaultDate;
-    const types = ["FOLGA", "ABONO", "FERIAS", "LICENCA", "ATESTADO", "TRE DEBITO"];
+    const types = ["FOLGA", "ABONO TRE", "FERIAS", "LICENCA", "ATESTADO", "TRE DEBITO"];
     return allLaunches.filter(l => {
       const normType = normalizeStr(l.type || "");
       const isActive = l.startDate <= targetDate && l.endDate >= targetDate;
@@ -1256,7 +1255,14 @@ export default function RelatoriosPage() {
             <ClipboardList className="h-3.5 w-3.5" /> ENVIADOS
             {pendingReports?.length > 0 && <Badge className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center bg-primary text-primary-foreground text-[8px] rounded-full">{pendingReports.length}</Badge>}
           </TabsTrigger>
-          <TabsTrigger value="archived" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2"><Archive className="h-3.5 w-3.5" /> ARQUIVO</TabsTrigger>
+          <TabsTrigger value="archived" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
+            <Archive className="h-3.5 w-3.5" /> ARQUIVO
+            {archivedReports?.length > 0 && (
+              <Badge className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center bg-green-600 text-white text-[8px] rounded-full">
+                {archivedReports.length}
+              </Badge>
+            )}
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="new" className="mt-6 space-y-6">
