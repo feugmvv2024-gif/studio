@@ -144,7 +144,7 @@ const calculateTimeDuration = (start: string, end: string) => {
   if (!start || !end || start.length !== 5 || end.length !== 5) return "";
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
-  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
+  if (isNaN(h1) || iNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
   
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
@@ -388,6 +388,13 @@ export default function RelatoriosPage() {
       .filter(p => !normalizeStr(p.escalaName).includes("ESCALA ESPECIAL"))
       .sort((a, b) => (a.escalaName || "").localeCompare(b.escalaName || ""));
   }, [shiftPeriods]);
+
+  // Função auxiliar para impressão: recupera escala e turno do servidor
+  const getEmployeeShiftInfo = (id: string) => {
+    const emp = allEmployees?.find(e => e.id === id);
+    if (!emp) return "";
+    return ` [${emp.escala} / ${emp.turno}]`;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1106,13 +1113,13 @@ export default function RelatoriosPage() {
                   <tbody>
                     {reportToPrint.absentTodayList?.map((aus: any, i: number) => (
                       <tr key={i}>
-                        <td>{aus.name} ({aus.qra})</td>
+                        <td>{aus.name} ({aus.qra}){getEmployeeShiftInfo(aus.id)}</td>
                         <td>{aus.type}</td>
                       </tr>
                     ))}
                     {reportToPrint.absences?.map((aus: any, i: number) => (
                       <tr key={i}>
-                        <td>{aus.name} ({aus.qra})</td>
+                        <td>{aus.name} ({aus.qra}){getEmployeeShiftInfo(aus.id)}</td>
                         <td>FALTA</td>
                       </tr>
                     ))}
@@ -1131,13 +1138,13 @@ export default function RelatoriosPage() {
                   <tbody>
                     {reportToPrint.specialSchedule?.map((esp: any, i: number) => (
                       <tr key={i}>
-                        <td>{esp.name} ({esp.qra})</td>
+                        <td>{esp.name} ({esp.qra}){getEmployeeShiftInfo(esp.id)}</td>
                         <td>{esp.periodName}</td>
                       </tr>
                     ))}
                     {reportToPrint.overtime?.map((o: any, i: number) => (
                       <tr key={i}>
-                        <td>{o.name} ({o.qra})</td>
+                        <td>{o.name} ({o.qra}){getEmployeeShiftInfo(o.id)}</td>
                         <td>EXTCEDENTE: {o.total}H</td>
                       </tr>
                     ))}
