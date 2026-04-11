@@ -175,6 +175,13 @@ export default function RelatoriosPage() {
   const [isDraftDialogOpen, setIsDraftDialogOpen] = React.useState(false)
   const [tempDraft, setTempDraft] = React.useState<any>(null)
 
+  // Lógica de Permissão de Auditoria
+  const canManageAudit = React.useMemo(() => {
+    if (!employeeData) return false;
+    const role = normalizeStr(employeeData.role || "");
+    return ["INSPETOR GERAL", "COMANDANTE", "GESTOR DE RH"].some(r => role.includes(r));
+  }, [employeeData]);
+
   React.useEffect(() => {
     setDefaultDate(getSaoPauloDate());
     setDefaultTime(getSaoPauloTime());
@@ -1506,7 +1513,7 @@ export default function RelatoriosPage() {
         </TabsContent>
 
         <TabsContent value="sent" className="mt-6">
-          {renderReportList(pendingReports || [], "Nenhum relatório aguardando auditoria no momento.", true)}
+          {renderReportList(pendingReports || [], "Nenhum relatório aguardando auditoria no momento.", canManageAudit)}
         </TabsContent>
 
         <TabsContent value="archived" className="mt-6">
