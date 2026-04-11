@@ -1401,10 +1401,15 @@ export default function RelatoriosPage() {
                                     "bg-orange-50 text-white"
                                   )}>{aus.type}</Badge>
                                 </div>
-                                <div className="flex items-center gap-1.5 mt-1 opacity-70">
-                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">
+                                <div className="flex flex-col mt-1">
+                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter leading-tight">
                                     {aus.escala} / {aus.turno}
                                   </span>
+                                  {aus.startDate && aus.endDate && (
+                                    <span className="text-[8px] font-black text-blue-600 uppercase mt-0.5 leading-tight">
+                                      Período: {formatDateBR(aus.startDate)} à {formatDateBR(aus.endDate)}
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
