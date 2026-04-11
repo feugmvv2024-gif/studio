@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -43,7 +44,18 @@ import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { useToast } from "@/hooks/use-toast"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
-import { collection, query, orderBy, where, addDoc, serverTimestamp, updateDoc, doc, arrayUnion } from 'firebase/firestore'
+import { 
+  collection, 
+  query, 
+  orderBy, 
+  where, 
+  addDoc, 
+  serverTimestamp, 
+  updateDoc, 
+  doc, 
+  arrayUnion,
+  deleteDoc 
+} from 'firebase/firestore'
 import { cn } from "@/lib/utils"
 import {
   Select,
@@ -175,11 +187,22 @@ export default function RelatoriosPage() {
   const [isDraftDialogOpen, setIsDraftDialogOpen] = React.useState(false)
   const [tempDraft, setTempDraft] = React.useState<any>(null)
 
+  // Estado para exclusão
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
+  const [reportToDelete, setReportToDelete] = React.useState<any>(null)
+
   // Lógica de Permissão de Auditoria
   const canManageAudit = React.useMemo(() => {
     if (!employeeData) return false;
     const role = normalizeStr(employeeData.role || "");
     return ["INSPETOR GERAL", "COMANDANTE", "GESTOR DE RH"].some(r => role.includes(r));
+  }, [employeeData]);
+
+  // Lógica de Permissão de Exclusão (Apenas Comandante e Inspetor Geral)
+  const canDeleteArchived = React.useMemo(() => {
+    if (!employeeData) return false;
+    const role = normalizeStr(employeeData.role || "");
+    return ["INSPETOR GERAL", "COMANDANTE"].some(r => role.includes(r));
   }, [employeeData]);
 
   React.useEffect(() => {
@@ -303,6 +326,18 @@ export default function RelatoriosPage() {
       window.print();
       setReportToPrint(null);
     }, 200);
+  };
+
+  const handleDeleteReport = async () => {
+    if (!firestore || !reportToDelete) return;
+    try {
+      await deleteDoc(doc(firestore, 'dailyReports', reportToDelete.id));
+      toast({ title: "RELATÓRIO EXCLUÍDO", description: "O registro foi removido permanentemente da base de dados." });
+      setIsDeleteDialogOpen(false);
+      setReportToDelete(null);
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERRO AO EXCLUIR", description: "Não foi possível remover o registro." });
+    }
   };
 
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
@@ -686,7 +721,7 @@ export default function RelatoriosPage() {
     </div>
   );
 
-  const renderReportList = (reports: any[], emptyMessage: string, canManage?: boolean) => (
+  const renderReportList = (reports: any[], emptyMessage: string, canManage?: boolean, canDelete?: boolean) => (
     <div className="grid gap-4">
       {reports.length === 0 ? (
         <div className="text-center py-20 uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest border-2 border-dashed rounded-2xl">
@@ -728,6 +763,16 @@ export default function RelatoriosPage() {
                   {report.status === 'ARQUIVADO' && (
                     <Button variant="ghost" size="sm" onClick={() => handlePrintReport(report)} className="h-9 w-9 p-0 text-slate-600 hover:bg-slate-50">
                       <Printer className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {canDelete && report.status === 'ARQUIVADO' && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => { setReportToDelete(report); setIsDeleteDialogOpen(true); }} 
+                      className="h-9 w-9 p-0 text-red-600 hover:bg-red-50"
+                    >
+                      <Trash2 className="h-4 w-4" />
                     </Button>
                   )}
                   <Dialog>
@@ -1149,6 +1194,20 @@ export default function RelatoriosPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center mb-4"><Trash2 className="h-6 w-6 text-red-600" /></div>
+            <AlertDialogTitle className="uppercase text-xl font-black">Excluir Relatório?</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-[10px] font-bold text-muted-foreground leading-relaxed">ESTA AÇÃO É IRREVERSÍVEL. O RELATÓRIO SERÁ REMOVIDO PERMANENTEMENTE DO ARQUIVO HISTÓRICO.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-2">
+            <AlertDialogCancel onClick={() => { setIsDeleteDialogOpen(false); setReportToDelete(null); }} className="h-12 uppercase font-black text-xs tracking-widest">CANCELAR</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteReport} className="h-12 uppercase font-black text-xs tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100">EXCLUIR PERMANENTEMENTE</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <Dialog open={isReturnDialogOpen} onOpenChange={setIsReturnDialogOpen}>
         <DialogContent className="rounded-2xl border-none shadow-2xl p-6">
           <DialogHeader>
@@ -1517,7 +1576,7 @@ export default function RelatoriosPage() {
         </TabsContent>
 
         <TabsContent value="archived" className="mt-6">
-          {renderReportList(archivedReports || [], "Arquivo histórico vazio.")}
+          {renderReportList(archivedReports || [], "Arquivo histórico vazio.", false, canDeleteArchived)}
         </TabsContent>
       </Tabs>
     </div>
