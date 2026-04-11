@@ -502,8 +502,7 @@ export default function RelatoriosPage() {
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO SALVAR", description: "Verifique sua conexão." });
     } finally {
-      setLoading(false);
-    }
+      }
   };
 
   const handleArchiveReport = async (reportId: string) => {
@@ -1380,6 +1379,11 @@ export default function RelatoriosPage() {
                                     isLeave ? "bg-purple-600 text-white" :
                                     "bg-orange-50 text-white"
                                   )}>{aus.type}</Badge>
+                                </div>
+                                <div className="flex items-center gap-1.5 mt-1 opacity-70">
+                                  <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">
+                                    {aus.escala} / {aus.turno}
+                                  </span>
                                 </div>
                               </div>
                             </div>
