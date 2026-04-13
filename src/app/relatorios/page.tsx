@@ -375,6 +375,12 @@ export default function RelatoriosPage() {
   const { data: archivedReports } = useCollection(archivedReportsRef);
   const { data: inReviewReports } = useCollection(inReviewReportsRef);
 
+  const chefiaList = React.useMemo(() => {
+    if (!allEmployees) return [];
+    const allowedRoles = ["INSPETOR", "SUBINSPETOR", "INSPETOR GERAL", "COMANDANTE"];
+    return allEmployees.filter(emp => allowedRoles.includes(normalizeStr(emp.role || "")));
+  }, [allEmployees]);
+
   const specialPeriodsList = React.useMemo(() => {
     if (!shiftPeriods) return [];
     return shiftPeriods
@@ -598,12 +604,6 @@ export default function RelatoriosPage() {
     sectorBlocks.forEach(s => s.posts.forEach((p: any) => p.members.forEach((m: any) => { if (m.empId) ids.push(m.empId); })));
     return Array.from(new Set(ids));
   }, [sectorBlocks]);
-
-  const chefiaList = React.useMemo(() => {
-    if (!allEmployees) return [];
-    const allowedRoles = ["INSPETOR", "SUBINSPETOR", "INSPETOR GERAL", "COMANDANTE"];
-    return allEmployees.filter(emp => allowedRoles.includes(normalizeStr(emp.role || "")));
-  }, [allEmployees]);
 
   const availableChiefsForSectors = React.useMemo(() => {
     if (!allEmployees) return [];
