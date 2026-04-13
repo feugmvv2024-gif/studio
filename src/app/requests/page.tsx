@@ -490,7 +490,7 @@ export default function RequestsPage() {
       });
       
       toast({ 
-        title: "SOLICITAÇÃO PROCESSADA", 
+        title: "SOLICITAÇÃO PROCESSSADA", 
         description: nextStatus === "Pendente" ? "PARECER REGISTRADO. AGUARDANDO OUTRA CHEFIA." : "REQUERIMENTO AVANÇOU NO FLUXO." 
       });
     } catch (err) {
@@ -845,7 +845,7 @@ export default function RequestsPage() {
                           {row.show && row.term && (
                             <div className="absolute z-[60] left-0 right-0 top-full mt-1 bg-background border rounded-lg shadow-xl max-h-32 overflow-y-auto">
                               {allEmployees?.filter(e => 
-                                ["INSPETOR", "SUBINSPETOR", "GESTOR DE RH"].includes(normalizeStr(e.role || "")) && 
+                                ["INSPETOR", "SUBINSPETOR", "INSPETOR GERAL", "COMANDANTE"].includes(normalizeStr(e.role || "")) && 
                                 (normalizeStr(e.name).includes(row.term) || normalizeStr(e.qra).includes(row.term)) &&
                                 !chefiaRows.some((r, i) => i !== index && r.uid === e.uid)
                               ).map(c => (

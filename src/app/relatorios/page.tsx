@@ -1154,7 +1154,7 @@ export default function RelatoriosPage() {
                     {reportToPrint.overtime?.map((o: any, i: number) => (
                       <tr key={i}>
                         <td>{o.name} ({o.qra}){getEmployeeShiftInfo(o.id)}</td>
-                        <td>EXTCEDENTE: {o.total}H</td>
+                        <td>EXCEDENTE: {o.total}H</td>
                       </tr>
                     ))}
                   </tbody>
