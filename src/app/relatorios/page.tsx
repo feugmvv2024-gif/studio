@@ -144,7 +144,7 @@ const calculateTimeDuration = (start: string, end: string) => {
   if (!start || !end || start.length !== 5 || end.length !== 5) return "";
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
-  if (isNaN(h1) || iNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
+  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
   
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
@@ -796,7 +796,7 @@ export default function RelatoriosPage() {
                             <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm"><FileText className="h-6 w-6" /></div>
                             <div>
                               <DialogTitle className="text-xl font-black uppercase tracking-tight leading-none">Detalhamento Operacional</DialogTitle>
-                              <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest mt-1">Ref: {formatDateBR(report.date)} • {report.escalaName} • STATUS: {report.status}</p>
+                              <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest mt-1">DATA: {formatDateBR(report.date)} • {report.escalaName} • STATUS: {report.status}</p>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
