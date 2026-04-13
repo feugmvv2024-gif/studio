@@ -144,7 +144,7 @@ const calculateTimeDuration = (start: string, end: string) => {
   if (!start || !end || start.length !== 5 || end.length !== 5) return "";
   const [h1, m1] = start.split(':').map(Number);
   const [h2, m2] = end.split(':').map(Number);
-  if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
+  if (isNaN(h1) || iNaN(m1) || isNaN(h2) || isNaN(m2)) return "";
   
   let totalMinutesStart = h1 * 60 + m1;
   let totalMinutesEnd = h2 * 60 + m2;
@@ -663,7 +663,7 @@ export default function RelatoriosPage() {
 
   const addSectorBlock = () => setSectorBlocks([...sectorBlocks, { id: generateId(), sectorType: "", chiefData: { id: "", term: "", info: "", show: false }, posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }] }]);
   const removeSectorBlock = (index: number) => { const newBlocks = sectorBlocks.filter((_, i) => i !== index); setSectorBlocks(newBlocks.length ? newBlocks : []); };
-  const updateSectorBlock = (index: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; newBlocks[index] = { ...newBlocks[index], ...updates }; return newBlocks; }); };
+  const updateSectorBlock = (index: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; index = { ...newBlocks[index], ...updates }; return newBlocks; }); };
   const updateSectorChiefData = (index: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; if (!newBlocks[index]) return prev; newBlocks[index] = { ...newBlocks[index], chiefData: { ...newBlocks[index].chiefData, ...updates } }; return newBlocks; }); };
   const addPostToSector = (sectorIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts.push({ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }); setSectorBlocks(newBlocks); };
   const removePostFromSector = (sectorIndex: number, postIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts = newBlocks[sectorIndex].posts.filter((_: any, i: number) => i !== postIndex); setSectorBlocks(newBlocks); };
@@ -800,11 +800,6 @@ export default function RelatoriosPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
-                            {report.status === 'ARQUIVADO' && (
-                              <Button onClick={() => handlePrintReport(report)} size="sm" variant="ghost" className="text-white hover:bg-white/10 font-black uppercase text-[10px] h-9 border border-white/20">
-                                <Printer className="h-4 w-4 mr-2" /> Imprimir
-                              </Button>
-                            )}
                             {canManage && report.status === 'PENDENTE' && (
                               <>
                                 <Button onClick={() => { setReportToReturn(report); setIsReturnDialogOpen(true); }} size="sm" variant="ghost" className="text-white hover:bg-white/10 font-black uppercase text-[10px] h-9 border border-white/20">
