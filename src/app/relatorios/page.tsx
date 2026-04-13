@@ -1054,8 +1054,8 @@ export default function RelatoriosPage() {
                 <h2 className="text-lg font-black uppercase mt-2">Relatório Operacional Diário</h2>
               </div>
               <div className="text-right">
-                <p className="text-[10px] font-bold uppercase">Ref: {formatDateBR(reportToPrint.date)}</p>
-                <p className="text-[10px] font-bold uppercase">Turno: {reportToPrint.time}</p>
+                <p className="text-[10px] font-bold uppercase">Data: {formatDateBR(reportToPrint.date)}</p>
+                <p className="text-[10px] font-bold uppercase">Hora: {reportToPrint.time}</p>
                 <p className="text-[10px] font-bold uppercase">Escala: {reportToPrint.escalaName}</p>
               </div>
             </div>
