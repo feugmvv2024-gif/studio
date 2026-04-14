@@ -420,10 +420,10 @@ export default function FrequenciaPage() {
                 <div className="grid grid-cols-1 gap-2">
                   {empLaunches.map((l, idx) => {
                     const type = normalizeStr(l.type || "");
-                    const isSpecial = type === "ESCALA ESPECIAL";
+                    const isExtraScale = type.includes("ESCALA ESPECIAL") || type.includes("ESCALA GSE");
                     let displayInfo = "";
 
-                    if (isSpecial) {
+                    if (isExtraScale) {
                       displayInfo = `DATA: ${l.startDate.split('-').reverse().join('/')} | QTD: ${l.qtdEscala || 0} UNID.`;
                     } else {
                       const intersection = calculateIntersectionDays(l.startDate, l.endDate);
