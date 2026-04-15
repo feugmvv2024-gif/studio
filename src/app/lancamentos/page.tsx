@@ -122,6 +122,11 @@ const applyHoursMask = (value: string) => {
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
+const MONTHS = [
+  "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+  "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+];
+
 const ITEMS_PER_PAGE = 50;
 
 export default function LancamentosPage() {
@@ -133,6 +138,10 @@ export default function LancamentosPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
   const [isSubmitting, setIsSubmitting] = React.useState(false)
   
+  // Estado de Filtros de Data
+  const [filterMonth, setFilterMonth] = React.useState("ALL");
+  const [filterYear, setFilterYear] = React.useState("ALL");
+
   // Estado de Paginação
   const [currentPage, setCurrentPage] = React.useState(1);
 
@@ -194,13 +203,27 @@ export default function LancamentosPage() {
   const filteredLaunches = React.useMemo(() => {
     if (!launches) return [];
     const term = searchTerm.toLowerCase();
-    return launches.filter(l => 
-      l.employeeName?.toLowerCase().includes(term) || 
-      l.employeeQra?.toLowerCase().includes(term) ||
-      l.type?.toLowerCase().includes(term) ||
-      l.launchNumber?.toString().includes(term)
-    );
-  }, [launches, searchTerm]);
+    return launches.filter(l => {
+      const matchesSearch = !searchTerm || (
+        l.employeeName?.toLowerCase().includes(term) || 
+        l.employeeQra?.toLowerCase().includes(term) ||
+        l.type?.toLowerCase().includes(term) ||
+        l.launchNumber?.toString().includes(term)
+      );
+
+      if (!matchesSearch) return false;
+
+      // Filtro Temporal
+      const launchDate = l.date; // YYYY-MM-DD
+      if (!launchDate) return true;
+
+      const [y, m] = launchDate.split('-');
+      const matchesMonth = filterMonth === "ALL" || parseInt(m) === parseInt(filterMonth) + 1;
+      const matchesYear = filterYear === "ALL" || y === filterYear;
+
+      return matchesMonth && matchesYear;
+    });
+  }, [launches, searchTerm, filterMonth, filterYear]);
 
   // Lógica de Cálculo de Saldos para os Cards (Baseado no Filtro)
   const summaryStats = React.useMemo(() => {
@@ -224,10 +247,10 @@ export default function LancamentosPage() {
     }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 });
   }, [filteredLaunches, searchTerm]);
 
-  // Reseta página quando busca muda
+  // Reseta página quando busca ou filtros mudam
   React.useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, filterMonth, filterYear]);
 
   const paginatedLaunches = React.useMemo(() => {
     const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
@@ -717,10 +740,40 @@ export default function LancamentosPage() {
       )}
 
       <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
-        <CardHeader className="p-4 border-b bg-muted/5">
-          <div className="relative max-w-md">
+        <CardHeader className="p-4 border-b bg-muted/5 flex flex-col sm:flex-row items-stretch sm:items-center gap-4">
+          <div className="relative flex-1 max-w-md">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="BUSCAR POR SERVIDOR, TIPO OU Nº..." className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+            <Input 
+              placeholder="BUSCAR POR SERVIDOR, TIPO OU Nº..." 
+              className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" 
+              value={searchTerm} 
+              onChange={(e) => setSearchTerm(e.target.value)} 
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <Select value={filterMonth} onValueChange={setFilterMonth}>
+              <SelectTrigger className="h-9 w-[130px] uppercase text-[10px] font-bold bg-background/50">
+                <SelectValue placeholder="MÊS" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL" className="uppercase text-[10px] font-bold">TODOS OS MESES</SelectItem>
+                {MONTHS.map((m, idx) => (
+                  <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterYear} onValueChange={setFilterYear}>
+              <SelectTrigger className="h-9 w-[100px] uppercase text-[10px] font-bold bg-background/50">
+                <SelectValue placeholder="ANO" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="ALL" className="uppercase text-[10px] font-bold">TODOS</SelectItem>
+                {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                  <SelectItem key={y} value={y.toString()} className="uppercase text-[10px] font-bold">{y}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardHeader>
         <CardContent className="p-0">
