@@ -13,7 +13,12 @@ import {
   Info,
   RefreshCw,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Timer,
+  CalendarDays,
+  Briefcase,
+  ArrowUpRight,
+  ArrowDownRight
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -61,7 +66,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
 import { 
   collection, 
@@ -81,7 +86,21 @@ import { errorEmitter } from '@/firebase/error-emitter'
 import { FirestorePermissionError } from '@/firebase/errors'
 import { cn } from "@/lib/utils"
 
-// Utilitários
+// Utilitários de Cálculo
+const hhmmToMinutes = (hhmm: string) => {
+  if (!hhmm || !hhmm.includes(':')) return 0;
+  const [h, m] = hhmm.split(':').map(Number);
+  return (h * 60) + (m || 0);
+};
+
+const minutesToHHmm = (totalMinutes: number) => {
+  const isNegative = totalMinutes < 0;
+  const absMinutes = Math.abs(totalMinutes);
+  const h = Math.floor(absMinutes / 60);
+  const m = absMinutes % 60;
+  return `${isNegative ? '-' : ''}${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+};
+
 const getSaoPauloDate = () => {
   const now = new Date();
   return new Intl.DateTimeFormat('pt-BR', {
@@ -182,6 +201,28 @@ export default function LancamentosPage() {
       l.launchNumber?.toString().includes(term)
     );
   }, [launches, searchTerm]);
+
+  // Lógica de Cálculo de Saldos para os Cards (Baseado no Filtro)
+  const summaryStats = React.useMemo(() => {
+    if (!filteredLaunches || searchTerm.length === 0) return null;
+    
+    return filteredLaunches.reduce((acc, l) => {
+      const type = normalizeStr(l.type || "");
+      const minutes = hhmmToMinutes(l.hours || "00:00");
+      const days = Number(l.days) || 0;
+      const qtdEscala = Number(l.qtdEscala) || 0;
+
+      if (type === "BANCO DE HORAS CREDITO") acc.bhCredit += minutes;
+      if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") acc.bhDebit += minutes;
+      if (type === "TRE CREDITO") acc.treCredit += days;
+      if (type === "TRE DEBITO") acc.treDebit += days;
+      
+      if (type.includes("GSE")) acc.gseTotal += qtdEscala;
+      if (type.includes("ESPECIAL")) acc.especialTotal += qtdEscala;
+      
+      return acc;
+    }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0, gseTotal: 0, especialTotal: 0 });
+  }, [filteredLaunches, searchTerm]);
 
   // Reseta página quando busca muda
   React.useEffect(() => {
@@ -603,6 +644,77 @@ export default function LancamentosPage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* CARDS DE SALDO DINÂMICOS (VISÍVEIS APENAS DURANTE BUSCA) */}
+      {summaryStats && (
+        <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 animate-in slide-in-from-top-4 duration-500">
+          <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-[10px] font-bold uppercase">MOVIMENTAÇÃO BANCO DE HORAS</CardTitle>
+              <Timer className="h-4 w-4 text-blue-600" />
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "text-2xl font-black",
+                (summaryStats.bhCredit - summaryStats.bhDebit) < 0 ? "text-red-600" : "text-blue-700"
+              )}>
+                {minutesToHHmm(summaryStats.bhCredit - summaryStats.bhDebit)}H
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-blue-100">
+                <div className="flex items-center gap-1">
+                  <ArrowUpRight className="h-3 w-3 text-green-600" />
+                  <p className="text-[10px] font-bold text-green-600">{minutesToHHmm(summaryStats.bhCredit)}H</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <ArrowDownRight className="h-3 w-3 text-red-600" />
+                  <p className="text-[10px] font-bold text-red-600">-{minutesToHHmm(summaryStats.bhDebit)}H</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-[10px] font-bold uppercase">SALDO TRE</CardTitle>
+              <CalendarDays className="h-4 w-4 text-purple-600" />
+            </CardHeader>
+            <CardContent>
+              <div className={cn(
+                "text-2xl font-black",
+                (summaryStats.treCredit - summaryStats.treDebit) < 0 ? "text-red-600" : "text-purple-700"
+              )}>
+                {summaryStats.treCredit - summaryStats.treDebit} DIAS
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-purple-100">
+                <div className="flex items-center gap-1">
+                  <ArrowUpRight className="h-3 w-3 text-green-600" />
+                  <p className="text-[10px] font-bold text-green-600">{summaryStats.treCredit}D</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <ArrowDownRight className="h-3 w-3 text-red-600" />
+                  <p className="text-[10px] font-bold text-red-600">-{summaryStats.treDebit}D</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="card-shadow border-orange-500/20 bg-orange-50/10">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-[10px] font-bold uppercase">ESCALAS EXTRAS</CardTitle>
+              <Briefcase className="h-4 w-4 text-orange-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-black text-orange-700">
+                {summaryStats.gseTotal + summaryStats.especialTotal} UNID.
+              </div>
+              <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-orange-100">
+                <p className="text-[9px] font-bold text-slate-600 uppercase">GSE: {summaryStats.gseTotal}</p>
+                <p className="text-[9px] font-bold text-slate-600 uppercase">ESPECIAL: {summaryStats.especialTotal}</p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
         <CardHeader className="p-4 border-b bg-muted/5">
