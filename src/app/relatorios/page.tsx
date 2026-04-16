@@ -1549,13 +1549,14 @@ export default function RelatoriosPage() {
                                   <div className="flex-1 space-y-1.5"><Label className="text-[9px] font-bold uppercase text-muted-foreground">Posto / Serviço</Label>
                                     <Select value={post.type} onValueChange={(v) => { const newPosts = [...sector.posts]; newPosts[pIdx].type = v; if (v === "VTR" && newPosts[pIdx].members.length > 4) newPosts[pIdx].members = newPosts[pIdx].members.slice(0, 4); updateSectorBlock(sIdx, { posts: newPosts }); }}><SelectTrigger className="h-10 uppercase text-xs font-bold bg-slate-50/50"><SelectValue placeholder="SELECIONE..." /></SelectTrigger>
                                       <SelectContent>
+                                        <SelectItem value="ADMINISTRATIVO" className="uppercase text-xs font-bold">ADMINISTRATIVO</SelectItem>
+                                        <SelectItem value="BIKE" className="uppercase text-xs font-bold">BIKE</SelectItem>
                                         <SelectItem value="CENTRAL" className="uppercase text-xs font-bold">CENTRAL</SelectItem>
+                                        <SelectItem value="PB - PONTO BASE" className="uppercase text-xs font-bold">PB - PONTO BASE</SelectItem>
+                                        <SelectItem value="QUADRICICLO" className="uppercase text-xs font-bold">QUADRICICLO</SelectItem>
                                         <SelectItem value="SENTINELA" className="uppercase text-xs font-bold">SENTINELA</SelectItem>
                                         <SelectItem value="VIDEOMONITORAMENTO" className="uppercase text-xs font-bold">VIDEOMONITORAMENTO</SelectItem>
                                         <SelectItem value="VTR" className="uppercase text-xs font-bold">VTR</SelectItem>
-                                        <SelectItem value="ADMINISTRATIVO" className="uppercase text-xs font-bold">ADMINISTRATIVO</SelectItem>
-                                        <SelectItem value="BIKE" className="uppercase text-xs font-bold">BIKE</SelectItem>
-                                        <SelectItem value="QUADRICICLO" className="uppercase text-xs font-bold">QUADRICICLO</SelectItem>
                                       </SelectContent>
                                     </Select>
                                   </div>
