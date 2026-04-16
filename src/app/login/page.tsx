@@ -23,10 +23,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Lock, ShieldCheck, UserCheck } from 'lucide-react';
+import { Loader2, Lock, ShieldCheck, UserCheck, Eye } from 'lucide-react';
 
 export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
+  const [showLoginPass, setShowLoginPass] = React.useState(false);
+  const [showRegisterPass, setShowRegisterPass] = React.useState(false);
+  
   const router = useRouter();
   const { toast } = useToast();
   const { auth, firestore, user } = useAuth();
@@ -217,7 +220,26 @@ export default function LoginPage() {
                     <Label htmlFor="pass-login" className="uppercase text-[10px] font-bold text-slate-500">SENHA</Label>
                     <div className="relative">
                       <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input id="pass-login" name="password" type="password" placeholder="••••••••" required className="pl-10 h-12 bg-slate-50 border-slate-200 focus:bg-white" />
+                      <Input 
+                        id="pass-login" 
+                        name="password" 
+                        type={showLoginPass ? "text" : "password"} 
+                        placeholder="••••••••" 
+                        required 
+                        className="pl-10 pr-10 h-12 bg-slate-50 border-slate-200 focus:bg-white transition-all" 
+                      />
+                      <button
+                        type="button"
+                        onMouseDown={() => setShowLoginPass(true)}
+                        onMouseUp={() => setShowLoginPass(false)}
+                        onMouseLeave={() => setShowLoginPass(false)}
+                        onTouchStart={(e) => { e.preventDefault(); setShowLoginPass(true); }}
+                        onTouchEnd={() => setShowLoginPass(false)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                        title="Mantenha pressionado para ver a senha"
+                      >
+                        <Eye className={cn("h-4 w-4", showLoginPass && "text-primary")} />
+                      </button>
                     </div>
                   </div>
                 </CardContent>
@@ -254,7 +276,28 @@ export default function LoginPage() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="pass-reg" className="uppercase text-[10px] font-bold text-slate-500">CRIAR SENHA</Label>
-                    <Input id="pass-reg" name="password" type="password" placeholder="MIN 6 CARACTERES" required className="h-12 bg-slate-50" />
+                    <div className="relative">
+                      <Input 
+                        id="pass-reg" 
+                        name="password" 
+                        type={showRegisterPass ? "text" : "password"} 
+                        placeholder="MIN 6 CARACTERES" 
+                        required 
+                        className="pr-10 h-12 bg-slate-50 border-slate-200 focus:bg-white transition-all" 
+                      />
+                      <button
+                        type="button"
+                        onMouseDown={() => setShowRegisterPass(true)}
+                        onMouseUp={() => setShowRegisterPass(false)}
+                        onMouseLeave={() => setShowRegisterPass(false)}
+                        onTouchStart={(e) => { e.preventDefault(); setShowRegisterPass(true); }}
+                        onTouchEnd={() => setShowRegisterPass(false)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                        title="Mantenha pressionado para ver a senha"
+                      >
+                        <Eye className={cn("h-4 w-4", showRegisterPass && "text-primary")} />
+                      </button>
+                    </div>
                   </div>
                 </CardContent>
                 <CardFooter className="pt-2 pb-6">
@@ -274,3 +317,7 @@ export default function LoginPage() {
     </div>
   );
 }
+function cn(...inputs: any[]) {
+  return inputs.filter(Boolean).join(" ");
+}
+

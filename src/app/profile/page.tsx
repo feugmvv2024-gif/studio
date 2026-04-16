@@ -21,7 +21,8 @@ import {
   Info,
   User,
   Lock,
-  RefreshCw
+  RefreshCw,
+  Eye
 } from "lucide-react"
 import { useAuth, useFirestore } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
@@ -29,6 +30,7 @@ import { updatePassword } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
+import { cn } from "@/lib/utils"
 
 const applyCpfMask = (value: string) => {
   const digits = value.replace(/\D/g, "");
@@ -55,6 +57,8 @@ export default function ProfilePage() {
   
   const [isSaving, setIsSaving] = React.useState(false);
   const [isChangingPassword, setIsChangingPassword] = React.useState(false);
+  const [showNewPass, setShowNewPass] = React.useState(false);
+  const [showConfirmPass, setShowConfirmPass] = React.useState(false);
 
   // Estados dos campos cadastrais
   const [phone, setPhone] = React.useState("");
@@ -483,23 +487,51 @@ export default function ProfilePage() {
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nova Senha</Label>
-                  <Input 
-                    type="password" 
-                    value={newPassword} 
-                    onChange={(e) => setNewPassword(e.target.value)} 
-                    placeholder="MÍNIMO 6 DÍGITOS"
-                    className="h-11 bg-slate-50/50" 
-                  />
+                  <div className="relative">
+                    <Input 
+                      type={showNewPass ? "text" : "password"} 
+                      value={newPassword} 
+                      onChange={(e) => setNewPassword(e.target.value)} 
+                      placeholder="MÍNIMO 6 DÍGITOS"
+                      className="h-11 bg-slate-50/50 pr-10 transition-all" 
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={() => setShowNewPass(true)}
+                      onMouseUp={() => setShowNewPass(false)}
+                      onMouseLeave={() => setShowNewPass(false)}
+                      onTouchStart={(e) => { e.preventDefault(); setShowNewPass(true); }}
+                      onTouchEnd={() => setShowNewPass(false)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                      title="Mantenha pressionado para ver a senha"
+                    >
+                      <Eye className={cn("h-4 w-4", showNewPass && "text-primary")} />
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Confirmar Nova Senha</Label>
-                  <Input 
-                    type="password" 
-                    value={confirmPassword} 
-                    onChange={(e) => setConfirmPassword(e.target.value)} 
-                    placeholder="REPITA A SENHA"
-                    className="h-11 bg-slate-50/50" 
-                  />
+                  <div className="relative">
+                    <Input 
+                      type={showConfirmPass ? "text" : "password"} 
+                      value={confirmPassword} 
+                      onChange={(e) => setConfirmPassword(e.target.value)} 
+                      placeholder="REPITA A SENHA"
+                      className="h-11 bg-slate-50/50 pr-10 transition-all" 
+                    />
+                    <button
+                      type="button"
+                      onMouseDown={() => setShowConfirmPass(true)}
+                      onMouseUp={() => setShowConfirmPass(false)}
+                      onMouseLeave={() => setShowConfirmPass(false)}
+                      onTouchStart={(e) => { e.preventDefault(); setShowConfirmPass(true); }}
+                      onTouchEnd={() => setShowConfirmPass(false)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 focus:outline-none transition-colors"
+                      title="Mantenha pressionado para ver a senha"
+                    >
+                      <Eye className={cn("h-4 w-4", showConfirmPass && "text-primary")} />
+                    </button>
+                  </div>
                 </div>
                 <Button 
                   type="button" 
@@ -550,3 +582,4 @@ export default function ProfilePage() {
     </div>
   )
 }
+
