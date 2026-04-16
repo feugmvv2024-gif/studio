@@ -61,6 +61,8 @@ export default function ProfilePage() {
   const [emergencyContactName, setEmergencyContactName] = React.useState("");
   const [emergencyPhone, setEmergencyPhone] = React.useState("");
   const [address, setAddress] = React.useState("");
+  const [city, setCity] = React.useState("");
+  const [state, setState] = React.useState("");
   const [spouseName, setSpouseName] = React.useState("");
   const [isSpouseEducationEmployee, setIsSpouseEducationEmployee] = React.useState(false);
   const [voterId, setVoterId] = React.useState("");
@@ -85,6 +87,8 @@ export default function ProfilePage() {
       setEmergencyContactName((employeeData.emergencyContactName || "").toUpperCase());
       setEmergencyPhone(employeeData.emergencyPhone || "");
       setAddress((employeeData.address || "").toUpperCase());
+      setCity((employeeData.city || "").toUpperCase());
+      setState((employeeData.state || "").toUpperCase());
       setSpouseName((employeeData.spouseName || "").toUpperCase());
       setIsSpouseEducationEmployee(!!employeeData.isSpouseEducationEmployee);
       setVoterId((employeeData.voterId || "").toUpperCase());
@@ -124,6 +128,8 @@ export default function ProfilePage() {
       emergencyContactName: emergencyContactName.toUpperCase(),
       emergencyPhone: emergencyPhone.toUpperCase(),
       address: address.toUpperCase(),
+      city: city.toUpperCase(),
+      state: state.toUpperCase(),
       spouseName: spouseName.toUpperCase(),
       isSpouseEducationEmployee,
       voterId: voterId.toUpperCase(),
@@ -327,16 +333,37 @@ export default function ProfilePage() {
                 <h4 className="text-sm uppercase font-black tracking-widest text-slate-800">Contato & Localização</h4>
               </div>
 
-              <div className="space-y-1.5">
-                <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
-                  <MapPin className="h-3 w-3" /> Endereço Residencial Completo
-                </Label>
-                <Input 
-                  value={address} 
-                  onChange={(e) => setAddress(e.target.value.toUpperCase())} 
-                  placeholder="RUA, NÚMERO, BAIRRO, CIDADE..." 
-                  className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
-                />
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                <div className="md:col-span-2 space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                    <MapPin className="h-3 w-3" /> Endereço Residencial
+                  </Label>
+                  <Input 
+                    value={address} 
+                    onChange={(e) => setAddress(e.target.value.toUpperCase())} 
+                    placeholder="RUA, NÚMERO, BAIRRO..." 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cidade</Label>
+                  <Input 
+                    value={city} 
+                    onChange={(e) => setCity(e.target.value.toUpperCase())} 
+                    placeholder="CIDADE" 
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">UF</Label>
+                  <Input 
+                    value={state} 
+                    onChange={(e) => setState(e.target.value.toUpperCase().slice(0, 2))} 
+                    placeholder="UF" 
+                    maxLength={2}
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50 text-center" 
+                  />
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

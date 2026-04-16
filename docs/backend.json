@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Employee": {
@@ -23,6 +24,8 @@
         "emergencyContactName": { "type": "string" },
         "emergencyPhone": { "type": "string" },
         "address": { "type": "string" },
+        "city": { "type": "string" },
+        "state": { "type": "string" },
         "maritalStatus": { "type": "string", "enum": ["SOLTEIRO(A)", "CASADO(A)", "UNIÃO ESTÁVEL", "DIVORCIADO(A)", "VIÚVO(A)"] },
         "spouseName": { "type": "string" },
         "isSpouseEducationEmployee": { "type": "boolean" },
