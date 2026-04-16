@@ -197,6 +197,14 @@ export function AppSidebar() {
               <span className="group-data-[collapsible=icon]:hidden">Sair do Sistema</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
+          
+          <SidebarMenuItem className="group-data-[collapsible=icon]:hidden">
+            <div className="px-2 py-2 text-center">
+              <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-50">
+                Versão 1.0 - F3U
+              </span>
+            </div>
+          </SidebarMenuItem>
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
