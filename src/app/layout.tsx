@@ -1,7 +1,7 @@
 'use client';
 
 import './globals.css';
-import { SidebarProvider, SidebarInset } from "@/components/ui/sidebar"
+import { SidebarProvider, SidebarInset, SidebarTrigger } from "@/components/ui/sidebar"
 import { AppSidebar } from "@/components/app-sidebar"
 import { Toaster } from "@/components/ui/toaster"
 import { FirebaseClientProvider, initializeFirebase } from '@/firebase';
@@ -39,6 +39,7 @@ export default function RootLayout({
                   <AppSidebar />
                   <SidebarInset className="flex flex-col">
                     <header className="sticky top-0 z-30 flex h-16 items-center border-b bg-background/95 px-4 backdrop-blur sm:px-6 print:hidden">
+                      <SidebarTrigger className="mr-4" />
                       <div className="flex-1">
                         <h1 className="font-headline text-lg font-semibold text-primary">Gestão de RH</h1>
                       </div>
