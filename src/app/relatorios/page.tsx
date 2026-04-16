@@ -663,7 +663,7 @@ export default function RelatoriosPage() {
 
   const addSectorBlock = () => setSectorBlocks([...sectorBlocks, { id: generateId(), sectorType: "", chiefData: { id: "", term: "", info: "", show: false }, posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }] }]);
   const removeSectorBlock = (index: number) => { const newBlocks = sectorBlocks.filter((_, i) => i !== index); setSectorBlocks(newBlocks.length ? newBlocks : []); };
-  const updateSectorBlock = (index: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; index = { ...newBlocks[index], ...updates }; return newBlocks; }); };
+  const updateSectorBlock = (index: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; newBlocks[index] = { ...newBlocks[index], ...updates }; return newBlocks; }); };
   const updateSectorChiefData = (index: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; if (!newBlocks[index]) return prev; newBlocks[index] = { ...newBlocks[index], chiefData: { ...newBlocks[index].chiefData, ...updates } }; return newBlocks; }); };
   const addPostToSector = (sectorIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts.push({ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }); setSectorBlocks(newBlocks); };
   const removePostFromSector = (sectorIndex: number, postIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts = newBlocks[sectorIndex].posts.filter((_: any, i: number) => i !== postIndex); setSectorBlocks(newBlocks); };
