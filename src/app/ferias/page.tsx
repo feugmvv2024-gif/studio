@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -98,19 +97,19 @@ export default function FeriasPage() {
     return query(collection(firestore, 'vacationPlans'), where('status', '==', 'PENDENTE'), orderBy('createdAt', 'asc'));
   }, [firestore, isManager]);
 
-  const { data: myPlans, loading: loadingMyPlans } = useCollection(myPlansQuery);
+  const { data: myRequests, loading: loadingMyPlans } = useCollection(myPlansQuery);
   const { data: allPlans, loading: loadingAllPlans } = useCollection(allPlansQuery);
 
   // Histórico de datas negadas para o servidor logado
   const deniedDates = React.useMemo(() => {
-    if (!myPlans) return [];
-    const denied = myPlans.filter(p => p.status === "NEGADO");
+    if (!myRequests) return [];
+    const denied = myRequests.filter(p => p.status === "NEGADO");
     const dates: string[] = [];
     denied.forEach(p => {
       p.options?.forEach((o: any) => dates.push(`${o.year}-${o.month}`));
     });
     return Array.from(new Set(dates));
-  }, [myPlans]);
+  }, [myRequests]);
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -158,7 +157,7 @@ export default function FeriasPage() {
       const updates: any = {
         status: action === 'approve' ? "APROVADO" : "NEGADO",
         updatedAt: serverTimestamp(),
-        processedByQra: employeeData.qra || "SISTEMA"
+        processedByQra: (employeeData.qra || "SISTEMA").toUpperCase()
       };
 
       if (action === 'approve' && selectedOpts) {
@@ -322,7 +321,7 @@ export default function FeriasPage() {
               />
             </div>
             <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex items-start gap-3">
-              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
               <p className="text-[9px] text-amber-800 font-bold uppercase leading-relaxed">
                 Ao confirmar, estas datas ficarão bloqueadas para o servidor. Ele deverá realizar um novo pedido com períodos diferentes.
               </p>
@@ -479,10 +478,10 @@ export default function FeriasPage() {
             
             {loadingMyPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
               <div className="grid gap-4">
-                {myPlans.length === 0 ? (
+                {myRequests.length === 0 ? (
                   <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">VOCÊ AINDA NÃO ENVIOU INTENÇÕES DE FÉRIAS.</div>
                 ) : (
-                  myPlans.map(plan => (
+                  myRequests.map(plan => (
                     <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden group">
                       <div className="flex flex-col sm:flex-row items-stretch">
                         <div className={cn(
@@ -499,7 +498,9 @@ export default function FeriasPage() {
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-2">
                                     <Star className="h-5 w-5 text-green-600 fill-green-600" />
-                                    <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">PERÍODO(S) HOMOLOGADO(S) PELO RH:</p>
+                                    <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">
+                                      PERÍODO(S) HOMOLOGADO(S) PELO RH: {plan.processedByQra ? `QRA ${plan.processedByQra}` : ""}
+                                    </p>
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {(plan.selectedOptions || [plan.selectedOption]).filter(Boolean).map((opt: any, i: number) => (
@@ -522,15 +523,6 @@ export default function FeriasPage() {
                                 </div>
                               )}
                             </div>
-                            
-                            {plan.status !== 'PENDENTE' && plan.processedByQra && (
-                              <div className="bg-muted/30 px-3 py-2 rounded-lg border border-dashed border-muted-foreground/20 self-start sm:self-center">
-                                <p className="text-[8px] font-black uppercase text-muted-foreground mb-0.5 flex items-center gap-1">
-                                  <ShieldCheck className="h-2.5 w-2.5" /> Responsável Auditoria
-                                </p>
-                                <p className="text-[10px] font-black uppercase text-slate-700">QRA: {plan.processedByQra}</p>
-                              </div>
-                            )}
                           </div>
 
                           <div className="flex gap-4 pt-2 border-t border-slate-100">
@@ -560,7 +552,7 @@ export default function FeriasPage() {
                               {plan.adminResponse && (
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 border-l-4 border-l-red-600">
                                   <p className="text-[9px] font-black uppercase text-slate-500 mb-1 flex items-center gap-1.5">
-                                    <MessageSquare className="h-3 w-3" /> Justificativa do RH:
+                                    <MessageSquare className="h-3 w-3" /> Justificativa do RH: {plan.processedByQra ? `(QRA ${plan.processedByQra})` : ""}
                                   </p>
                                   <p className="text-[11px] font-bold uppercase text-slate-800 italic leading-relaxed">
                                     "{plan.adminResponse}"
@@ -675,7 +667,7 @@ export default function FeriasPage() {
                                   variant="destructive" 
                                   size="sm" 
                                   onClick={() => { setPlanToDenyId(plan.id); setIsDenyModalOpen(true); }}
-                                  className="w-full sm:w-auto h-9 px-6 uppercase font-black text-10px] gap-2 rounded-xl"
+                                  className="w-full sm:w-auto h-9 px-6 uppercase font-black text-[10px] gap-2 rounded-xl"
                                 >
                                   <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
                                 </Button>
