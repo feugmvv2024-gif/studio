@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Employee": {
@@ -62,6 +63,8 @@
         "employeeQra": { "type": "string" },
         "employeeEscala": { "type": "string" },
         "employeeTurno": { "type": "string" },
+        "advance13th": { "type": "boolean", "description": "Se deseja antecipar o 13º." },
+        "splitVacation": { "type": "boolean", "description": "Se deseja dividir as férias em dois períodos." },
         "options": {
           "type": "array",
           "items": {

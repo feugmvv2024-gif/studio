@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -16,7 +17,9 @@ import {
   Lock,
   ArrowRight,
   MessageSquare,
-  X
+  X,
+  Coins,
+  Scissors
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -43,6 +46,7 @@ import { collection, addDoc, query, where, orderBy, serverTimestamp, updateDoc, 
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
 const MONTHS = [
   "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
@@ -59,6 +63,9 @@ export default function FeriasPage() {
   const [opt1, setOpt1] = React.useState({ year: "", month: "" });
   const [opt2, setOpt2] = React.useState({ year: "", month: "" });
   const [opt3, setOpt3] = React.useState({ year: "", month: "" });
+  
+  const [advance13th, setAdvance13th] = React.useState("nao");
+  const [splitVacation, setSplitVacation] = React.useState("nao");
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("nova-solicitacao");
@@ -116,6 +123,8 @@ export default function FeriasPage() {
       employeeQra: employeeData.qra,
       employeeEscala: employeeData.escala || "N/A",
       employeeTurno: employeeData.turno || "N/A",
+      advance13th: advance13th === "sim",
+      splitVacation: splitVacation === "sim",
       options: [opt1, opt2, opt3],
       status: "PENDENTE",
       createdAt: serverTimestamp(),
@@ -128,6 +137,8 @@ export default function FeriasPage() {
       setOpt1({ year: "", month: "" });
       setOpt2({ year: "", month: "" });
       setOpt3({ year: "", month: "" });
+      setAdvance13th("nao");
+      setSplitVacation("nao");
       setActiveTab("gestao-analise");
     } catch (error) {
       toast({ variant: "destructive", title: "ERRO AO ENVIAR", description: "Tente novamente mais tarde." });
@@ -332,11 +343,66 @@ export default function FeriasPage() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6 sm:p-8 space-y-6">
+            <CardContent className="p-6 sm:p-8 space-y-8">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {renderOptionRow(1, opt1, setOpt1, "1ª Prioridade")}
                 {renderOptionRow(2, opt2, setOpt2, "2ª Prioridade")}
                 {renderOptionRow(3, opt3, setOpt3, "3ª Prioridade")}
+              </div>
+
+              {/* SEÇÃO: PREFERÊNCIAS ADICIONAIS */}
+              <div className="pt-6 border-t border-slate-100 space-y-6">
+                <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-widest flex items-center gap-2">
+                  <ClipboardList className="h-4 w-4 text-blue-600" /> Preferências de Gozo e Pagamento
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <Card className="bg-slate-50/30 border-dashed shadow-none rounded-xl overflow-hidden">
+                    <CardContent className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-lg border shadow-sm">
+                          <Coins className="h-5 w-5 text-amber-500" />
+                        </div>
+                        <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
+                          Deseja receber o 13º antecipado (nas férias)?
+                        </Label>
+                      </div>
+                      <RadioGroup value={advance13th} onValueChange={setAdvance13th} className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="sim" id="a13-sim" />
+                          <Label htmlFor="a13-sim" className="text-[10px] font-bold uppercase">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="nao" id="a13-nao" />
+                          <Label htmlFor="a13-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
+                        </div>
+                      </RadioGroup>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="bg-slate-50/30 border-dashed shadow-none rounded-xl overflow-hidden">
+                    <CardContent className="p-4 flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3">
+                        <div className="bg-white p-2 rounded-lg border shadow-sm">
+                          <Scissors className="h-5 w-5 text-blue-500" />
+                        </div>
+                        <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
+                          Dividir minhas férias em dois períodos?
+                        </Label>
+                      </div>
+                      <RadioGroup value={splitVacation} onValueChange={setSplitVacation} className="flex gap-4">
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="sim" id="sv-sim" />
+                          <Label htmlFor="sv-sim" className="text-[10px] font-bold uppercase">SIM</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <RadioGroupItem value="nao" id="sv-nao" />
+                          <Label htmlFor="sv-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
+                        </div>
+                      </RadioGroup>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
 
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-4">
@@ -388,7 +454,23 @@ export default function FeriasPage() {
                                 </span>
                               </div>
                             </div>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
+                            <div className="space-y-1.5 pt-2 border-t">
+                              <div className="flex items-center gap-2">
+                                <Coins className="h-3 w-3 text-amber-600" />
+                                <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
+                                <Badge variant={plan.advance13th ? "default" : "outline"} className={cn("text-[7px] font-black", plan.advance13th ? "bg-amber-500" : "")}>
+                                  {plan.advance13th ? "SIM" : "NÃO"}
+                                </Badge>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Scissors className="h-3 w-3 text-blue-600" />
+                                <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
+                                <Badge variant={plan.splitVacation ? "default" : "outline"} className={cn("text-[7px] font-black", plan.splitVacation ? "bg-blue-600" : "")}>
+                                  {plan.splitVacation ? "SIM" : "NÃO"}
+                                </Badge>
+                              </div>
+                            </div>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase pt-2">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
                           </div>
                           <div className="flex-1 p-6 space-y-6">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -470,6 +552,20 @@ export default function FeriasPage() {
                                 ))}
                               </div>
                             )}
+
+                            {/* EXIBIÇÃO DE PREFERÊNCIAS NO HISTÓRICO */}
+                            <div className="flex gap-4 pt-2 border-t border-slate-100">
+                              <div className="flex items-center gap-2">
+                                <Coins className="h-3 w-3 text-amber-500" />
+                                <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
+                                <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.advance13th ? "SIM" : "NÃO"}</Badge>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <Scissors className="h-3 w-3 text-blue-500" />
+                                <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
+                                <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.splitVacation ? "SIM" : "NÃO"}</Badge>
+                              </div>
+                            </div>
 
                             {plan.status === 'NEGADO' && (
                               <div className="space-y-3 mt-2 animate-in slide-in-from-top-1 duration-500">
