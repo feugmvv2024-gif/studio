@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -15,7 +14,9 @@ import {
   XCircle, 
   History,
   Lock,
-  ArrowRight
+  ArrowRight,
+  MessageSquare,
+  X
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -28,6 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth, useFirestore, useCollection } from "@/firebase"
 import { collection, addDoc, query, where, orderBy, serverTimestamp, updateDoc, doc } from "firebase/firestore"
@@ -53,6 +62,12 @@ export default function FeriasPage() {
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("nova-solicitacao");
+
+  // Estados para Modal de Indeferimento
+  const [isDenyModalOpen, setIsDenyModalOpen] = React.useState(false);
+  const [planToDenyId, setPlanToDenyId] = React.useState<string | null>(null);
+  const [denialReason, setDenialReason] = React.useState("");
+  const [isProcessingDeny, setIsProcessingDeny] = React.useState(false);
 
   // Controle de Acesso de Gestão
   const isManager = React.useMemo(() => {
@@ -121,7 +136,7 @@ export default function FeriasPage() {
     }
   };
 
-  const handleProcess = async (planId: string, action: 'approve' | 'deny', selectedOpt?: any) => {
+  const handleProcess = async (planId: string, action: 'approve' | 'deny', selectedOpt?: any, reason?: string) => {
     if (!firestore) return;
     
     try {
@@ -134,11 +149,29 @@ export default function FeriasPage() {
         updates.selectedOption = selectedOpt;
       }
 
+      if (reason) {
+        updates.adminResponse = reason.toUpperCase();
+      }
+
       await updateDoc(doc(firestore, 'vacationPlans', planId), updates);
       toast({ title: action === 'approve' ? "FÉRIAS HOMOLOGADAS!" : "PEDIDO INDEFERIDO" });
     } catch (error) {
       toast({ variant: "destructive", title: "ERRO NO PROCESSAMENTO" });
     }
+  };
+
+  const handleConfirmDeny = async () => {
+    if (!planToDenyId || !denialReason.trim()) {
+      toast({ variant: "destructive", title: "JUSTIFICATIVA OBRIGATÓRIA" });
+      return;
+    }
+
+    setIsProcessingDeny(true);
+    await handleProcess(planToDenyId, 'deny', null, denialReason);
+    setIsProcessingDeny(false);
+    setIsDenyModalOpen(false);
+    setPlanToDenyId(null);
+    setDenialReason("");
   };
 
   const isBlocked = (year: string, month: string) => {
@@ -223,6 +256,47 @@ export default function FeriasPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+      {/* Modal de Justificativa de Indeferimento */}
+      <Dialog open={isDenyModalOpen} onOpenChange={setIsDenyModalOpen}>
+        <DialogContent className="rounded-2xl border-none shadow-2xl p-6 sm:p-8">
+          <DialogHeader>
+            <div className="bg-red-50 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
+              <XCircle className="h-6 w-6 text-red-600" />
+            </div>
+            <DialogTitle className="uppercase text-xl font-black">Justificar Indeferimento</DialogTitle>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">Informe o motivo pelo qual as opções do servidor não podem ser atendidas.</p>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase text-slate-700 tracking-tight">Parecer da Administração</Label>
+              <Textarea 
+                placeholder="EX: EXCESSO DE SERVIDORES NO PERÍODO, NECESSIDADE DO SERVIÇO..." 
+                className="min-h-[120px] uppercase text-xs p-4 bg-slate-50 border-slate-200 focus:bg-white transition-all resize-none" 
+                value={denialReason}
+                onChange={(e) => setDenialReason(e.target.value.toUpperCase())}
+              />
+            </div>
+            <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex items-start gap-3">
+              <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-[9px] text-amber-800 font-bold uppercase leading-relaxed">
+                Ao confirmar, estas datas ficarão bloqueadas para o servidor. Ele deverá realizar um novo pedido com períodos diferentes.
+              </p>
+            </div>
+          </div>
+          <DialogFooter className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+            <Button variant="ghost" onClick={() => setIsDenyModalOpen(false)} className="h-12 uppercase font-black text-xs tracking-widest">Cancelar</Button>
+            <Button 
+              onClick={handleConfirmDeny} 
+              disabled={!denialReason.trim() || isProcessingDeny}
+              className="h-12 uppercase font-black text-xs tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100"
+            >
+              {isProcessingDeny ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+              Confirmar Indeferimento
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
@@ -309,7 +383,7 @@ export default function FeriasPage() {
                               <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
                               <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
                               <div className="flex flex-col mt-1">
-                                <span className="text-[8px] font-black uppercase text-slate-500 tracking-tighter leading-tight">
+                                <span className="text-[9px] font-black uppercase text-blue-600 tracking-tighter leading-tight">
                                   {plan.employeeEscala || "N/A"} / {plan.employeeTurno || "N/A"}
                                 </span>
                               </div>
@@ -339,7 +413,7 @@ export default function FeriasPage() {
                               <Button 
                                 variant="destructive" 
                                 size="sm" 
-                                onClick={() => handleProcess(plan.id, 'deny')}
+                                onClick={() => { setPlanToDenyId(plan.id); setIsDenyModalOpen(true); }}
                                 className="h-9 px-6 uppercase font-black text-[10px] gap-2 rounded-xl"
                               >
                                 <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
@@ -396,12 +470,28 @@ export default function FeriasPage() {
                                 ))}
                               </div>
                             )}
+
                             {plan.status === 'NEGADO' && (
-                              <div className="flex items-start gap-2 bg-red-50 p-3 rounded-lg border border-red-100 mt-2">
-                                <Lock className="h-4 w-4 text-red-600 shrink-0" />
-                                <p className="text-[9px] text-red-700 font-bold uppercase leading-relaxed">
-                                  ESTAS DATAS FORAM INDEFERIDAS E ESTÃO BLOQUEADAS PARA NOVAS SOLICITAÇÕES. SELECIONE OUTROS MESES NO PRÓXIMO PEDIDO.
-                                </p>
+                              <div className="space-y-3 mt-2 animate-in slide-in-from-top-1 duration-500">
+                                <div className="flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
+                                  <Lock className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                                  <div className="space-y-1">
+                                    <p className="text-[10px] text-red-800 font-black uppercase tracking-tight">DATAS BLOQUEADAS PELA ADMINISTRAÇÃO</p>
+                                    <p className="text-[9px] text-red-700 font-medium uppercase leading-relaxed">
+                                      ESTAS OPÇÕES NÃO PODEM SER SELECIONADAS NOVAMENTE. POR FAVOR, ENVIE UM NOVO PEDIDO COM DIFERENTES MESES.
+                                    </p>
+                                  </div>
+                                </div>
+                                {plan.adminResponse && (
+                                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 border-l-4 border-l-red-600">
+                                    <p className="text-[9px] font-black uppercase text-slate-500 mb-1 flex items-center gap-1.5">
+                                      <MessageSquare className="h-3 w-3" /> Justificativa do RH:
+                                    </p>
+                                    <p className="text-[11px] font-bold uppercase text-slate-800 italic leading-relaxed">
+                                      "{plan.adminResponse}"
+                                    </p>
+                                  </div>
+                                )}
                               </div>
                             )}
                           </div>
