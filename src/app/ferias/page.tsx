@@ -19,7 +19,9 @@ import {
   X,
   Coins,
   Scissors,
-  User
+  User,
+  Search,
+  LayoutList
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -39,6 +41,15 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
 import { useAuth, useFirestore, useCollection } from "@/firebase"
@@ -69,6 +80,7 @@ export default function FeriasPage() {
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("nova-solicitacao");
+  const [searchTermApproved, setSearchTermApproved] = React.useState("");
 
   // Estados para Modal de Indeferimento
   const [isDenyModalOpen, setIsDenyModalOpen] = React.useState(false);
@@ -97,8 +109,14 @@ export default function FeriasPage() {
     return query(collection(firestore, 'vacationPlans'), where('status', '==', 'PENDENTE'), orderBy('createdAt', 'asc'));
   }, [firestore, isManager]);
 
+  const approvedPlansQuery = React.useMemo(() => {
+    if (!firestore || !isManager) return null;
+    return query(collection(firestore, 'vacationPlans'), where('status', '==', 'APROVADO'), orderBy('updatedAt', 'desc'));
+  }, [firestore, isManager]);
+
   const { data: myRequests, loading: loadingMyPlans } = useCollection(myPlansQuery);
   const { data: allPlans, loading: loadingAllPlans } = useCollection(allPlansQuery);
+  const { data: approvedPlans, loading: loadingApprovedPlans } = useCollection(approvedPlansQuery);
 
   // Histórico de datas negadas para o servidor logado
   const deniedDates = React.useMemo(() => {
@@ -110,6 +128,15 @@ export default function FeriasPage() {
     });
     return Array.from(new Set(dates));
   }, [myRequests]);
+
+  const filteredApprovedPlans = React.useMemo(() => {
+    if (!approvedPlans) return [];
+    const term = searchTermApproved.toLowerCase();
+    return approvedPlans.filter(p => 
+      p.employeeName?.toLowerCase().includes(term) ||
+      p.employeeQra?.toLowerCase().includes(term)
+    );
+  }, [approvedPlans, searchTermApproved]);
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -356,7 +383,7 @@ export default function FeriasPage() {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className={cn(
           "grid w-full bg-muted/50 p-1 rounded-xl h-12",
-          isManager ? "grid-cols-3 lg:w-[600px]" : "grid-cols-2 lg:w-[400px]"
+          isManager ? "grid-cols-4 lg:w-[850px]" : "grid-cols-2 lg:w-[400px]"
         )}>
           <TabsTrigger value="nova-solicitacao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
             <CalendarDays className="h-3.5 w-3.5" /> NOVA SOLICITAÇÃO
@@ -365,9 +392,14 @@ export default function FeriasPage() {
             <History className="h-3.5 w-3.5" /> MEUS PEDIDOS
           </TabsTrigger>
           {isManager && (
-            <TabsTrigger value="painel-gestao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-primary">
-              <ShieldCheck className="h-3.5 w-3.5" /> PAINEL DE GESTÃO
-            </TabsTrigger>
+            <>
+              <TabsTrigger value="painel-gestao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-primary">
+                <ShieldCheck className="h-3.5 w-3.5" /> PAINEL DE GESTÃO
+              </TabsTrigger>
+              <TabsTrigger value="cronograma" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-blue-600">
+                <LayoutList className="h-3.5 w-3.5" /> CRONOGRAMA GERAL
+              </TabsTrigger>
+            </>
           )}
         </TabsList>
 
@@ -498,12 +530,12 @@ export default function FeriasPage() {
                                 <div className="space-y-3">
                                   <div className="flex items-center gap-2">
                                     <Star className="h-5 w-5 text-green-600 fill-green-600" />
-                                    <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">
-                                      PERÍODO(S) HOMOLOGADO(S) PELO RH: {plan.processedByQra ? `QRA ${plan.processedByQra}` : ""}
+                                    <p className="text-[10px] font-black uppercase text-green-800 tracking-widest">
+                                      PERÍODO(S) HOMOLOGADO(S) PELO RH: {plan.processedByQra || ""}
                                     </p>
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                    {(plan.selectedOptions || [plan.selectedOption]).filter(Boolean).map((opt: any, i: number) => (
+                                    {(plan.selectedOptions || []).map((opt: any, i: number) => (
                                       <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
                                         <p className="text-xl font-black uppercase text-green-900 leading-none">
                                           {opt.month} / {opt.year}
@@ -552,7 +584,7 @@ export default function FeriasPage() {
                               {plan.adminResponse && (
                                 <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 border-l-4 border-l-red-600">
                                   <p className="text-[9px] font-black uppercase text-slate-500 mb-1 flex items-center gap-1.5">
-                                    <MessageSquare className="h-3 w-3" /> Justificativa do RH: {plan.processedByQra ? `(QRA ${plan.processedByQra})` : ""}
+                                    <MessageSquare className="h-3 w-3" /> Justificativa do RH: ({plan.processedByQra || ""})
                                   </p>
                                   <p className="text-[11px] font-bold uppercase text-slate-800 italic leading-relaxed">
                                     "{plan.adminResponse}"
@@ -572,127 +604,221 @@ export default function FeriasPage() {
         </TabsContent>
 
         {isManager && (
-          <TabsContent value="painel-gestao" className="mt-6 space-y-6">
-            <div className="space-y-4">
-              <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
-                <ShieldCheck className="h-5 w-5 text-blue-600" />
-                <p className="text-[11px] font-black uppercase text-blue-800 tracking-tight">FILA DE HOMOLOGAÇÃO: ANALISE AS INTENÇÕES DO EFETIVO.</p>
-              </div>
-              
-              {loadingAllPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
-                <div className="grid gap-4">
-                  {allPlans.length === 0 ? (
-                    <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">NENHUMA SOLICITAÇÃO PENDENTE.</div>
-                  ) : (
-                    allPlans.map(plan => {
-                      const currentSelections = selectionMap[plan.id] || [];
-                      const requiredCount = plan.splitVacation ? 2 : 1;
-                      const isComplete = currentSelections.length === requiredCount;
-
-                      return (
-                        <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden">
-                          <div className="flex flex-col lg:flex-row">
-                            <div className="lg:w-64 bg-slate-50 p-6 border-b lg:border-b-0 lg:border-r space-y-3">
-                              <div className="space-y-1">
-                                <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
-                                <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
-                                <div className="flex flex-col mt-1">
-                                  <span className="text-[9px] font-black uppercase text-blue-600 tracking-tighter leading-tight">
-                                    {plan.employeeEscala || "N/A"} / {plan.employeeTurno || "N/A"}
-                                  </span>
-                                </div>
-                              </div>
-                              <div className="space-y-1.5 pt-2 border-t">
-                                <div className="flex items-center gap-2">
-                                  <Coins className="h-3 w-3 text-amber-600" />
-                                  <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
-                                  <Badge variant={plan.advance13th ? "default" : "outline"} className={cn("text-[7px] font-black", plan.advance13th ? "bg-amber-500" : "")}>
-                                    {plan.advance13th ? "SIM" : "NÃO"}
-                                  </Badge>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <Scissors className="h-3 w-3 text-blue-600" />
-                                  <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
-                                  <Badge variant={plan.splitVacation ? "default" : "outline"} className={cn("text-[7px] font-black", plan.splitVacation ? "bg-blue-600" : "")}>
-                                    {plan.splitVacation ? "SIM" : "NÃO"}
-                                  </Badge>
-                                </div>
-                              </div>
-                              {plan.splitVacation && (
-                                <div className="pt-2">
-                                  <Badge variant="secondary" className="w-full justify-center bg-blue-100 text-blue-700 border-none font-black text-[9px] py-1">
-                                    SELECIONADO: {currentSelections.length} DE 2
-                                  </Badge>
-                                </div>
-                              )}
-                              <p className="text-[9px] font-bold text-muted-foreground uppercase pt-2">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
-                            </div>
-                            <div className="flex-1 p-6 space-y-6">
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                {plan.options.map((opt: any, idx: number) => {
-                                  const isSelected = currentSelections.some(s => s.year === opt.year && s.month === opt.month);
-                                  
-                                  return (
-                                    <div 
-                                      key={idx} 
-                                      onClick={() => toggleOptionSelection(plan.id, opt, plan.splitVacation)}
-                                      className={cn(
-                                        "p-4 rounded-xl border transition-all cursor-pointer space-y-3 flex flex-col items-center text-center group",
-                                        isSelected ? "bg-blue-600 border-blue-600 shadow-lg shadow-blue-200" : "bg-white border-slate-100 hover:border-blue-300 shadow-sm"
-                                      )}
-                                    >
-                                      <span className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-white/80" : "text-muted-foreground")}>
-                                        {idx + 1}ª OPÇÃO
-                                      </span>
-                                      <div className="flex flex-col">
-                                        <span className={cn("text-lg font-black uppercase leading-none", isSelected ? "text-white" : "text-primary")}>
-                                          {opt.month}
-                                        </span>
-                                        <span className={cn("text-xs font-bold", isSelected ? "text-white/70" : "text-slate-500")}>
-                                          {opt.year}
-                                        </span>
-                                      </div>
-                                      <div className={cn(
-                                        "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
-                                        isSelected ? "bg-white border-white text-blue-600" : "bg-slate-50 border-slate-200 text-transparent group-hover:border-blue-200"
-                                      )}>
-                                        <CheckCircle2 className="h-4 w-4" />
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-                              <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t gap-4">
-                                <Button 
-                                  variant="destructive" 
-                                  size="sm" 
-                                  onClick={() => { setPlanToDenyId(plan.id); setIsDenyModalOpen(true); }}
-                                  className="w-full sm:w-auto h-9 px-6 uppercase font-black text-[10px] gap-2 rounded-xl"
-                                >
-                                  <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
-                                </Button>
-                                <Button 
-                                  disabled={!isComplete}
-                                  onClick={() => handleProcess(plan.id, 'approve', currentSelections)}
-                                  className={cn(
-                                    "w-full sm:w-auto h-11 px-10 uppercase font-black text-[11px] gap-2 rounded-xl transition-all shadow-xl",
-                                    isComplete ? "bg-green-600 hover:bg-green-700 shadow-green-100" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
-                                  )}
-                                >
-                                  <CheckCircle2 className="h-5 w-5" /> 
-                                  {plan.splitVacation ? "Homologar 2 Períodos" : "Homologar Escolha"}
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      );
-                    })
-                  )}
+          <>
+            <TabsContent value="painel-gestao" className="mt-6 space-y-6">
+              <div className="space-y-4">
+                <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
+                  <ShieldCheck className="h-5 w-5 text-blue-600" />
+                  <p className="text-[11px] font-black uppercase text-blue-800 tracking-tight">FILA DE HOMOLOGAÇÃO: ANALISE AS INTENÇÕES DO EFETIVO.</p>
                 </div>
-              )}
-            </div>
-          </TabsContent>
+                
+                {loadingAllPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
+                  <div className="grid gap-4">
+                    {allPlans.length === 0 ? (
+                      <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">NENHUMA SOLICITAÇÃO PENDENTE.</div>
+                    ) : (
+                      allPlans.map(plan => {
+                        const currentSelections = selectionMap[plan.id] || [];
+                        const requiredCount = plan.splitVacation ? 2 : 1;
+                        const isComplete = currentSelections.length === requiredCount;
+
+                        return (
+                          <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden">
+                            <div className="flex flex-col lg:flex-row">
+                              <div className="lg:w-64 bg-slate-50 p-6 border-b lg:border-b-0 lg:border-r space-y-3">
+                                <div className="space-y-1">
+                                  <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
+                                  <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
+                                  <div className="flex flex-col mt-1">
+                                    <span className="text-[9px] font-black uppercase text-blue-600 tracking-tighter leading-tight">
+                                      {plan.employeeEscala || "N/A"} / {plan.employeeTurno || "N/A"}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="space-y-1.5 pt-2 border-t">
+                                  <div className="flex items-center gap-2">
+                                    <Coins className="h-3 w-3 text-amber-500" />
+                                    <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
+                                    <Badge variant={plan.advance13th ? "default" : "outline"} className={cn("text-[7px] font-black", plan.advance13th ? "bg-amber-500" : "")}>
+                                      {plan.advance13th ? "SIM" : "NÃO"}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Scissors className="h-3 w-3 text-blue-600" />
+                                    <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
+                                    <Badge variant={plan.splitVacation ? "default" : "outline"} className={cn("text-[7px] font-black", plan.splitVacation ? "bg-blue-600" : "")}>
+                                      {plan.splitVacation ? "SIM" : "NÃO"}
+                                    </Badge>
+                                  </div>
+                                </div>
+                                {plan.splitVacation && (
+                                  <div className="pt-2">
+                                    <Badge variant="secondary" className="w-full justify-center bg-blue-100 text-blue-700 border-none font-black text-[9px] py-1">
+                                      SELECIONADO: {currentSelections.length} DE 2
+                                    </Badge>
+                                  </div>
+                                )}
+                                <p className="text-[9px] font-bold text-muted-foreground uppercase pt-2">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
+                              </div>
+                              <div className="flex-1 p-6 space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  {plan.options.map((opt: any, idx: number) => {
+                                    const isSelected = currentSelections.some(s => s.year === opt.year && s.month === opt.month);
+                                    
+                                    return (
+                                      <div 
+                                        key={idx} 
+                                        onClick={() => toggleOptionSelection(plan.id, opt, plan.splitVacation)}
+                                        className={cn(
+                                          "p-4 rounded-xl border transition-all cursor-pointer space-y-3 flex flex-col items-center text-center group",
+                                          isSelected ? "bg-blue-600 border-blue-600 shadow-lg shadow-blue-200" : "bg-white border-slate-100 hover:border-blue-300 shadow-sm"
+                                        )}
+                                      >
+                                        <span className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-white/80" : "text-muted-foreground")}>
+                                          {idx + 1}ª OPÇÃO
+                                        </span>
+                                        <div className="flex flex-col">
+                                          <span className={cn("text-lg font-black uppercase leading-none", isSelected ? "text-white" : "text-primary")}>
+                                            {opt.month}
+                                          </span>
+                                          <span className={cn("text-xs font-bold", isSelected ? "text-white/70" : "text-slate-500")}>
+                                            {opt.year}
+                                          </span>
+                                        </div>
+                                        <div className={cn(
+                                          "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
+                                          isSelected ? "bg-white border-white text-blue-600" : "bg-slate-50 border-slate-200 text-transparent group-hover:border-blue-200"
+                                        )}>
+                                          <CheckCircle2 className="h-4 w-4" />
+                                        </div>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                                <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t gap-4">
+                                  <Button 
+                                    variant="destructive" 
+                                    size="sm" 
+                                    onClick={() => { setPlanToDenyId(plan.id); setIsDenyModalOpen(true); }}
+                                    className="w-full sm:w-auto h-9 px-6 uppercase font-black text-[10px] gap-2 rounded-xl"
+                                  >
+                                    <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
+                                  </Button>
+                                  <Button 
+                                    disabled={!isComplete}
+                                    onClick={() => handleProcess(plan.id, 'approve', currentSelections)}
+                                    className={cn(
+                                      "w-full sm:w-auto h-11 px-10 uppercase font-black text-[11px] gap-2 rounded-xl transition-all shadow-xl",
+                                      isComplete ? "bg-green-600 hover:bg-green-700 shadow-green-100" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                                    )}
+                                  >
+                                    <CheckCircle2 className="h-5 w-5" /> 
+                                    {plan.splitVacation ? "Homologar 2 Períodos" : "Homologar Escolha"}
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </Card>
+                        );
+                      })
+                    )}
+                  </div>
+                )}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="cronograma" className="mt-6 space-y-6">
+              <Card className="card-shadow border-none rounded-2xl overflow-hidden">
+                <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-blue-50/30 border-b p-6">
+                  <div>
+                    <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">Férias Homologadas</CardTitle>
+                    <CardDescription className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Cronograma consolidado de afastamentos aprovados pela unidade.</CardDescription>
+                  </div>
+                  <div className="relative w-full sm:w-72">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                      placeholder="BUSCAR SERVIDOR..." 
+                      className="pl-9 h-10 uppercase text-[10px] font-bold bg-white" 
+                      value={searchTermApproved}
+                      onChange={(e) => setSearchTermApproved(e.target.value.toUpperCase())}
+                    />
+                  </div>
+                </CardHeader>
+                <CardContent className="p-0">
+                  {loadingApprovedPlans ? (
+                    <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader className="bg-muted/20">
+                          <TableRow>
+                            <TableHead className="font-bold uppercase text-[10px] h-12">Servidor / QRA</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] h-12">Operacional</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] h-12">Período(s) Aprovado(s)</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] h-12">Auditor RH</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] h-12 text-center">Opções</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {filteredApprovedPlans.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="h-40 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                                NENHUM REGISTRO HOMOLOGADO ENCONTRADO.
+                              </TableCell>
+                            </TableRow>
+                          ) : (
+                            filteredApprovedPlans.map((plan) => (
+                              <TableRow key={plan.id} className="hover:bg-slate-50 transition-colors border-b last:border-0">
+                                <TableCell className="py-4">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-black uppercase text-[13px] text-slate-900 leading-tight">{plan.employeeName}</span>
+                                    <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">QRA: {plan.employeeQra}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col">
+                                    <span className="text-[11px] font-black uppercase text-slate-700">{plan.employeeEscala}</span>
+                                    <span className="text-[9px] font-bold text-muted-foreground uppercase">{plan.employeeTurno}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-wrap gap-2">
+                                    {(plan.selectedOptions || []).map((opt: any, idx: number) => (
+                                      <Badge key={idx} className="bg-green-600 text-white font-black text-[9px] uppercase px-3">
+                                        {opt.month} / {opt.year}
+                                      </Badge>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1.5">
+                                    <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                                    <span className="text-[10px] font-black uppercase text-slate-600">{plan.processedByQra || "SISTEMA"}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-center">
+                                  <div className="flex items-center justify-center gap-3">
+                                    <div className="flex items-center gap-1">
+                                      <Coins className={cn("h-3.5 w-3.5", plan.advance13th ? "text-amber-500" : "text-slate-300")} />
+                                      <span className={cn("text-[8px] font-black", plan.advance13th ? "text-amber-600" : "text-slate-400")}>13º</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <Scissors className={cn("h-3.5 w-3.5", plan.splitVacation ? "text-blue-500" : "text-slate-300")} />
+                                      <span className={cn("text-[8px] font-black", plan.splitVacation ? "text-blue-600" : "text-slate-400")}>DIV.</span>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </>
         )}
       </Tabs>
 
