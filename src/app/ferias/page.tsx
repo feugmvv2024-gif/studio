@@ -22,7 +22,9 @@ import {
   User,
   Search,
   LayoutList,
-  Printer
+  Printer,
+  Settings2,
+  CalendarX
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -53,12 +55,13 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
-import { useAuth, useFirestore, useCollection } from "@/firebase"
-import { collection, addDoc, query, where, orderBy, serverTimestamp, updateDoc, doc } from "firebase/firestore"
+import { useAuth, useFirestore, useCollection, useDoc } from "@/firebase"
+import { collection, addDoc, query, where, orderBy, serverTimestamp, updateDoc, doc, setDoc } from "firebase/firestore"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import { Switch } from "@/components/ui/switch"
 
 const MONTHS = [
   "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
@@ -115,9 +118,19 @@ export default function FeriasPage() {
     return query(collection(firestore, 'vacationPlans'), where('status', '==', 'APROVADO'), orderBy('updatedAt', 'desc'));
   }, [firestore, isManager]);
 
+  const vacationSettingsRef = React.useMemo(() => 
+    firestore ? doc(firestore, 'settings', 'vacation') : null
+  , [firestore]);
+
   const { data: myRequests, loading: loadingMyPlans } = useCollection(myPlansQuery);
   const { data: allPlans, loading: loadingAllPlans } = useCollection(allPlansQuery);
   const { data: approvedPlans, loading: loadingApprovedPlans } = useCollection(approvedPlansQuery);
+  const { data: vacationSettings, loading: loadingSettings } = useDoc(vacationSettingsRef);
+
+  // Status de abertura do sistema
+  const isSolicitationOpen = React.useMemo(() => {
+    return vacationSettings?.isOpen ?? true; // Padrão aberto se não configurado
+  }, [vacationSettings]);
 
   // Histórico de datas negadas para o servidor logado
   const deniedDates = React.useMemo(() => {
@@ -154,7 +167,7 @@ export default function FeriasPage() {
           employeeEscala: plan.employeeEscala,
           employeeTurno: plan.employeeTurno,
           processedByQra: plan.processedByQra,
-          splitVacation: plan.splitVacation // Passa a informação de divisão para a impressão
+          splitVacation: plan.splitVacation
         });
       });
     });
@@ -237,7 +250,6 @@ export default function FeriasPage() {
       await updateDoc(doc(firestore, 'vacationPlans', planId), updates);
       toast({ title: action === 'approve' ? "FÉRIAS HOMOLOGADAS!" : "PEDIDO INDEFERIDO" });
       
-      // Limpa seleções locais
       setSelectionMap(prev => {
         const next = { ...prev };
         delete next[planId];
@@ -262,6 +274,19 @@ export default function FeriasPage() {
     setDenialReason("");
   };
 
+  const handleToggleSystem = async (isOpen: boolean) => {
+    if (!firestore) return;
+    try {
+      await setDoc(doc(firestore, 'settings', 'vacation'), { isOpen }, { merge: true });
+      toast({ 
+        title: isOpen ? "SISTEMA ABERTO" : "SISTEMA BLOQUEADO", 
+        description: isOpen ? "Servidores já podem enviar novas intenções." : "Novas solicitações estão desabilitadas." 
+      });
+    } catch (error) {
+      toast({ variant: "destructive", title: "ERRO AO ATUALIZAR" });
+    }
+  };
+
   const isBlocked = (year: string, month: string) => {
     return deniedDates.includes(`${year}-${month}`);
   };
@@ -275,7 +300,6 @@ export default function FeriasPage() {
     });
   };
 
-  // Funções de Seleção Múltipla para Gestão
   const toggleOptionSelection = (planId: string, opt: any, isSplit: boolean) => {
     const current = selectionMap[planId] || [];
     const isSelected = current.some(s => s.year === opt.year && s.month === opt.month);
@@ -284,10 +308,8 @@ export default function FeriasPage() {
       setSelectionMap({ ...selectionMap, [planId]: current.filter(s => !(s.year === opt.year && s.month === opt.month)) });
     } else {
       if (!isSplit) {
-        // Se não for dividir, substitui a seleção atual por esta nova
         setSelectionMap({ ...selectionMap, [planId]: [opt] });
       } else {
-        // Se for dividir, permite até 2
         if (current.length < 2) {
           setSelectionMap({ ...selectionMap, [planId]: [...current, opt] });
         } else {
@@ -561,101 +583,120 @@ export default function FeriasPage() {
         </TabsList>
 
         <TabsContent value="nova-solicitacao" className="mt-6 space-y-6">
-          <Card className="card-shadow border-none rounded-2xl overflow-hidden">
-            <CardHeader className="bg-blue-50/50 border-b p-6">
-              <div className="flex items-center gap-4">
-                <div className="bg-white p-2 rounded-xl border shadow-sm">
-                  <CalendarDays className="h-6 w-6 text-blue-600" />
+          {!isSolicitationOpen ? (
+            <Card className="card-shadow border-none rounded-3xl overflow-hidden animate-in zoom-in-95 duration-500">
+              <CardContent className="flex flex-col items-center justify-center p-20 text-center space-y-6 bg-slate-50/50">
+                <div className="bg-red-50 p-6 rounded-full border-4 border-white shadow-xl">
+                  <CalendarX className="h-16 w-16 text-red-600" />
                 </div>
-                <div>
-                  <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">Intenção de Férias</CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Escolha períodos distintos. Datas negadas anteriormente ficam bloqueadas.</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 sm:p-8 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {renderOptionRow(1, opt1, setOpt1, "1ª Prioridade")}
-                {renderOptionRow(2, opt2, setOpt2, "2ª Prioridade")}
-                {renderOptionRow(3, opt3, setOpt3, "3ª Prioridade")}
-              </div>
-
-              {/* SEÇÃO: PREFERÊNCIAS ADICIONAIS */}
-              <div className="pt-6 border-t border-slate-100 space-y-6">
-                <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-widest flex items-center gap-2">
-                  <ClipboardList className="h-4 w-4 text-blue-600" /> Preferências de Gozo e Pagamento
-                </h4>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <Card className="bg-slate-50/30 border-dashed shadow-none rounded-xl overflow-hidden">
-                    <CardContent className="p-4 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-white p-2 rounded-lg border shadow-sm">
-                          <Coins className="h-5 w-5 text-amber-500" />
-                        </div>
-                        <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
-                          Deseja receber o 13º antecipado (nas férias)?
-                        </Label>
-                      </div>
-                      <RadioGroup value={advance13th} onValueChange={setAdvance13th} className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="sim" id="a13-sim" />
-                          <Label htmlFor="a13-sim" className="text-[10px] font-bold uppercase">SIM</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="nao" id="a13-nao" />
-                          <Label htmlFor="a13-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
-                        </div>
-                      </RadioGroup>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="bg-slate-50/30 border-dashed shadow-none rounded-xl overflow-hidden">
-                    <CardContent className="p-4 flex items-center justify-between gap-4">
-                      <div className="flex items-center gap-3">
-                        <div className="bg-white p-2 rounded-lg border shadow-sm">
-                          <Scissors className="h-5 w-5 text-blue-500" />
-                        </div>
-                        <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
-                          Dividir minhas férias em dois períodos?
-                        </Label>
-                      </div>
-                      <RadioGroup value={splitVacation} onValueChange={setSplitVacation} className="flex gap-4">
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="sim" id="sv-sim" />
-                          <Label htmlFor="sv-sim" className="text-[10px] font-bold uppercase">SIM</Label>
-                        </div>
-                        <div className="flex items-center space-x-2">
-                          <RadioGroupItem value="nao" id="sv-nao" />
-                          <Label htmlFor="sv-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
-                        </div>
-                      </RadioGroup>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-
-              <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-4">
-                <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                <div className="space-y-1">
-                  <p className="text-[11px] font-black uppercase text-amber-900 leading-none tracking-tight">Regras do Sistema</p>
-                  <p className="text-[10px] text-amber-800 font-medium uppercase leading-relaxed mt-1">
-                    Cada opção deve ser uma combinação única. O sistema bloqueia automaticamente a escolha de meses que já foram negados pela administração para o seu perfil.
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black uppercase text-slate-900 tracking-tight">Período Encerrado</h3>
+                  <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest max-w-md leading-relaxed">
+                    O formulário para novas intenções de férias encontra-se desabilitado ou ainda não foi iniciado pela administração da unidade.
                   </p>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter className="bg-slate-50 border-t p-6 flex justify-end">
-              <Button 
-                onClick={handleSave}
-                disabled={!isFormValid || isSubmitting}
-                className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
-              >
-                {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Enviar para Análise
-              </Button>
-            </CardFooter>
-          </Card>
+                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
+                  <Lock className="h-4 w-4 text-slate-400" />
+                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-tighter">Aguarde novas orientações do RH</span>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="card-shadow border-none rounded-2xl overflow-hidden">
+              <CardHeader className="bg-blue-50/50 border-b p-6">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white p-2 rounded-xl border shadow-sm">
+                    <CalendarDays className="h-6 w-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">Intenção de Férias</CardTitle>
+                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Escolha períodos distintos. Datas negadas anteriormente ficam bloqueadas.</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-6 sm:p-8 space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {renderOptionRow(1, opt1, setOpt1, "1ª Prioridade")}
+                  {renderOptionRow(2, opt2, setOpt2, "2ª Prioridade")}
+                  {renderOptionRow(3, opt3, setOpt3, "3ª Prioridade")}
+                </div>
+
+                <div className="pt-6 border-t border-slate-100 space-y-6">
+                  <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-widest flex items-center gap-2">
+                    <ClipboardList className="h-4 w-4 text-blue-600" /> Preferências de Gozo e Pagamento
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <Card className="bg-slate-50/30 border-dashed shadow-none rounded-xl overflow-hidden">
+                      <CardContent className="p-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white p-2 rounded-lg border shadow-sm">
+                            <Coins className="h-5 w-5 text-amber-500" />
+                          </div>
+                          <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
+                            Deseja receber o 13º antecipado (nas férias)?
+                          </Label>
+                        </div>
+                        <RadioGroup value={advance13th} onValueChange={setAdvance13th} className="flex gap-4">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="sim" id="a13-sim" />
+                            <Label htmlFor="a13-sim" className="text-[10px] font-bold uppercase">SIM</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="nao" id="a13-nao" />
+                            <Label htmlFor="a13-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
+                          </div>
+                        </RadioGroup>
+                      </CardContent>
+                    </Card>
+
+                    <Card className="bg-slate-50/30 border-dashed shadow-none rounded-xl overflow-hidden">
+                      <CardContent className="p-4 flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3">
+                          <div className="bg-white p-2 rounded-lg border shadow-sm">
+                            <Scissors className="h-5 w-5 text-blue-500" />
+                          </div>
+                          <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
+                            Dividir minhas férias em dois períodos?
+                          </Label>
+                        </div>
+                        <RadioGroup value={splitVacation} onValueChange={setSplitVacation} className="flex gap-4">
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="sim" id="sv-sim" />
+                            <Label htmlFor="sv-sim" className="text-[10px] font-bold uppercase">SIM</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="nao" id="sv-nao" />
+                            <Label htmlFor="sv-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
+                          </div>
+                        </RadioGroup>
+                      </CardContent>
+                    </Card>
+                  </div>
+                </div>
+
+                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-4">
+                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-[11px] font-black uppercase text-amber-900 leading-none tracking-tight">Regras do Sistema</p>
+                    <p className="text-[10px] text-amber-800 font-medium uppercase leading-relaxed mt-1">
+                      Cada opção deve ser uma combinação única. O sistema bloqueia automaticamente a escolha de meses que já foram negados pela administração para o seu perfil.
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+              <CardFooter className="bg-slate-50 border-t p-6 flex justify-end">
+                <Button 
+                  onClick={handleSave}
+                  disabled={!isFormValid || isSubmitting}
+                  className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
+                >
+                  {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Enviar para Análise
+                </Button>
+              </CardFooter>
+            </Card>
+          )}
         </TabsContent>
 
         <TabsContent value="meus-pedidos" className="mt-6 space-y-6">
@@ -763,6 +804,39 @@ export default function FeriasPage() {
         {isManager && (
           <>
             <TabsContent value="painel-gestao" className="mt-6 space-y-6">
+              {/* CONTROLE DE SISTEMA */}
+              <Card className="card-shadow border-none rounded-2xl bg-white overflow-hidden animate-in slide-in-from-top-4 duration-500">
+                <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+                  <div className="flex items-center gap-4">
+                    <div className={cn(
+                      "p-3 rounded-2xl border transition-colors",
+                      isSolicitationOpen ? "bg-green-50 text-green-600 border-green-100" : "bg-red-50 text-red-600 border-red-100"
+                    )}>
+                      <Settings2 className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-black uppercase text-slate-900 tracking-tight">Controle do Sistema de Férias</h4>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-1">Habilitar ou desabilitar o envio de intenções pelo efetivo.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className={cn(
+                      "text-[10px] font-black uppercase tracking-widest",
+                      isSolicitationOpen ? "text-green-700" : "text-red-700"
+                    )}>
+                      {isSolicitationOpen ? "Período Aberto" : "Período Fechado"}
+                    </span>
+                    <Switch 
+                      checked={isSolicitationOpen} 
+                      onCheckedChange={handleToggleSystem}
+                      className={cn(
+                        "data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-500"
+                      )}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
               <div className="space-y-4">
                 <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-blue-600" />
