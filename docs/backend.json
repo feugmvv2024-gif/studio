@@ -52,6 +52,38 @@
       },
       "required": ["name", "qra", "role", "status", "matricula", "escala", "turno", "unit"]
     },
+    "VacationPlan": {
+      "title": "Vacation Plan",
+      "description": "Intenção de férias enviada pelo servidor com 3 opções.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "employeeId": { "type": "string" },
+        "employeeName": { "type": "string" },
+        "employeeQra": { "type": "string" },
+        "options": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "year": { "type": "string" },
+              "month": { "type": "string" }
+            }
+          }
+        },
+        "status": { "type": "string", "enum": ["PENDENTE", "APROVADO", "NEGADO"] },
+        "selectedOption": {
+          "type": "object",
+          "properties": {
+            "year": { "type": "string" },
+            "month": { "type": "string" }
+          }
+        },
+        "adminResponse": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      }
+    },
     "Launch": {
       "title": "Launch",
       "description": "Registro de lançamento operacional (banco de horas, folgas, etc).",
@@ -208,6 +240,10 @@
     "/employees/{employeeId}": {
       "schema": "#/backend/entities/Employee",
       "description": "Coleção de funcionários da unidade."
+    },
+    "/vacationPlans/{planId}": {
+      "schema": "#/backend/entities/VacationPlan",
+      "description": "Coleção de planos de férias enviados."
     },
     "/launches/{launchId}": {
       "schema": "#/backend/entities/Launch",

@@ -1,7 +1,22 @@
+
 "use client"
 
 import * as React from "react"
-import { Plane, CalendarDays, ClipboardList, ShieldCheck, Save, AlertCircle, Info, Loader2, Star } from "lucide-react"
+import { 
+  Plane, 
+  CalendarDays, 
+  ClipboardList, 
+  ShieldCheck, 
+  Save, 
+  AlertCircle, 
+  Loader2, 
+  Star, 
+  CheckCircle2, 
+  XCircle, 
+  History,
+  Lock,
+  ArrowRight
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
@@ -14,51 +29,123 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { useAuth, useFirestore, useCollection } from "@/firebase"
+import { collection, addDoc, query, where, orderBy, serverTimestamp, updateDoc, doc } from "firebase/firestore"
 import { cn } from "@/lib/utils"
+import { Badge } from "@/components/ui/badge"
+import { ScrollArea } from "@/components/ui/scroll-area"
 
 const MONTHS = [
   "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
   "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
 ];
 
+const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
+
 export default function FeriasPage() {
+  const { user, employeeData } = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   
-  // Estados independentes para cada opção
   const [opt1, setOpt1] = React.useState({ year: "", month: "" });
   const [opt2, setOpt2] = React.useState({ year: "", month: "" });
   const [opt3, setOpt3] = React.useState({ year: "", month: "" });
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [activeTab, setActiveTab] = React.useState("nova-solicitacao");
 
-  // Calcula dinamicamente os próximos 2 anos
+  // Controle de Acesso de Gestão
+  const isManager = React.useMemo(() => {
+    if (!employeeData) return false;
+    const role = normalizeStr(employeeData.role || "");
+    return ["COMANDANTE", "INSPETOR GERAL", "GESTOR DE RH"].some(r => role.includes(r));
+  }, [employeeData]);
+
+  // Queries para o Firestore
+  const myPlansQuery = React.useMemo(() => {
+    if (!firestore || !user) return null;
+    return query(collection(firestore, 'vacationPlans'), where('employeeId', '==', user.uid), orderBy('createdAt', 'desc'));
+  }, [firestore, user]);
+
+  const allPlansQuery = React.useMemo(() => {
+    if (!firestore || !isManager) return null;
+    return query(collection(firestore, 'vacationPlans'), where('status', '==', 'PENDENTE'), orderBy('createdAt', 'asc'));
+  }, [firestore, isManager]);
+
+  const { data: myPlans, loading: loadingMyPlans } = useCollection(myPlansQuery);
+  const { data: allPlans, loading: loadingAllPlans } = useCollection(allPlansQuery);
+
+  // Histórico de datas negadas para o servidor logado
+  const deniedDates = React.useMemo(() => {
+    if (!myPlans) return [];
+    const denied = myPlans.filter(p => p.status === "NEGADO");
+    const dates: string[] = [];
+    denied.forEach(p => {
+      p.options?.forEach((o: any) => dates.push(`${o.year}-${o.month}`));
+    });
+    return Array.from(new Set(dates));
+  }, [myPlans]);
+
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
     return [currentYear + 1, currentYear + 2];
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!user || !employeeData) return;
     setIsSubmitting(true);
-    // Simulação de salvamento local (futuramente integrado ao Firestore)
-    setTimeout(() => {
-      toast({
-        title: "INTENÇÃO GRAVADA!",
-        description: `Suas opções de férias foram enviadas com sucesso.`,
-      });
+
+    const payload = {
+      employeeId: user.uid,
+      employeeName: employeeData.name,
+      employeeQra: employeeData.qra,
+      options: [opt1, opt2, opt3],
+      status: "PENDENTE",
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    };
+
+    try {
+      await addDoc(collection(firestore, 'vacationPlans'), payload);
+      toast({ title: "INTENÇÃO GRAVADA!", description: "Suas opções foram enviadas para análise do RH." });
+      setOpt1({ year: "", month: "" });
+      setOpt2({ year: "", month: "" });
+      setOpt3({ year: "", month: "" });
+      setActiveTab("gestao-analise");
+    } catch (error) {
+      toast({ variant: "destructive", title: "ERRO AO ENVIAR", description: "Tente novamente mais tarde." });
+    } finally {
       setIsSubmitting(false);
-    }, 1000);
+    }
   };
 
-  // Verifica se uma combinação de Ano + Mês já foi selecionada em outras opções
+  const handleProcess = async (planId: string, action: 'approve' | 'deny', selectedOpt?: any) => {
+    if (!firestore) return;
+    
+    try {
+      const updates: any = {
+        status: action === 'approve' ? "APROVADO" : "NEGADO",
+        updatedAt: serverTimestamp()
+      };
+
+      if (action === 'approve') {
+        updates.selectedOption = selectedOpt;
+      }
+
+      await updateDoc(doc(firestore, 'vacationPlans', planId), updates);
+      toast({ title: action === 'approve' ? "FÉRIAS HOMOLOGADAS!" : "PEDIDO INDEFERIDO" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "ERRO NO PROCESSAMENTO" });
+    }
+  };
+
+  const isBlocked = (year: string, month: string) => {
+    return deniedDates.includes(`${year}-${month}`);
+  };
+
   const isCombinationTaken = (year: string, month: string, currentPriority: number) => {
     if (!year || !month) return false;
-    
-    const selections = [
-      { year: opt1.year, month: opt1.month },
-      { year: opt2.year, month: opt2.month },
-      { year: opt3.year, month: opt3.month }
-    ];
-
+    const selections = [opt1, opt2, opt3];
     return selections.some((sel, idx) => {
       if (idx + 1 === currentPriority) return false;
       return sel.year === year && sel.month === month;
@@ -72,58 +159,68 @@ export default function FeriasPage() {
     data: { year: string, month: string }, 
     setData: (val: { year: string, month: string }) => void,
     label: string
-  ) => (
-    <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4 animate-in slide-in-from-left-2 duration-300">
-      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-        <div className="bg-primary/10 p-1.5 rounded-lg">
-          <Star className={cn("h-4 w-4", priority === 1 ? "text-amber-500 fill-amber-500" : "text-primary")} />
-        </div>
-        <span className="text-[11px] font-black uppercase text-slate-700 tracking-widest">{label}</span>
-      </div>
-      
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="space-y-1.5">
-          <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tight">Ano do Exercício</Label>
-          <Select value={data.year} onValueChange={(v) => setData({ ...data, year: v })}>
-            <SelectTrigger className="h-10 uppercase font-bold text-xs bg-white">
-              <SelectValue placeholder="ANO..." />
-            </SelectTrigger>
-            <SelectContent>
-              {nextYears.map(year => (
-                <SelectItem key={year} value={year.toString()} className="uppercase font-bold text-xs">
-                  {year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+  ) => {
+    const isThisBlocked = data.year && data.month && isBlocked(data.year, data.month);
 
-        <div className="space-y-1.5">
-          <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tight">Mês Desejado</Label>
-          <Select value={data.month} onValueChange={(v) => setData({ ...data, month: v })}>
-            <SelectTrigger className="h-10 uppercase font-bold text-xs bg-white">
-              <SelectValue placeholder="MÊS..." />
-            </SelectTrigger>
-            <SelectContent>
-              {MONTHS.map(month => (
-                <SelectItem 
-                  key={month} 
-                  value={month} 
-                  disabled={isCombinationTaken(data.year, month, priority)}
-                  className="uppercase font-bold text-xs"
-                >
-                  {month}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+    return (
+      <div className={cn(
+        "p-4 rounded-2xl border transition-all animate-in slide-in-from-left-2 duration-300 space-y-4",
+        isThisBlocked ? "bg-red-50 border-red-200" : "bg-slate-50/50 border-slate-100"
+      )}>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+          <div className="flex items-center gap-2">
+            <div className="bg-primary/10 p-1.5 rounded-lg">
+              <Star className={cn("h-4 w-4", priority === 1 ? "text-amber-500 fill-amber-500" : "text-primary")} />
+            </div>
+            <span className="text-[11px] font-black uppercase text-slate-700 tracking-widest">{label}</span>
+          </div>
+          {isThisBlocked && (
+            <Badge variant="destructive" className="text-[8px] font-black uppercase animate-pulse">BLOQUEADO PELO RH</Badge>
+          )}
+        </div>
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tight">Ano</Label>
+            <Select value={data.year} onValueChange={(v) => setData({ ...data, year: v })}>
+              <SelectTrigger className="h-10 uppercase font-bold text-xs bg-white">
+                <SelectValue placeholder="ANO..." />
+              </SelectTrigger>
+              <SelectContent>
+                {nextYears.map(year => (
+                  <SelectItem key={year} value={year.toString()} className="uppercase font-bold text-xs">{year}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tight">Mês</Label>
+            <Select value={data.month} onValueChange={(v) => setData({ ...data, month: v })}>
+              <SelectTrigger className="h-10 uppercase font-bold text-xs bg-white">
+                <SelectValue placeholder="MÊS..." />
+              </SelectTrigger>
+              <SelectContent>
+                {MONTHS.map(month => (
+                  <SelectItem 
+                    key={month} 
+                    value={month} 
+                    disabled={isCombinationTaken(data.year, month, priority) || isBlocked(data.year, month)}
+                    className="uppercase font-bold text-xs"
+                  >
+                    {month} {isBlocked(data.year, month) ? "(INDISPONÍVEL)" : ""}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
@@ -136,13 +233,13 @@ export default function FeriasPage() {
         </div>
       </div>
 
-      <Tabs value="nova-solicitacao" className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 lg:w-[450px] h-12 bg-muted/50 p-1 rounded-xl">
           <TabsTrigger value="nova-solicitacao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
             <CalendarDays className="h-3.5 w-3.5" /> NOVA SOLICITAÇÃO
           </TabsTrigger>
           <TabsTrigger value="gestao-analise" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
-            <ShieldCheck className="h-3.5 w-3.5" /> GESTÃO / ANÁLISE
+            <ShieldCheck className="h-3.5 w-3.5" /> {isManager ? "PAINEL DE GESTÃO" : "MEUS PEDIDOS"}
           </TabsTrigger>
         </TabsList>
 
@@ -155,23 +252,23 @@ export default function FeriasPage() {
                 </div>
                 <div>
                   <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">Intenção de Férias</CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Indique três opções distintas para o planejamento do RH.</CardDescription>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Escolha períodos distintos. Datas negadas anteriormente ficam bloqueadas.</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-6 sm:p-8 space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {renderOptionRow(1, opt1, setOpt1, "1ª Opção de Prioridade")}
-                {renderOptionRow(2, opt2, setOpt2, "2ª Opção de Prioridade")}
-                {renderOptionRow(3, opt3, setOpt3, "3ª Opção de Prioridade")}
+                {renderOptionRow(1, opt1, setOpt1, "1ª Prioridade")}
+                {renderOptionRow(2, opt2, setOpt2, "2ª Prioridade")}
+                {renderOptionRow(3, opt3, setOpt3, "3ª Prioridade")}
               </div>
 
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-4">
                 <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                 <div className="space-y-1">
-                  <p className="text-[11px] font-black uppercase text-amber-900 leading-none tracking-tight">Regras de Preenchimento</p>
+                  <p className="text-[11px] font-black uppercase text-amber-900 leading-none tracking-tight">Regras do Sistema</p>
                   <p className="text-[10px] text-amber-800 font-medium uppercase leading-relaxed mt-1">
-                    Cada opção deve ser única (combinação de Ano e Mês). O sistema permite escolher o mesmo mês em anos diferentes, mas bloqueia a repetição da mesma data exata.
+                    Cada opção deve ser uma combinação única. O sistema bloqueia automaticamente a escolha de meses que já foram negados pela administração para o seu perfil.
                   </p>
                 </div>
               </div>
@@ -183,29 +280,138 @@ export default function FeriasPage() {
                 className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Gravar Intenções de Férias
+                Enviar para Análise
               </Button>
             </CardFooter>
           </Card>
         </TabsContent>
 
-        <TabsContent value="gestao-analise" className="mt-6">
-          <Card className="border-2 border-dashed bg-slate-50/30 rounded-3xl">
-            <CardContent className="h-64 flex items-center justify-center">
-              <div className="text-center space-y-2">
-                <ClipboardList className="h-10 w-10 text-muted-foreground/20 mx-auto" />
-                <p className="text-[10px] font-bold uppercase text-muted-foreground italic tracking-widest">
-                  Acompanhamento de solicitações e análise do RH.
-                </p>
+        <TabsContent value="gestao-analise" className="mt-6 space-y-6">
+          {isManager ? (
+            <div className="space-y-4">
+              <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
+                <ShieldCheck className="h-5 w-5 text-blue-600" />
+                <p className="text-[11px] font-black uppercase text-blue-800 tracking-tight">FILA DE HOMOLOGAÇÃO: ANALISE AS INTENÇÕES DO EFETIVO.</p>
               </div>
-            </CardContent>
-          </Card>
+              
+              {loadingAllPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
+                <div className="grid gap-4">
+                  {allPlans.length === 0 ? (
+                    <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">NENHUMA SOLICITAÇÃO PENDENTE.</div>
+                  ) : (
+                    allPlans.map(plan => (
+                      <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden">
+                        <div className="flex flex-col lg:flex-row">
+                          <div className="lg:w-64 bg-slate-50 p-6 border-b lg:border-b-0 lg:border-r space-y-3">
+                            <div className="space-y-1">
+                              <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
+                              <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
+                            </div>
+                            <p className="text-[9px] font-bold text-muted-foreground uppercase">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
+                          </div>
+                          <div className="flex-1 p-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                              {plan.options.map((opt: any, idx: number) => (
+                                <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-3 flex flex-col items-center text-center">
+                                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{idx + 1}ª OPÇÃO</span>
+                                  <div className="flex flex-col">
+                                    <span className="text-lg font-black uppercase text-primary leading-none">{opt.month}</span>
+                                    <span className="text-xs font-bold text-slate-500">{opt.year}</span>
+                                  </div>
+                                  <Button 
+                                    size="sm" 
+                                    onClick={() => handleProcess(plan.id, 'approve', opt)}
+                                    className="w-full h-8 uppercase font-black text-[9px] bg-green-600 hover:bg-green-700"
+                                  >
+                                    <CheckCircle2 className="h-3 w-3 mr-1" /> HOMOLOGAR
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                            <div className="flex justify-end pt-4 border-t">
+                              <Button 
+                                variant="destructive" 
+                                size="sm" 
+                                onClick={() => handleProcess(plan.id, 'deny')}
+                                className="h-9 px-6 uppercase font-black text-[10px] gap-2 rounded-xl"
+                              >
+                                <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
+                              </Button>
+                            </div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="space-y-6">
+              <div className="flex items-center gap-3 border-b pb-4">
+                <History className="h-6 w-6 text-slate-400" />
+                <h3 className="text-xl font-black uppercase text-slate-700 tracking-tight">Meu Histórico de Solicitações</h3>
+              </div>
+              
+              {loadingMyPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
+                <div className="grid gap-4">
+                  {myPlans.length === 0 ? (
+                    <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">VOCÊ AINDA NÃO ENVIOU INTENÇÕES DE FÉRIAS.</div>
+                  ) : (
+                    myPlans.map(plan => (
+                      <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden group">
+                        <div className="flex flex-col sm:flex-row items-stretch">
+                          <div className={cn(
+                            "w-full sm:w-24 flex flex-col items-center justify-center p-4 text-white",
+                            plan.status === 'APROVADO' ? 'bg-green-600' : plan.status === 'NEGADO' ? 'bg-red-600' : 'bg-amber-500'
+                          )}>
+                            <span className="text-[10px] font-black uppercase text-center leading-tight mb-2">{plan.status}</span>
+                            {plan.status === 'APROVADO' ? <CheckCircle2 className="h-6 w-6" /> : plan.status === 'NEGADO' ? <XCircle className="h-6 w-6" /> : <Loader2 className="h-6 w-6 animate-spin" />}
+                          </div>
+                          <div className="flex-1 p-5 space-y-4">
+                            {plan.status === 'APROVADO' ? (
+                              <div className="flex items-center gap-4 bg-green-50 p-3 rounded-xl border border-green-100">
+                                <Star className="h-6 w-6 text-green-600 fill-green-600" />
+                                <div>
+                                  <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">PERÍODO HOMOLOGADO PELO RH:</p>
+                                  <p className="text-xl font-black uppercase text-green-900 leading-none mt-1">
+                                    {plan.selectedOption?.month} / {plan.selectedOption?.year}
+                                  </p>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                {plan.options.map((opt: any, i: number) => (
+                                  <div key={i} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
+                                    <span className="text-[10px] font-bold text-slate-500 uppercase">{i + 1}ª Opção</span>
+                                    <span className="text-[11px] font-black uppercase text-slate-800">{opt.month} / {opt.year}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            {plan.status === 'NEGADO' && (
+                              <div className="flex items-start gap-2 bg-red-50 p-3 rounded-lg border border-red-100 mt-2">
+                                <Lock className="h-4 w-4 text-red-600 shrink-0" />
+                                <p className="text-[9px] text-red-700 font-bold uppercase leading-relaxed">
+                                  ESTAS DATAS FORAM INDEFERIDAS E ESTÃO BLOQUEADAS PARA NOVAS SOLICITAÇÕES. SELECIONE OUTROS MESES NO PRÓXIMO PEDIDO.
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </TabsContent>
       </Tabs>
 
       <div className="text-center">
         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-          NRH - GMVV • SISTEMA DE GESTÃO • MÓDULO EM CONSTRUÇÃO
+          NRH - GMVV • SISTEMA DE GESTÃO OPERACIONAL • VERSÃO 1.0
         </p>
       </div>
     </div>
