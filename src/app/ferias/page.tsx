@@ -153,7 +153,8 @@ export default function FeriasPage() {
           employeeQra: plan.employeeQra,
           employeeEscala: plan.employeeEscala,
           employeeTurno: plan.employeeTurno,
-          processedByQra: plan.processedByQra
+          processedByQra: plan.processedByQra,
+          splitVacation: plan.splitVacation // Passa a informação de divisão para a impressão
         });
       });
     });
@@ -458,6 +459,7 @@ export default function FeriasPage() {
                 <tr>
                   <th style={{ width: '250px' }}>Servidor / QRA</th>
                   <th>Escala / Turno</th>
+                  <th style={{ width: '100px' }} className="center">Duração</th>
                   <th style={{ width: '120px' }} className="center">Auditoria</th>
                 </tr>
               </thead>
@@ -466,6 +468,7 @@ export default function FeriasPage() {
                   <tr key={mIdx}>
                     <td className="font-bold">{member.employeeName} ({member.employeeQra})</td>
                     <td>{member.employeeEscala} / {member.employeeTurno}</td>
+                    <td className="center font-bold">{member.splitVacation ? "15 DIAS" : "30 DIAS"}</td>
                     <td className="center font-mono" style={{ fontSize: '8pt' }}>{member.processedByQra}</td>
                   </tr>
                 ))}
@@ -480,45 +483,47 @@ export default function FeriasPage() {
       </div>
 
       {/* Modal de Justificativa de Indeferimento */}
-      <Dialog open={isDenyModalOpen} onOpenChange={setIsDenyModalOpen}>
-        <DialogContent className="rounded-2xl border-none shadow-2xl p-6 sm:p-8">
-          <DialogHeader>
-            <div className="bg-red-50 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
-              <XCircle className="h-6 w-6 text-red-600" />
+      <div className="print-hidden">
+        <Dialog open={isDenyModalOpen} onOpenChange={setIsDenyModalOpen}>
+          <DialogContent className="rounded-2xl border-none shadow-2xl p-6 sm:p-8">
+            <DialogHeader>
+              <div className="bg-red-50 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
+                <XCircle className="h-6 w-6 text-red-600" />
+              </div>
+              <DialogTitle className="uppercase text-xl font-black">Justificar Indeferimento</DialogTitle>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">Informe o motivo pelo qual as opções do servidor não podem ser atendidas.</p>
+            </DialogHeader>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase text-slate-700 tracking-tight">Parecer da Administração</Label>
+                <Textarea 
+                  placeholder="EX: EXCESSO DE SERVIDORES NO PERÍODO, NECESSIDADE DO SERVIÇO..." 
+                  className="min-h-[120px] uppercase text-xs p-4 bg-slate-50 border-slate-200 focus:bg-white transition-all resize-none" 
+                  value={denialReason}
+                  onChange={(e) => setDenialReason(e.target.value.toUpperCase())}
+                />
+              </div>
+              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex items-start gap-3">
+                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+                <p className="text-[9px] text-amber-800 font-bold uppercase leading-relaxed">
+                  Ao confirmar, estas datas ficarão bloqueadas para o servidor. Ele deverá realizar um novo pedido com períodos diferentes.
+                </p>
+              </div>
             </div>
-            <DialogTitle className="uppercase text-xl font-black">Justificar Indeferimento</DialogTitle>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">Informe o motivo pelo qual as opções do servidor não podem ser atendidas.</p>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="space-y-2">
-              <Label className="text-[10px] font-black uppercase text-slate-700 tracking-tight">Parecer da Administração</Label>
-              <Textarea 
-                placeholder="EX: EXCESSO DE SERVIDORES NO PERÍODO, NECESSIDADE DO SERVIÇO..." 
-                className="min-h-[120px] uppercase text-xs p-4 bg-slate-50 border-slate-200 focus:bg-white transition-all resize-none" 
-                value={denialReason}
-                onChange={(e) => setDenialReason(e.target.value.toUpperCase())}
-              />
-            </div>
-            <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex items-start gap-3">
-              <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-[9px] text-amber-800 font-bold uppercase leading-relaxed">
-                Ao confirmar, estas datas ficarão bloqueadas para o servidor. Ele deverá realizar um novo pedido com períodos diferentes.
-              </p>
-            </div>
-          </div>
-          <DialogFooter className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
-            <Button variant="ghost" onClick={() => setIsDenyModalOpen(false)} className="h-12 uppercase font-black text-xs tracking-widest">Cancelar</Button>
-            <Button 
-              onClick={handleConfirmDeny} 
-              disabled={!denialReason.trim() || isProcessingDeny}
-              className="h-12 uppercase font-black text-xs tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100"
-            >
-              {isProcessingDeny ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Confirmar Indeferimento
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+              <Button variant="ghost" onClick={() => setIsDenyModalOpen(false)} className="h-12 uppercase font-black text-xs tracking-widest">Cancelar</Button>
+              <Button 
+                onClick={handleConfirmDeny} 
+                disabled={!denialReason.trim() || isProcessingDeny}
+                className="h-12 uppercase font-black text-xs tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100"
+              >
+                {isProcessingDeny ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Confirmar Indeferimento
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <div className="flex flex-col gap-2 print-hidden">
         <div className="flex items-center gap-3">
