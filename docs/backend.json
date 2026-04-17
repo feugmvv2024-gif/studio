@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "Employee": {
@@ -61,6 +60,8 @@
         "employeeId": { "type": "string" },
         "employeeName": { "type": "string" },
         "employeeQra": { "type": "string" },
+        "employeeEscala": { "type": "string" },
+        "employeeTurno": { "type": "string" },
         "options": {
           "type": "array",
           "items": {

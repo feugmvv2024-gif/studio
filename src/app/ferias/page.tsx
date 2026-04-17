@@ -99,6 +99,8 @@ export default function FeriasPage() {
       employeeId: user.uid,
       employeeName: employeeData.name,
       employeeQra: employeeData.qra,
+      employeeEscala: employeeData.escala || "N/A",
+      employeeTurno: employeeData.turno || "N/A",
       options: [opt1, opt2, opt3],
       status: "PENDENTE",
       createdAt: serverTimestamp(),
@@ -306,6 +308,11 @@ export default function FeriasPage() {
                             <div className="space-y-1">
                               <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
                               <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
+                              <div className="flex flex-col mt-1">
+                                <span className="text-[8px] font-black uppercase text-slate-500 tracking-tighter leading-tight">
+                                  {plan.employeeEscala || "N/A"} / {plan.employeeTurno || "N/A"}
+                                </span>
+                              </div>
                             </div>
                             <p className="text-[9px] font-bold text-muted-foreground uppercase">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
                           </div>
