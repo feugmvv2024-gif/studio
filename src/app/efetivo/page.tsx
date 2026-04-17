@@ -120,7 +120,8 @@ export default function EfetivoPage() {
     escala: "",
     turno: "",
     role: "",
-    unit: ""
+    unit: "",
+    status: ""
   })
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
@@ -188,8 +189,9 @@ export default function EfetivoPage() {
       const matchesTurno = !filters.turno || emp.turno === filters.turno;
       const matchesRole = !filters.role || emp.role === filters.role;
       const matchesUnit = !filters.unit || emp.unit === filters.unit;
+      const matchesStatus = !filters.status || emp.status === filters.status;
 
-      return matchesSearch && matchesQra && matchesName && matchesEscala && matchesTurno && matchesRole && matchesUnit;
+      return matchesSearch && matchesQra && matchesName && matchesEscala && matchesTurno && matchesRole && matchesUnit && matchesStatus;
     });
   }, [employees, searchTerm, filters]);
 
@@ -357,8 +359,13 @@ export default function EfetivoPage() {
     setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   }
 
-  const clearFilters = () => setFilters({ qra: "", name: "", escala: "", turno: "", role: "", unit: "" });
+  const clearFilters = () => setFilters({ qra: "", name: "", escala: "", turno: "", role: "", unit: "", status: "" });
   const hasActiveFilters = Object.values(filters).some(v => v !== "");
+
+  const handleQuickFilter = (status: string) => {
+    setFilters(prev => ({ ...prev, status }));
+    toast({ title: "FILTRO ATIVADO", description: status ? `EXIBINDO APENAS: ${status}` : "EXIBINDO TODO O EFETIVO" });
+  };
 
   const renderFormFields = (isEdit: boolean) => (
     <div className="space-y-4 py-4 px-2">
@@ -460,7 +467,7 @@ export default function EfetivoPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">TURNO</Label>
+            <Label htmlFor="turno" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">TURNO</Label>
             <Select name="turno" defaultValue={isEdit ? selectedEmployee?.turno : undefined} required>
               <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50">
                 <SelectValue placeholder="SELECIONE..." />
@@ -471,7 +478,7 @@ export default function EfetivoPage() {
             </Select>
           </div>
           <div className="grid gap-1.5">
-            <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">CARGO</Label>
+            <Label htmlFor="role" className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">CARGO</Label>
             <Select name="role" defaultValue={isEdit ? selectedEmployee?.role : undefined} required>
               <SelectTrigger className="h-11 uppercase text-[11px] bg-background/50">
                 <SelectValue placeholder="SELECIONE..." />
@@ -545,7 +552,13 @@ export default function EfetivoPage() {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
-        <Card className="card-shadow border-primary/10 bg-primary/5 rounded-xl">
+        <Card 
+          className={cn(
+            "card-shadow border-primary/10 bg-primary/5 rounded-xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95",
+            filters.status === "" && "ring-2 ring-primary ring-offset-2"
+          )}
+          onClick={() => handleQuickFilter("")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase text-primary">EFETIVO TOTAL</CardTitle>
             <Users className="h-4 w-4 text-primary" />
@@ -555,7 +568,13 @@ export default function EfetivoPage() {
             <p className="text-[9px] text-muted-foreground uppercase">SERVIDORES CADASTRADOS</p>
           </CardContent>
         </Card>
-        <Card className="card-shadow border-green-500/10 bg-green-50/50 rounded-xl">
+        <Card 
+          className={cn(
+            "card-shadow border-green-500/10 bg-green-50/50 rounded-xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95",
+            filters.status === "ATIVO" && "ring-2 ring-green-600 ring-offset-2"
+          )}
+          onClick={() => handleQuickFilter("ATIVO")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase text-green-600">ATIVOS</CardTitle>
             <UserCheck className="h-4 w-4 text-green-600" />
@@ -565,7 +584,13 @@ export default function EfetivoPage() {
             <p className="text-[9px] text-muted-foreground uppercase">EM SERVIÇO</p>
           </CardContent>
         </Card>
-        <Card className="card-shadow border-orange-500/10 bg-orange-50/50 rounded-xl">
+        <Card 
+          className={cn(
+            "card-shadow border-orange-500/10 bg-orange-50/50 rounded-xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95",
+            filters.status === "PENDENTE" && "ring-2 ring-orange-600 ring-offset-2"
+          )}
+          onClick={() => handleQuickFilter("PENDENTE")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase text-orange-600">PENDENTES</CardTitle>
             <Clock className="h-4 w-4 text-orange-600" />
@@ -575,7 +600,13 @@ export default function EfetivoPage() {
             <p className="text-[9px] text-muted-foreground uppercase">AGUARDANDO ATIVAÇÃO</p>
           </CardContent>
         </Card>
-        <Card className="card-shadow border-blue-500/10 bg-blue-50/50 rounded-xl">
+        <Card 
+          className={cn(
+            "card-shadow border-blue-500/10 bg-blue-50/50 rounded-xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95",
+            filters.status === "FÉRIAS" && "ring-2 ring-blue-600 ring-offset-2"
+          )}
+          onClick={() => handleQuickFilter("FÉRIAS")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase text-blue-600">FÉRIAS</CardTitle>
             <Plane className="h-4 w-4 text-blue-600" />
@@ -585,7 +616,13 @@ export default function EfetivoPage() {
             <p className="text-[9px] text-muted-foreground uppercase">EM GOZO DE FÉRIAS</p>
           </CardContent>
         </Card>
-        <Card className="card-shadow border-purple-500/10 bg-purple-50/50 rounded-xl">
+        <Card 
+          className={cn(
+            "card-shadow border-purple-500/10 bg-purple-50/50 rounded-xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95",
+            filters.status === "LICENÇA" && "ring-2 ring-purple-600 ring-offset-2"
+          )}
+          onClick={() => handleQuickFilter("LICENÇA")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase text-purple-600">LICENÇA</CardTitle>
             <FileText className="h-4 w-4 text-purple-600" />
@@ -595,7 +632,13 @@ export default function EfetivoPage() {
             <p className="text-[9px] text-muted-foreground uppercase">LICENÇA ESPECIAL/OUTRAS</p>
           </CardContent>
         </Card>
-        <Card className="card-shadow border-red-500/10 bg-red-50/50 rounded-xl">
+        <Card 
+          className={cn(
+            "card-shadow border-red-500/10 bg-red-50/50 rounded-xl cursor-pointer transition-all hover:scale-[1.02] active:scale-95",
+            filters.status === "ATESTADO" && "ring-2 ring-red-600 ring-offset-2"
+          )}
+          onClick={() => handleQuickFilter("ATESTADO")}
+        >
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase text-red-600">ATESTADO</CardTitle>
             <Stethoscope className="h-4 w-4 text-red-600" />
@@ -692,6 +735,22 @@ export default function EfetivoPage() {
                   <div className="grid gap-1.5">
                     <Label className="text-[9px] uppercase font-bold text-muted-foreground">NOME</Label>
                     <Input className="h-8 text-[10px] uppercase bg-muted/30 border-none" value={filters.name} onChange={(e) => setFilters({...filters, name: e.target.value})} />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label className="text-[9px] uppercase font-bold text-muted-foreground">STATUS</Label>
+                    <Select value={filters.status} onValueChange={(v) => setFilters({...filters, status: v === "ALL" ? "" : v})}>
+                      <SelectTrigger className="h-8 text-[10px] uppercase bg-muted/30 border-none">
+                        <SelectValue placeholder="TODOS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL" className="uppercase text-[10px]">TODOS</SelectItem>
+                        <SelectItem value="ATIVO" className="uppercase text-[10px]">ATIVO</SelectItem>
+                        <SelectItem value="PENDENTE" className="uppercase text-[10px]">PENDENTE</SelectItem>
+                        <SelectItem value="FÉRIAS" className="uppercase text-[10px]">FÉRIAS</SelectItem>
+                        <SelectItem value="LICENÇA" className="uppercase text-[10px]">LICENÇA</SelectItem>
+                        <SelectItem value="ATESTADO" className="uppercase text-[10px]">ATESTADO</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="grid gap-1.5">
                     <Label className="text-[9px] uppercase font-bold text-muted-foreground">ESCALA</Label>
@@ -810,7 +869,7 @@ export default function EfetivoPage() {
                 </Table>
               </div>
               
-              {stats.total > employees.length && (
+              {allEmployees && allEmployees.length > employees.length && (
                 <div className="p-4 border-t flex justify-center bg-muted/5">
                   <Button 
                     variant="outline" 
