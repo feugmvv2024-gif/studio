@@ -21,7 +21,8 @@ import {
   Scissors,
   User,
   Search,
-  LayoutList
+  LayoutList,
+  Printer
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -137,6 +138,43 @@ export default function FeriasPage() {
       p.employeeQra?.toLowerCase().includes(term)
     );
   }, [approvedPlans, searchTermApproved]);
+
+  // Lógica de agrupamento por mês para a impressão
+  const groupedPrintData = React.useMemo(() => {
+    if (!approvedPlans) return [];
+    
+    const entries: any[] = [];
+    approvedPlans.forEach(plan => {
+      (plan.selectedOptions || []).forEach(opt => {
+        entries.push({
+          month: opt.month,
+          year: opt.year,
+          employeeName: plan.employeeName,
+          employeeQra: plan.employeeQra,
+          employeeEscala: plan.employeeEscala,
+          employeeTurno: plan.employeeTurno,
+          processedByQra: plan.processedByQra
+        });
+      });
+    });
+
+    const groups: Record<string, any[]> = {};
+    entries.forEach(entry => {
+      const key = `${entry.month} / ${entry.year}`;
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(entry);
+    });
+
+    return Object.keys(groups).sort((a, b) => {
+      const [mA, yA] = a.split(' / ');
+      const [mB, yB] = b.split(' / ');
+      if (yA !== yB) return yA.localeCompare(yB);
+      return MONTHS.indexOf(mA) - MONTHS.indexOf(mB);
+    }).map(key => ({
+      title: key,
+      members: groups[key].sort((a, b) => a.employeeName.localeCompare(b.employeeName))
+    }));
+  }, [approvedPlans]);
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -258,6 +296,10 @@ export default function FeriasPage() {
     }
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   const isFormValid = opt1.year && opt1.month && opt2.year && opt2.month && opt3.year && opt3.month;
 
   const renderOptionRow = (
@@ -326,7 +368,117 @@ export default function FeriasPage() {
   };
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+    <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 print:p-0">
+      {/* Configurações de Impressão */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { size: A4 portrait; margin: 1.5cm; }
+          
+          html, body, main, [data-sidebar="inset"], .flex-1 { 
+            overflow: visible !important; 
+            height: auto !important; 
+            display: block !important;
+            background: white !important;
+          }
+
+          .print-hidden, header, nav, footer, aside, .tabs-list {
+            display: none !important;
+          }
+
+          .printable-content {
+            display: block !important;
+            width: 100% !important;
+            color: black !important;
+          }
+
+          .report-header {
+            margin-bottom: 2rem;
+            border-bottom: 2px solid black;
+            padding-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+          }
+
+          .month-section {
+            margin-bottom: 2.5rem;
+            break-inside: avoid-page;
+          }
+
+          .month-title {
+            background-color: #f0f0f0 !important;
+            -webkit-print-color-adjust: exact;
+            padding: 8px 12px;
+            font-size: 14pt;
+            font-weight: 900;
+            text-transform: uppercase;
+            border-left: 6px solid black;
+            margin-bottom: 1rem;
+          }
+
+          .report-table {
+            width: 100%;
+            border-collapse: collapse;
+          }
+
+          .report-table th, .report-table td {
+            border: 1px solid #000;
+            padding: 8px;
+            font-size: 10pt;
+            text-align: left;
+            text-transform: uppercase;
+          }
+
+          .report-table th {
+            font-weight: 900;
+            background-color: #fafafa !important;
+          }
+
+          .report-table td.center { text-align: center; }
+        }
+      ` }} />
+
+      {/* ÁREA DE IMPRESSÃO EXCLUSIVA */}
+      <div className="hidden printable-content">
+        <div className="report-header">
+          <div>
+            <h1 className="text-xl font-black uppercase">Cronograma Geral de Férias</h1>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Núcleo de RH - GMVV</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[8px] font-mono font-bold uppercase">Gerado em: {new Date().toLocaleString('pt-BR')}</p>
+          </div>
+        </div>
+
+        {groupedPrintData.map((group, idx) => (
+          <div key={idx} className="month-section">
+            <div className="month-title">{group.title}</div>
+            <table className="report-table">
+              <thead>
+                <tr>
+                  <th style={{ width: '250px' }}>Servidor / QRA</th>
+                  <th>Escala / Turno</th>
+                  <th style={{ width: '120px' }} className="center">Auditoria</th>
+                </tr>
+              </thead>
+              <tbody>
+                {group.members.map((member, mIdx) => (
+                  <tr key={mIdx}>
+                    <td className="font-bold">{member.employeeName} ({member.employeeQra})</td>
+                    <td>{member.employeeEscala} / {member.employeeTurno}</td>
+                    <td className="center font-mono" style={{ fontSize: '8pt' }}>{member.processedByQra}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ))}
+
+        <div className="mt-12 pt-4 border-t border-slate-200 text-center">
+          <p className="text-[8px] font-bold uppercase text-muted-foreground">Sistema de Gestão Operacional GMVV - Módulo de Férias</p>
+        </div>
+      </div>
+
       {/* Modal de Justificativa de Indeferimento */}
       <Dialog open={isDenyModalOpen} onOpenChange={setIsDenyModalOpen}>
         <DialogContent className="rounded-2xl border-none shadow-2xl p-6 sm:p-8">
@@ -368,7 +520,7 @@ export default function FeriasPage() {
         </DialogContent>
       </Dialog>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2 print-hidden">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
             <Plane className="h-6 w-6 text-blue-600" />
@@ -380,7 +532,7 @@ export default function FeriasPage() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full print-hidden">
         <TabsList className={cn(
           "grid w-full bg-muted/50 p-1 rounded-xl h-12",
           isManager ? "grid-cols-4 lg:w-[850px]" : "grid-cols-2 lg:w-[400px]"
@@ -734,14 +886,24 @@ export default function FeriasPage() {
                     <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">Férias Homologadas</CardTitle>
                     <CardDescription className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Cronograma consolidado de afastamentos aprovados pela unidade.</CardDescription>
                   </div>
-                  <div className="relative w-full sm:w-72">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                      placeholder="BUSCAR SERVIDOR..." 
-                      className="pl-9 h-10 uppercase text-[10px] font-bold bg-white" 
-                      value={searchTermApproved}
-                      onChange={(e) => setSearchTermApproved(e.target.value.toUpperCase())}
-                    />
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                    <div className="relative w-full sm:w-64">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                        placeholder="BUSCAR SERVIDOR..." 
+                        className="pl-9 h-10 uppercase text-[10px] font-bold bg-white" 
+                        value={searchTermApproved}
+                        onChange={(e) => setSearchTermApproved(e.target.value.toUpperCase())}
+                      />
+                    </div>
+                    <Button 
+                      variant="outline" 
+                      onClick={handlePrint}
+                      className="h-10 uppercase text-[10px] font-black gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
+                    >
+                      <Printer className="h-4 w-4" />
+                      Imprimir Cronograma
+                    </Button>
                   </div>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -822,7 +984,7 @@ export default function FeriasPage() {
         )}
       </Tabs>
 
-      <div className="text-center">
+      <div className="text-center print:hidden">
         <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
           NRH - GMVV • SISTEMA DE GESTÃO OPERACIONAL • VERSÃO 1.0
         </p>
