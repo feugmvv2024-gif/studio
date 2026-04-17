@@ -76,6 +76,9 @@ export default function FeriasPage() {
   const [denialReason, setDenialReason] = React.useState("");
   const [isProcessingDeny, setIsProcessingDeny] = React.useState(false);
 
+  // Estado para Seleção Múltipla de Homologação (RH)
+  const [selectionMap, setSelectionMap] = React.useState<Record<string, any[]>>({});
+
   // Controle de Acesso de Gestão
   const isManager = React.useMemo(() => {
     if (!employeeData) return false;
@@ -147,7 +150,7 @@ export default function FeriasPage() {
     }
   };
 
-  const handleProcess = async (planId: string, action: 'approve' | 'deny', selectedOpt?: any, reason?: string) => {
+  const handleProcess = async (planId: string, action: 'approve' | 'deny', selectedOpts?: any[], reason?: string) => {
     if (!firestore) return;
     
     try {
@@ -156,8 +159,8 @@ export default function FeriasPage() {
         updatedAt: serverTimestamp()
       };
 
-      if (action === 'approve') {
-        updates.selectedOption = selectedOpt;
+      if (action === 'approve' && selectedOpts) {
+        updates.selectedOptions = selectedOpts;
       }
 
       if (reason) {
@@ -166,6 +169,13 @@ export default function FeriasPage() {
 
       await updateDoc(doc(firestore, 'vacationPlans', planId), updates);
       toast({ title: action === 'approve' ? "FÉRIAS HOMOLOGADAS!" : "PEDIDO INDEFERIDO" });
+      
+      // Limpa seleções locais
+      setSelectionMap(prev => {
+        const next = { ...prev };
+        delete next[planId];
+        return next;
+      });
     } catch (error) {
       toast({ variant: "destructive", title: "ERRO NO PROCESSAMENTO" });
     }
@@ -178,7 +188,7 @@ export default function FeriasPage() {
     }
 
     setIsProcessingDeny(true);
-    await handleProcess(planToDenyId, 'deny', null, denialReason);
+    await handleProcess(planToDenyId, 'deny', undefined, denialReason);
     setIsProcessingDeny(false);
     setIsDenyModalOpen(false);
     setPlanToDenyId(null);
@@ -196,6 +206,28 @@ export default function FeriasPage() {
       if (idx + 1 === currentPriority) return false;
       return sel.year === year && sel.month === month;
     });
+  };
+
+  // Funções de Seleção Múltipla para Gestão
+  const toggleOptionSelection = (planId: string, opt: any, isSplit: boolean) => {
+    const current = selectionMap[planId] || [];
+    const isSelected = current.some(s => s.year === opt.year && s.month === opt.month);
+    
+    if (isSelected) {
+      setSelectionMap({ ...selectionMap, [planId]: current.filter(s => !(s.year === opt.year && s.month === opt.month)) });
+    } else {
+      if (!isSplit) {
+        // Se não for dividir, substitui a seleção atual por esta nova
+        setSelectionMap({ ...selectionMap, [planId]: [opt] });
+      } else {
+        // Se for dividir, permite até 2
+        if (current.length < 2) {
+          setSelectionMap({ ...selectionMap, [planId]: [...current, opt] });
+        } else {
+          toast({ variant: "default", title: "LIMITE ATINGIDO", description: "O servidor solicitou dividir em apenas 2 períodos." });
+        }
+      }
+    }
   };
 
   const isFormValid = opt1.year && opt1.month && opt2.year && opt2.month && opt3.year && opt3.month;
@@ -441,70 +473,110 @@ export default function FeriasPage() {
                   {allPlans.length === 0 ? (
                     <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">NENHUMA SOLICITAÇÃO PENDENTE.</div>
                   ) : (
-                    allPlans.map(plan => (
-                      <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden">
-                        <div className="flex flex-col lg:flex-row">
-                          <div className="lg:w-64 bg-slate-50 p-6 border-b lg:border-b-0 lg:border-r space-y-3">
-                            <div className="space-y-1">
-                              <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
-                              <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
-                              <div className="flex flex-col mt-1">
-                                <span className="text-[9px] font-black uppercase text-blue-600 tracking-tighter leading-tight">
-                                  {plan.employeeEscala || "N/A"} / {plan.employeeTurno || "N/A"}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="space-y-1.5 pt-2 border-t">
-                              <div className="flex items-center gap-2">
-                                <Coins className="h-3 w-3 text-amber-600" />
-                                <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
-                                <Badge variant={plan.advance13th ? "default" : "outline"} className={cn("text-[7px] font-black", plan.advance13th ? "bg-amber-500" : "")}>
-                                  {plan.advance13th ? "SIM" : "NÃO"}
-                                </Badge>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Scissors className="h-3 w-3 text-blue-600" />
-                                <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
-                                <Badge variant={plan.splitVacation ? "default" : "outline"} className={cn("text-[7px] font-black", plan.splitVacation ? "bg-blue-600" : "")}>
-                                  {plan.splitVacation ? "SIM" : "NÃO"}
-                                </Badge>
-                              </div>
-                            </div>
-                            <p className="text-[9px] font-bold text-muted-foreground uppercase pt-2">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
-                          </div>
-                          <div className="flex-1 p-6 space-y-6">
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                              {plan.options.map((opt: any, idx: number) => (
-                                <div key={idx} className="bg-white p-4 rounded-xl border border-slate-100 shadow-sm space-y-3 flex flex-col items-center text-center">
-                                  <span className="text-[9px] font-black text-muted-foreground uppercase tracking-widest">{idx + 1}ª OPÇÃO</span>
-                                  <div className="flex flex-col">
-                                    <span className="text-lg font-black uppercase text-primary leading-none">{opt.month}</span>
-                                    <span className="text-xs font-bold text-slate-500">{opt.year}</span>
-                                  </div>
-                                  <Button 
-                                    size="sm" 
-                                    onClick={() => handleProcess(plan.id, 'approve', opt)}
-                                    className="w-full h-8 uppercase font-black text-[9px] bg-green-600 hover:bg-green-700"
-                                  >
-                                    <CheckCircle2 className="h-3 w-3 mr-1" /> HOMOLOGAR
-                                  </Button>
+                    allPlans.map(plan => {
+                      const currentSelections = selectionMap[plan.id] || [];
+                      const requiredCount = plan.splitVacation ? 2 : 1;
+                      const isComplete = currentSelections.length === requiredCount;
+
+                      return (
+                        <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden">
+                          <div className="flex flex-col lg:flex-row">
+                            <div className="lg:w-64 bg-slate-50 p-6 border-b lg:border-b-0 lg:border-r space-y-3">
+                              <div className="space-y-1">
+                                <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
+                                <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
+                                <div className="flex flex-col mt-1">
+                                  <span className="text-[9px] font-black uppercase text-blue-600 tracking-tighter leading-tight">
+                                    {plan.employeeEscala || "N/A"} / {plan.employeeTurno || "N/A"}
+                                  </span>
                                 </div>
-                              ))}
+                              </div>
+                              <div className="space-y-1.5 pt-2 border-t">
+                                <div className="flex items-center gap-2">
+                                  <Coins className="h-3 w-3 text-amber-600" />
+                                  <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
+                                  <Badge variant={plan.advance13th ? "default" : "outline"} className={cn("text-[7px] font-black", plan.advance13th ? "bg-amber-500" : "")}>
+                                    {plan.advance13th ? "SIM" : "NÃO"}
+                                  </Badge>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <Scissors className="h-3 w-3 text-blue-600" />
+                                  <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
+                                  <Badge variant={plan.splitVacation ? "default" : "outline"} className={cn("text-[7px] font-black", plan.splitVacation ? "bg-blue-600" : "")}>
+                                    {plan.splitVacation ? "SIM" : "NÃO"}
+                                  </Badge>
+                                </div>
+                              </div>
+                              {plan.splitVacation && (
+                                <div className="pt-2">
+                                  <Badge variant="secondary" className="w-full justify-center bg-blue-100 text-blue-700 border-none font-black text-[9px] py-1">
+                                    SELECIONADO: {currentSelections.length} DE 2
+                                  </Badge>
+                                </div>
+                              )}
+                              <p className="text-[9px] font-bold text-muted-foreground uppercase pt-2">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
                             </div>
-                            <div className="flex justify-end pt-4 border-t">
-                              <Button 
-                                variant="destructive" 
-                                size="sm" 
-                                onClick={() => { setPlanToDenyId(plan.id); setIsDenyModalOpen(true); }}
-                                className="h-9 px-6 uppercase font-black text-[10px] gap-2 rounded-xl"
-                              >
-                                <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
-                              </Button>
+                            <div className="flex-1 p-6 space-y-6">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                {plan.options.map((opt: any, idx: number) => {
+                                  const isSelected = currentSelections.some(s => s.year === opt.year && s.month === opt.month);
+                                  
+                                  return (
+                                    <div 
+                                      key={idx} 
+                                      onClick={() => toggleOptionSelection(plan.id, opt, plan.splitVacation)}
+                                      className={cn(
+                                        "p-4 rounded-xl border transition-all cursor-pointer space-y-3 flex flex-col items-center text-center group",
+                                        isSelected ? "bg-blue-600 border-blue-600 shadow-lg shadow-blue-200" : "bg-white border-slate-100 hover:border-blue-300 shadow-sm"
+                                      )}
+                                    >
+                                      <span className={cn("text-[9px] font-black uppercase tracking-widest", isSelected ? "text-white/80" : "text-muted-foreground")}>
+                                        {idx + 1}ª OPÇÃO
+                                      </span>
+                                      <div className="flex flex-col">
+                                        <span className={cn("text-lg font-black uppercase leading-none", isSelected ? "text-white" : "text-primary")}>
+                                          {opt.month}
+                                        </span>
+                                        <span className={cn("text-xs font-bold", isSelected ? "text-white/70" : "text-slate-500")}>
+                                          {opt.year}
+                                        </span>
+                                      </div>
+                                      <div className={cn(
+                                        "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
+                                        isSelected ? "bg-white border-white text-blue-600" : "bg-slate-50 border-slate-200 text-transparent group-hover:border-blue-200"
+                                      )}>
+                                        <CheckCircle2 className="h-4 w-4" />
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="flex flex-col sm:flex-row justify-between items-center pt-4 border-t gap-4">
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm" 
+                                  onClick={() => { setPlanToDenyId(plan.id); setIsDenyModalOpen(true); }}
+                                  className="w-full sm:w-auto h-9 px-6 uppercase font-black text-[10px] gap-2 rounded-xl"
+                                >
+                                  <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
+                                </Button>
+                                <Button 
+                                  disabled={!isComplete}
+                                  onClick={() => handleProcess(plan.id, 'approve', currentSelections)}
+                                  className={cn(
+                                    "w-full sm:w-auto h-11 px-10 uppercase font-black text-[11px] gap-2 rounded-xl transition-all shadow-xl",
+                                    isComplete ? "bg-green-600 hover:bg-green-700 shadow-green-100" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                                  )}
+                                >
+                                  <CheckCircle2 className="h-5 w-5" /> 
+                                  {plan.splitVacation ? "Homologar 2 Períodos" : "Homologar Escolha"}
+                                </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </Card>
-                    ))
+                        </Card>
+                      );
+                    })
                   )}
                 </div>
               )}
@@ -533,13 +605,19 @@ export default function FeriasPage() {
                           </div>
                           <div className="flex-1 p-5 space-y-4">
                             {plan.status === 'APROVADO' ? (
-                              <div className="flex items-center gap-4 bg-green-50 p-3 rounded-xl border border-green-100">
-                                <Star className="h-6 w-6 text-green-600 fill-green-600" />
-                                <div>
-                                  <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">PERÍODO HOMOLOGADO PELO RH:</p>
-                                  <p className="text-xl font-black uppercase text-green-900 leading-none mt-1">
-                                    {plan.selectedOption?.month} / {plan.selectedOption?.year}
-                                  </p>
+                              <div className="space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <Star className="h-5 w-5 text-green-600 fill-green-600" />
+                                  <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">PERÍODO(S) HOMOLOGADO(S) PELO RH:</p>
+                                </div>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                  {(plan.selectedOptions || [plan.selectedOption]).filter(Boolean).map((opt: any, i: number) => (
+                                    <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
+                                      <p className="text-xl font-black uppercase text-green-900 leading-none">
+                                        {opt.month} / {opt.year}
+                                      </p>
+                                    </div>
+                                  ))}
                                 </div>
                               </div>
                             ) : (

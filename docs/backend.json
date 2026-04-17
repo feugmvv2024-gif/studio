@@ -76,11 +76,14 @@
           }
         },
         "status": { "type": "string", "enum": ["PENDENTE", "APROVADO", "NEGADO"] },
-        "selectedOption": {
-          "type": "object",
-          "properties": {
-            "year": { "type": "string" },
-            "month": { "type": "string" }
+        "selectedOptions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "year": { "type": "string" },
+              "month": { "type": "string" }
+            }
           }
         },
         "adminResponse": { "type": "string" },
