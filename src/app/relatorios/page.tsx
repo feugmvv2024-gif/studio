@@ -186,7 +186,11 @@ export default function RelatoriosPage() {
   const [isDraftDialogOpen, setIsDraftDialogOpen] = React.useState(false)
   const [tempDraft, setTempDraft] = React.useState<any>(null)
 
-  // Estado para exclusão
+  // Estados para exclusão segura no formulário
+  const [isFormItemDeleteDialogOpen, setIsFormItemDeleteDialogOpen] = React.useState(false)
+  const [formItemToDelete, setFormItemToDelete] = React.useState<{ type: string; label: string; payload: any } | null>(null)
+
+  // Estado para exclusão de relatório arquivado
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = React.useState(false)
   const [reportToDelete, setReportToDelete] = React.useState<any>(null)
 
@@ -339,6 +343,46 @@ export default function RelatoriosPage() {
     }
   };
 
+  // Funções de confirmação e execução de exclusão no formulário
+  const confirmFormItemDelete = (type: string, label: string, payload: any) => {
+    setFormItemToDelete({ type, label, payload });
+    setIsFormItemDeleteDialogOpen(true);
+  };
+
+  const executeFormItemDelete = () => {
+    if (!formItemToDelete) return;
+    const { type, payload } = formItemToDelete;
+
+    if (type === 'subinspetor') {
+      const newRows = subinspetorRows.filter((_, i) => i !== payload.index);
+      setSubinspetorRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
+    } else if (type === 'falta') {
+      const newRows = faltaRows.filter((_, i) => i !== payload.index);
+      setFaltaRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
+    } else if (type === 'especial') {
+      const newRows = especialRows.filter((_, i) => i !== payload.index);
+      setEspecialRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
+    } else if (type === 'overtime') {
+      const newRows = overtimeRows.filter((_, i) => i !== payload.index);
+      setOvertimeRows(newRows.length ? newRows : [{ id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
+    } else if (type === 'sector') {
+      const newBlocks = sectorBlocks.filter((_, i) => i !== payload.index);
+      setSectorBlocks(newBlocks.length ? newBlocks : []);
+    } else if (type === 'post') {
+      const newBlocks = [...sectorBlocks];
+      newBlocks[payload.sectorIndex].posts = newBlocks[payload.sectorIndex].posts.filter((_: any, i: number) => i !== payload.postIndex);
+      setSectorBlocks(newBlocks);
+    } else if (type === 'member') {
+      const newBlocks = [...sectorBlocks];
+      newBlocks[payload.sectorIndex].posts[payload.postIndex].members = newBlocks[payload.sectorIndex].posts[payload.postIndex].members.filter((_: any, i: number) => i !== payload.memberIndex);
+      setSectorBlocks(newBlocks);
+    }
+
+    setIsFormItemDeleteDialogOpen(false);
+    setFormItemToDelete(null);
+    toast({ title: "REMOVIDO", description: "O item foi removido do relatório." });
+  };
+
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const shiftPeriodsRef = React.useMemo(() => firestore ? query(collection(firestore, 'shiftPeriods'), orderBy('escalaName', 'asc')) : null, [firestore]);
   const allLaunchesRef = React.useMemo(() => {
@@ -352,11 +396,9 @@ export default function RelatoriosPage() {
     if (!firestore || !currentUser || !employeeData) return null;
     
     const baseQuery = collection(firestore, 'dailyReports');
-    // Se for RH, Inspetor Geral ou Comandante, vê todos
     if (canManageAudit) {
       return query(baseQuery, where('status', '==', 'ARQUIVADO'), orderBy('createdAt', 'desc'));
     } else {
-      // Caso contrário, vê apenas os próprios
       return query(
         baseQuery, 
         where('status', '==', 'ARQUIVADO'), 
@@ -395,7 +437,6 @@ export default function RelatoriosPage() {
       .sort((a, b) => (a.escalaName || "").localeCompare(b.escalaName || ""));
   }, [shiftPeriods]);
 
-  // Função auxiliar para impressão: recupera escala e turno do servidor
   const getEmployeeShiftInfo = (id: string) => {
     const emp = allEmployees?.find(e => e.id === id);
     if (!emp) return "";
@@ -618,37 +659,21 @@ export default function RelatoriosPage() {
   const afastadosFilled = absentTodayList.length > 0;
 
   const addSubinspetorRow = () => setSubinspetorRows([...subinspetorRows, { id: generateId(), term: "", info: "", show: false, empId: "" }]);
-  const removeSubinspetorRow = (index: number) => {
-    const newRows = subinspetorRows.filter((_, i) => i !== index);
-    setSubinspetorRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
-  };
   const updateSubinspetorRow = (index: number, updates: any) => {
     setSubinspetorRows(prev => { const newRows = [...prev]; newRows[index] = { ...newRows[index], ...updates }; return newRows; });
   };
 
   const addFaltaRow = () => setFaltaRows([...faltaRows, { id: generateId(), term: "", info: "", show: false, empId: "" }]);
-  const removeFaltaRow = (index: number) => {
-    const newRows = faltaRows.filter((_, i) => i !== index);
-    setFaltaRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, empId: "" }]);
-  };
   const updateFaltaRow = (index: number, updates: any) => {
     setFaltaRows(prev => { const newRows = [...prev]; newRows[index] = { ...newRows[index], ...updates }; return newRows; });
   };
 
   const addEspecialRow = () => setEspecialRows([...especialRows, { id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
-  const removeEspecialRow = (index: number) => {
-    const newRows = especialRows.filter((_, i) => i !== index);
-    setEspecialRows(newRows.length ? newRows : [{ id: generateId(), term: "", info: "", show: false, periodId: "", empId: "" }]);
-  };
   const updateEspecialRow = (index: number, updates: any) => {
     setEspecialRows(prev => { const newRows = [...prev]; newRows[index] = { ...newRows[index], ...updates }; return newRows; });
   };
 
   const addOvertimeRow = () => setOvertimeRows([...overtimeRows, { id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
-  const removeOvertimeRow = (index: number) => {
-    const newRows = overtimeRows.filter((_, i) => i !== index);
-    setOvertimeRows(newRows.length ? newRows : [{ id: generateId(), term: "", empId: "", show: false, shiftEnd: "", overtimeEnd: "", total: "" }]);
-  };
   const updateOvertimeRow = (index: number, updates: any) => {
     setOvertimeRows(prev => {
       const newRows = [...prev];
@@ -662,17 +687,14 @@ export default function RelatoriosPage() {
   };
 
   const addSectorBlock = () => setSectorBlocks([...sectorBlocks, { id: generateId(), sectorType: "", chiefData: { id: "", term: "", info: "", show: false }, posts: [{ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }] }]);
-  const removeSectorBlock = (index: number) => { const newBlocks = sectorBlocks.filter((_, i) => i !== index); setSectorBlocks(newBlocks.length ? newBlocks : []); };
   const updateSectorBlock = (index: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; newBlocks[index] = { ...newBlocks[index], ...updates }; return newBlocks; }); };
   const updateSectorChiefData = (index: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; if (!newBlocks[index]) return prev; newBlocks[index] = { ...newBlocks[index], chiefData: { ...newBlocks[index].chiefData, ...updates } }; return newBlocks; }); };
   const addPostToSector = (sectorIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts.push({ id: generateId(), type: "", vtrNumber: "", members: [{ id: generateId(), empId: "", term: "", show: false }] }); setSectorBlocks(newBlocks); };
-  const removePostFromSector = (sectorIndex: number, postIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts = newBlocks[sectorIndex].posts.filter((_: any, i: number) => i !== postIndex); setSectorBlocks(newBlocks); };
   const addMemberToPost = (sectorIndex: number, postIndex: number) => {
     const newBlocks = [...sectorBlocks]; const post = newBlocks[sectorIndex].posts[postIndex]; const isVTR = post.type === "VTR"; const limit = isVTR ? 4 : 15;
     if (post.members.length >= limit) { toast({ variant: "destructive", title: "LIMITE ATINGIDO", description: `MÁXIMO DE ${limit} INTEGRANTES.` }); return; }
     post.members.push({ id: generateId(), empId: "", term: "", show: false }); setSectorBlocks(newBlocks);
   };
-  const removeMemberFromPost = (sectorIndex: number, postIndex: number, memberIndex: number) => { const newBlocks = [...sectorBlocks]; newBlocks[sectorIndex].posts[postIndex].members = newBlocks[sectorIndex].posts[postIndex].members.filter((_: any, i: number) => i !== memberIndex); setSectorBlocks(newBlocks); };
   const updateMemberInPost = (sectorIndex: number, postIndex: number, memberIndex: number, updates: any) => { setSectorBlocks(prev => { const newBlocks = [...prev]; const sector = { ...newBlocks[sectorIndex] }; const posts = [...sector.posts]; const post = { ...posts[postIndex] }; const members = [...post.members]; members[memberIndex] = { ...members[memberIndex], ...updates }; post.members = members; posts[postIndex] = post; sector.posts = posts; newBlocks[sectorIndex] = sector; return newBlocks; }); };
 
   const renderAutocomplete = (label: string, term: string, setTerm: (v: string) => void, setId: (v: string) => void, id: string, show: boolean, setShow: (v: boolean) => void, setInfo: (v: string) => void, sourceList: any[], excludeIds: string[] = [], isOptional?: boolean, displayType: 'full' | 'qra' = 'full') => {
@@ -1209,6 +1231,7 @@ export default function RelatoriosPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* AlertDialog para exclusão de relatório arquivado */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
@@ -1219,6 +1242,23 @@ export default function RelatoriosPage() {
           <AlertDialogFooter className="mt-6 gap-2">
             <AlertDialogCancel onClick={() => { setIsDeleteDialogOpen(false); setReportToDelete(null); }} className="h-12 uppercase font-black text-xs tracking-widest">CANCELAR</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteReport} className="h-12 uppercase font-black text-xs tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100">EXCLUIR PERMANENTEMENTE</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AlertDialog centralizado para exclusão de itens do formulário */}
+      <AlertDialog open={isFormItemDeleteDialogOpen} onOpenChange={setIsFormItemDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center mb-4"><Trash2 className="h-6 w-6 text-red-600" /></div>
+            <AlertDialogTitle className="uppercase text-xl font-black">Confirmar Remoção</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-[10px] font-bold text-muted-foreground leading-relaxed">
+              VOCÊ TEM CERTEZA QUE DESEJA REMOVER {formItemToDelete?.label}? OS DADOS INFORMADOS SERÃO PERDIDOS.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-2">
+            <AlertDialogCancel onClick={() => { setIsFormItemDeleteDialogOpen(false); setFormItemToDelete(null); }} className="h-12 uppercase font-black text-xs tracking-widest">CANCELAR</AlertDialogCancel>
+            <AlertDialogAction onClick={executeFormItemDelete} className="h-12 uppercase font-black text-xs tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100">REMOVER ITEM</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
@@ -1345,7 +1385,7 @@ export default function RelatoriosPage() {
                       <div key={row.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
                         {renderAutocomplete("Subinspetor", row.term, (v) => updateSubinspetorRow(index, { term: v }), (v) => updateSubinspetorRow(index, { empId: v }), row.empId, row.show, (v) => updateSubinspetorRow(index, { show: v }), (v) => updateSubinspetorRow(index, { info: v }), chefiaList, [...trulyAbsentIds, ...subTeamIds.filter(id => id !== row.empId)])}
                         <div className="w-full space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Escala e Turno</Label><Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" /></div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeSubinspetorRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => confirmFormItemDelete('subinspetor', 'ESTE SUBINSPETOR', { index })} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
                   </CollapsibleContent>
@@ -1435,7 +1475,7 @@ export default function RelatoriosPage() {
                       <div key={row.id} className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-4 items-end animate-in fade-in slide-in-from-top-2 duration-300">
                         {renderAutocomplete("Servidor (Falta)", row.term, (v) => updateFaltaRow(index, { term: v }), (v) => updateFaltaRow(index, { empId: v }), row.empId, row.show, (v) => updateFaltaRow(index, { show: v }), (v) => updateFaltaRow(index, { info: v }), allEmployees || [], [...trulyAbsentIds.filter(id => id !== row.empId), ...subTeamIds, ...teamMemberIds])}
                         <div className="w-full space-y-1.5"><Label className="text-[10px] font-bold uppercase text-muted-foreground">Escala e Turno</Label><Input value={row.info} readOnly placeholder="--" className="h-11 uppercase font-bold text-xs bg-muted/30 border-dashed cursor-not-allowed text-primary" /></div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeFaltaRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => confirmFormItemDelete('falta', 'ESTE REGISTRO DE FALTA', { index })} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
                   </CollapsibleContent>
@@ -1462,7 +1502,7 @@ export default function RelatoriosPage() {
                             <SelectContent>{specialPeriodsList.map((p: any) => (<SelectItem key={p.id} value={p.id} className="uppercase text-[9px] font-bold">{p.escalaName} ({p.startTime} AS {p.endTime})</SelectItem>))}</SelectContent>
                           </Select>
                         </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeEspecialRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => confirmFormItemDelete('especial', 'ESTE REGISTRO DE ESCALA ESPECIAL', { index })} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
                   </CollapsibleContent>
@@ -1511,7 +1551,7 @@ export default function RelatoriosPage() {
                           </div>
                         </div>
 
-                        <Button type="button" variant="ghost" size="icon" onClick={() => removeOvertimeRow(index)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => confirmFormItemDelete('overtime', 'ESTE REGISTRO DE HORA EXCEDENTE', { index })} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     ))}
                   </CollapsibleContent>
@@ -1538,7 +1578,7 @@ export default function RelatoriosPage() {
                             </Select>
                           </div>
                           <div className="w-full">{renderAutocomplete("Chefia Responsável", sector.chiefData.term, (v) => updateSectorChiefData(sIdx, { term: v }), (v) => updateSectorChiefData(sIdx, { id: v }), sector.chiefData.id, sector.chiefData.show, (v) => updateSectorChiefData(sIdx, { show: v }), (v) => updateSectorChiefData(sIdx, { info: v }), availableChiefsForSectors, [])}</div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => removeSectorBlock(sIdx)} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => confirmFormItemDelete('sector', 'ESTA GUARNIÇÃO COMPLETA', { index: sIdx })} className="h-11 w-11 text-destructive hover:bg-red-50 rounded-xl"><Trash2 className="h-4 w-4" /></Button>
                         </div>
                         <div className="space-y-2">
                           {sector.posts.map((post: any, pIdx: number) => {
@@ -1562,7 +1602,7 @@ export default function RelatoriosPage() {
                                   </div>
                                   <div className="flex items-center gap-2">
                                     <Button type="button" variant="outline" size="sm" onClick={() => addMemberToPost(sIdx, pIdx)} className="h-10 text-[9px] font-black uppercase border-dashed border-primary/30 text-primary hover:bg-primary/5"><Plus className="h-3.5 w-3.5 mr-1" /> SERVIDOR ({post.members.length}/{isVTR ? 4 : 15})</Button>
-                                    {sector.posts.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removePostFromSector(sIdx, pIdx)} className="h-10 w-10 text-destructive hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>}
+                                    {sector.posts.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => confirmFormItemDelete('post', 'ESTE POSTO DE SERVIÇO', { sectorIndex: sIdx, postIndex: pIdx })} className="h-10 w-10 text-destructive hover:bg-red-50"><Trash2 className="h-4 w-4" /></Button>}
                                   </div>
                                 </div>
                                 <div className={cn("grid gap-2 pt-1", isVTR ? "grid-cols-1 md:grid-cols-5" : "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3")}>
@@ -1573,7 +1613,7 @@ export default function RelatoriosPage() {
                                     <div key={member.id} className={cn("flex flex-col gap-2 p-2 rounded-lg border border-slate-100 bg-white/80 shadow-sm", isVTR && "border-blue-100")}>
                                       <div className="flex gap-2 items-end">
                                         <div className="flex-1">{renderAutocomplete(`Integrante ${mIdx + 1}`, member.term, (v) => updateMemberInPost(sIdx, pIdx, mIdx, { term: v }), (v) => updateMemberInPost(sIdx, pIdx, mIdx, { empId: v }), member.empId, member.show, (v) => updateMemberInPost(sIdx, pIdx, mIdx, { show: v }), () => {}, allEmployees || [], [...trulyAbsentIds, ...teamMemberIds.filter(id => id !== member.empId)], false, 'qra')}</div>
-                                        {post.members.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => removeMemberFromPost(sIdx, pIdx, mIdx)} className="h-11 w-11 text-destructive/50 hover:text-destructive rounded-xl"><Trash2 className="h-3.5 w-3.5" /></Button>}
+                                        {post.members.length > 1 && <Button type="button" variant="ghost" size="icon" onClick={() => confirmFormItemDelete('member', 'ESTE INTEGRANTE DA GUARNIÇÃO', { sectorIndex: sIdx, postIndex: pIdx, memberIndex: mIdx })} className="h-11 w-11 text-destructive/50 hover:text-destructive rounded-xl"><Trash2 className="h-3.5 w-3.5" /></Button>}
                                       </div>
                                     </div>
                                   ))}
