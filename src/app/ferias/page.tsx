@@ -19,7 +19,8 @@ import {
   MessageSquare,
   X,
   Coins,
-  Scissors
+  Scissors,
+  User
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -151,12 +152,13 @@ export default function FeriasPage() {
   };
 
   const handleProcess = async (planId: string, action: 'approve' | 'deny', selectedOpts?: any[], reason?: string) => {
-    if (!firestore) return;
+    if (!firestore || !employeeData) return;
     
     try {
       const updates: any = {
         status: action === 'approve' ? "APROVADO" : "NEGADO",
-        updatedAt: serverTimestamp()
+        updatedAt: serverTimestamp(),
+        processedByQra: employeeData.qra || "SISTEMA"
       };
 
       if (action === 'approve' && selectedOpts) {
@@ -491,32 +493,45 @@ export default function FeriasPage() {
                           {plan.status === 'APROVADO' ? <CheckCircle2 className="h-6 w-6" /> : plan.status === 'NEGADO' ? <XCircle className="h-6 w-6" /> : <Loader2 className="h-6 w-6 animate-spin" />}
                         </div>
                         <div className="flex-1 p-5 space-y-4">
-                          {plan.status === 'APROVADO' ? (
-                            <div className="space-y-3">
-                              <div className="flex items-center gap-2">
-                                <Star className="h-5 w-5 text-green-600 fill-green-600" />
-                                <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">PERÍODO(S) HOMOLOGADO(S) PELO RH:</p>
-                              </div>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                {(plan.selectedOptions || [plan.selectedOption]).filter(Boolean).map((opt: any, i: number) => (
-                                  <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
-                                    <p className="text-xl font-black uppercase text-green-900 leading-none">
-                                      {opt.month} / {opt.year}
-                                    </p>
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                            <div className="flex-1">
+                              {plan.status === 'APROVADO' ? (
+                                <div className="space-y-3">
+                                  <div className="flex items-center gap-2">
+                                    <Star className="h-5 w-5 text-green-600 fill-green-600" />
+                                    <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">PERÍODO(S) HOMOLOGADO(S) PELO RH:</p>
                                   </div>
-                                ))}
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              {plan.options.map((opt: any, i: number) => (
-                                <div key={i} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
-                                  <span className="text-[10px] font-bold text-slate-500 uppercase">{i + 1}ª Opção</span>
-                                  <span className="text-[11px] font-black uppercase text-slate-800">{opt.month} / {opt.year}</span>
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    {(plan.selectedOptions || [plan.selectedOption]).filter(Boolean).map((opt: any, i: number) => (
+                                      <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
+                                        <p className="text-xl font-black uppercase text-green-900 leading-none">
+                                          {opt.month} / {opt.year}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
                                 </div>
-                              ))}
+                              ) : (
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                  {plan.options.map((opt: any, i: number) => (
+                                    <div key={i} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
+                                      <span className="text-[10px] font-bold text-slate-500 uppercase">{i + 1}ª Opção</span>
+                                      <span className="text-[11px] font-black uppercase text-slate-800">{opt.month} / {opt.year}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                          )}
+                            
+                            {plan.status !== 'PENDENTE' && plan.processedByQra && (
+                              <div className="bg-muted/30 px-3 py-2 rounded-lg border border-dashed border-muted-foreground/20 self-start sm:self-center">
+                                <p className="text-[8px] font-black uppercase text-muted-foreground mb-0.5 flex items-center gap-1">
+                                  <ShieldCheck className="h-2.5 w-2.5" /> Responsável Auditoria
+                                </p>
+                                <p className="text-[10px] font-black uppercase text-slate-700">QRA: {plan.processedByQra}</p>
+                              </div>
+                            )}
+                          </div>
 
                           <div className="flex gap-4 pt-2 border-t border-slate-100">
                             <div className="flex items-center gap-2">
@@ -660,7 +675,7 @@ export default function FeriasPage() {
                                   variant="destructive" 
                                   size="sm" 
                                   onClick={() => { setPlanToDenyId(plan.id); setIsDenyModalOpen(true); }}
-                                  className="w-full sm:w-auto h-9 px-6 uppercase font-black text-[10px] gap-2 rounded-xl"
+                                  className="w-full sm:w-auto h-9 px-6 uppercase font-black text-10px] gap-2 rounded-xl"
                                 >
                                   <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
                                 </Button>

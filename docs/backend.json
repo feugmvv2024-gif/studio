@@ -87,6 +87,7 @@
           }
         },
         "adminResponse": { "type": "string" },
+        "processedByQra": { "type": "string", "description": "QRA do gestor que processou a solicitação." },
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       }
