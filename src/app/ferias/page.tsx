@@ -142,7 +142,7 @@ export default function FeriasPage() {
       setOpt3({ year: "", month: "" });
       setAdvance13th("nao");
       setSplitVacation("nao");
-      setActiveTab("gestao-analise");
+      setActiveTab("meus-pedidos");
     } catch (error) {
       toast({ variant: "destructive", title: "ERRO AO ENVIAR", description: "Tente novamente mais tarde." });
     } finally {
@@ -353,13 +353,21 @@ export default function FeriasPage() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 lg:w-[450px] h-12 bg-muted/50 p-1 rounded-xl">
+        <TabsList className={cn(
+          "grid w-full bg-muted/50 p-1 rounded-xl h-12",
+          isManager ? "grid-cols-3 lg:w-[600px]" : "grid-cols-2 lg:w-[400px]"
+        )}>
           <TabsTrigger value="nova-solicitacao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
             <CalendarDays className="h-3.5 w-3.5" /> NOVA SOLICITAÇÃO
           </TabsTrigger>
-          <TabsTrigger value="gestao-analise" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
-            <ShieldCheck className="h-3.5 w-3.5" /> {isManager ? "PAINEL DE GESTÃO" : "MEUS PEDIDOS"}
+          <TabsTrigger value="meus-pedidos" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
+            <History className="h-3.5 w-3.5" /> MEUS PEDIDOS
           </TabsTrigger>
+          {isManager && (
+            <TabsTrigger value="painel-gestao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-primary">
+              <ShieldCheck className="h-3.5 w-3.5" /> PAINEL DE GESTÃO
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="nova-solicitacao" className="mt-6 space-y-6">
@@ -460,8 +468,104 @@ export default function FeriasPage() {
           </Card>
         </TabsContent>
 
-        <TabsContent value="gestao-analise" className="mt-6 space-y-6">
-          {isManager ? (
+        <TabsContent value="meus-pedidos" className="mt-6 space-y-6">
+          <div className="space-y-6">
+            <div className="flex items-center gap-3 border-b pb-4">
+              <History className="h-6 w-6 text-slate-400" />
+              <h3 className="text-xl font-black uppercase text-slate-700 tracking-tight">Meu Histórico de Solicitações</h3>
+            </div>
+            
+            {loadingMyPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
+              <div className="grid gap-4">
+                {myPlans.length === 0 ? (
+                  <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">VOCÊ AINDA NÃO ENVIOU INTENÇÕES DE FÉRIAS.</div>
+                ) : (
+                  myPlans.map(plan => (
+                    <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden group">
+                      <div className="flex flex-col sm:flex-row items-stretch">
+                        <div className={cn(
+                          "w-full sm:w-24 flex flex-col items-center justify-center p-4 text-white",
+                          plan.status === 'APROVADO' ? 'bg-green-600' : plan.status === 'NEGADO' ? 'bg-red-600' : 'bg-amber-500'
+                        )}>
+                          <span className="text-[10px] font-black uppercase text-center leading-tight mb-2">{plan.status}</span>
+                          {plan.status === 'APROVADO' ? <CheckCircle2 className="h-6 w-6" /> : plan.status === 'NEGADO' ? <XCircle className="h-6 w-6" /> : <Loader2 className="h-6 w-6 animate-spin" />}
+                        </div>
+                        <div className="flex-1 p-5 space-y-4">
+                          {plan.status === 'APROVADO' ? (
+                            <div className="space-y-3">
+                              <div className="flex items-center gap-2">
+                                <Star className="h-5 w-5 text-green-600 fill-green-600" />
+                                <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">PERÍODO(S) HOMOLOGADO(S) PELO RH:</p>
+                              </div>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                {(plan.selectedOptions || [plan.selectedOption]).filter(Boolean).map((opt: any, i: number) => (
+                                  <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
+                                    <p className="text-xl font-black uppercase text-green-900 leading-none">
+                                      {opt.month} / {opt.year}
+                                    </p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              {plan.options.map((opt: any, i: number) => (
+                                <div key={i} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase">{i + 1}ª Opção</span>
+                                  <span className="text-[11px] font-black uppercase text-slate-800">{opt.month} / {opt.year}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          <div className="flex gap-4 pt-2 border-t border-slate-100">
+                            <div className="flex items-center gap-2">
+                              <Coins className="h-3 w-3 text-amber-500" />
+                              <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
+                              <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.advance13th ? "SIM" : "NÃO"}</Badge>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <Scissors className="h-3 w-3 text-blue-500" />
+                              <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
+                              <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.splitVacation ? "SIM" : "NÃO"}</Badge>
+                            </div>
+                          </div>
+
+                          {plan.status === 'NEGADO' && (
+                            <div className="space-y-3 mt-2 animate-in slide-in-from-top-1 duration-500">
+                              <div className="flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
+                                <Lock className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+                                <div className="space-y-1">
+                                  <p className="text-[10px] text-red-800 font-black uppercase tracking-tight">DATAS BLOQUEADAS PELA ADMINISTRAÇÃO</p>
+                                  <p className="text-[9px] text-red-700 font-medium uppercase leading-relaxed">
+                                    ESTAS OPÇÕES NÃO PODEM SER SELECIONADAS NOVAMENTE. POR FAVOR, ENVIE UM NOVO PEDIDO COM DIFERENTES MESES.
+                                  </p>
+                                </div>
+                              </div>
+                              {plan.adminResponse && (
+                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 border-l-4 border-l-red-600">
+                                  <p className="text-[9px] font-black uppercase text-slate-500 mb-1 flex items-center gap-1.5">
+                                    <MessageSquare className="h-3 w-3" /> Justificativa do RH:
+                                  </p>
+                                  <p className="text-[11px] font-bold uppercase text-slate-800 italic leading-relaxed">
+                                    "{plan.adminResponse}"
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {isManager && (
+          <TabsContent value="painel-gestao" className="mt-6 space-y-6">
             <div className="space-y-4">
               <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100 flex items-center gap-3">
                 <ShieldCheck className="h-5 w-5 text-blue-600" />
@@ -581,103 +685,8 @@ export default function FeriasPage() {
                 </div>
               )}
             </div>
-          ) : (
-            <div className="space-y-6">
-              <div className="flex items-center gap-3 border-b pb-4">
-                <History className="h-6 w-6 text-slate-400" />
-                <h3 className="text-xl font-black uppercase text-slate-700 tracking-tight">Meu Histórico de Solicitações</h3>
-              </div>
-              
-              {loadingMyPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
-                <div className="grid gap-4">
-                  {myPlans.length === 0 ? (
-                    <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">VOCÊ AINDA NÃO ENVIOU INTENÇÕES DE FÉRIAS.</div>
-                  ) : (
-                    myPlans.map(plan => (
-                      <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden group">
-                        <div className="flex flex-col sm:flex-row items-stretch">
-                          <div className={cn(
-                            "w-full sm:w-24 flex flex-col items-center justify-center p-4 text-white",
-                            plan.status === 'APROVADO' ? 'bg-green-600' : plan.status === 'NEGADO' ? 'bg-red-600' : 'bg-amber-500'
-                          )}>
-                            <span className="text-[10px] font-black uppercase text-center leading-tight mb-2">{plan.status}</span>
-                            {plan.status === 'APROVADO' ? <CheckCircle2 className="h-6 w-6" /> : plan.status === 'NEGADO' ? <XCircle className="h-6 w-6" /> : <Loader2 className="h-6 w-6 animate-spin" />}
-                          </div>
-                          <div className="flex-1 p-5 space-y-4">
-                            {plan.status === 'APROVADO' ? (
-                              <div className="space-y-3">
-                                <div className="flex items-center gap-2">
-                                  <Star className="h-5 w-5 text-green-600 fill-green-600" />
-                                  <p className="text-[9px] font-black uppercase text-green-800 tracking-widest">PERÍODO(S) HOMOLOGADO(S) PELO RH:</p>
-                                </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                  {(plan.selectedOptions || [plan.selectedOption]).filter(Boolean).map((opt: any, i: number) => (
-                                    <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
-                                      <p className="text-xl font-black uppercase text-green-900 leading-none">
-                                        {opt.month} / {opt.year}
-                                      </p>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                                {plan.options.map((opt: any, i: number) => (
-                                  <div key={i} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
-                                    <span className="text-[10px] font-bold text-slate-500 uppercase">{i + 1}ª Opção</span>
-                                    <span className="text-[11px] font-black uppercase text-slate-800">{opt.month} / {opt.year}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {/* EXIBIÇÃO DE PREFERÊNCIAS NO HISTÓRICO */}
-                            <div className="flex gap-4 pt-2 border-t border-slate-100">
-                              <div className="flex items-center gap-2">
-                                <Coins className="h-3 w-3 text-amber-500" />
-                                <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
-                                <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.advance13th ? "SIM" : "NÃO"}</Badge>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Scissors className="h-3 w-3 text-blue-500" />
-                                <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
-                                <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.splitVacation ? "SIM" : "NÃO"}</Badge>
-                              </div>
-                            </div>
-
-                            {plan.status === 'NEGADO' && (
-                              <div className="space-y-3 mt-2 animate-in slide-in-from-top-1 duration-500">
-                                <div className="flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
-                                  <Lock className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                                  <div className="space-y-1">
-                                    <p className="text-[10px] text-red-800 font-black uppercase tracking-tight">DATAS BLOQUEADAS PELA ADMINISTRAÇÃO</p>
-                                    <p className="text-[9px] text-red-700 font-medium uppercase leading-relaxed">
-                                      ESTAS OPÇÕES NÃO PODEM SER SELECIONADAS NOVAMENTE. POR FAVOR, ENVIE UM NOVO PEDIDO COM DIFERENTES MESES.
-                                    </p>
-                                  </div>
-                                </div>
-                                {plan.adminResponse && (
-                                  <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 border-l-4 border-l-red-600">
-                                    <p className="text-[9px] font-black uppercase text-slate-500 mb-1 flex items-center gap-1.5">
-                                      <MessageSquare className="h-3 w-3" /> Justificativa do RH:
-                                    </p>
-                                    <p className="text-[11px] font-bold uppercase text-slate-800 italic leading-relaxed">
-                                      "{plan.adminResponse}"
-                                    </p>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </Card>
-                    ))
-                  )}
-                </div>
-              )}
-            </div>
-          )}
-        </TabsContent>
+          </TabsContent>
+        )}
       </Tabs>
 
       <div className="text-center">
