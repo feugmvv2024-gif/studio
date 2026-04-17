@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -162,6 +163,7 @@ export default function FeriasPage() {
         entries.push({
           month: opt.month,
           year: opt.year,
+          startDay: opt.startDay,
           employeeName: plan.employeeName,
           employeeQra: plan.employeeQra,
           employeeEscala: plan.employeeEscala,
@@ -307,16 +309,28 @@ export default function FeriasPage() {
     if (isSelected) {
       setSelectionMap({ ...selectionMap, [planId]: current.filter(s => !(s.year === opt.year && s.month === opt.month)) });
     } else {
+      const newSelection = { ...opt, startDay: "15" }; // Padrão 15
       if (!isSplit) {
-        setSelectionMap({ ...selectionMap, [planId]: [opt] });
+        setSelectionMap({ ...selectionMap, [planId]: [newSelection] });
       } else {
         if (current.length < 2) {
-          setSelectionMap({ ...selectionMap, [planId]: [...current, opt] });
+          setSelectionMap({ ...selectionMap, [planId]: [...current, newSelection] });
         } else {
           toast({ variant: "default", title: "LIMITE ATINGIDO", description: "O servidor solicitou dividir em apenas 2 períodos." });
         }
       }
     }
+  };
+
+  const updateOptionDay = (planId: string, year: string, month: string, day: string) => {
+    const current = selectionMap[planId] || [];
+    const updated = current.map(s => {
+      if (s.year === year && s.month === month) {
+        return { ...s, startDay: day };
+      }
+      return s;
+    });
+    setSelectionMap({ ...selectionMap, [planId]: updated });
   };
 
   const handlePrint = () => {
@@ -481,6 +495,7 @@ export default function FeriasPage() {
                 <tr>
                   <th style={{ width: '250px' }}>Servidor / QRA</th>
                   <th>Escala / Turno</th>
+                  <th style={{ width: '100px' }} className="center">Início</th>
                   <th style={{ width: '100px' }} className="center">Duração</th>
                   <th style={{ width: '120px' }} className="center">Auditoria</th>
                 </tr>
@@ -490,6 +505,7 @@ export default function FeriasPage() {
                   <tr key={mIdx}>
                     <td className="font-bold">{member.employeeName} ({member.employeeQra})</td>
                     <td>{member.employeeEscala} / {member.employeeTurno}</td>
+                    <td className="center font-black">{member.startDay || "15"}</td>
                     <td className="center font-bold">{member.splitVacation ? "15 DIAS" : "30 DIAS"}</td>
                     <td className="center font-mono" style={{ fontSize: '8pt' }}>{member.processedByQra}</td>
                   </tr>
@@ -736,7 +752,7 @@ export default function FeriasPage() {
                                     {(plan.selectedOptions || []).map((opt: any, i: number) => (
                                       <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
                                         <p className="text-xl font-black uppercase text-green-900 leading-none">
-                                          {opt.month} / {opt.year}
+                                          {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year}
                                         </p>
                                       </div>
                                     ))}
@@ -894,7 +910,8 @@ export default function FeriasPage() {
                               <div className="flex-1 p-6 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                   {plan.options.map((opt: any, idx: number) => {
-                                    const isSelected = currentSelections.some(s => s.year === opt.year && s.month === opt.month);
+                                    const selectedItem = currentSelections.find(s => s.year === opt.year && s.month === opt.month);
+                                    const isSelected = !!selectedItem;
                                     
                                     return (
                                       <div 
@@ -916,12 +933,28 @@ export default function FeriasPage() {
                                             {opt.year}
                                           </span>
                                         </div>
-                                        <div className={cn(
-                                          "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
-                                          isSelected ? "bg-white border-white text-blue-600" : "bg-slate-50 border-slate-200 text-transparent group-hover:border-blue-200"
-                                        )}>
-                                          <CheckCircle2 className="h-4 w-4" />
-                                        </div>
+                                        
+                                        {isSelected && (
+                                          <div className="w-full space-y-1.5 mt-2 animate-in zoom-in-95 duration-200" onClick={(e) => e.stopPropagation()}>
+                                            <Label className="text-[8px] font-black uppercase text-white/80">Dia de Início</Label>
+                                            <Input 
+                                              type="text" 
+                                              maxLength={2}
+                                              value={selectedItem.startDay || "15"}
+                                              onChange={(e) => updateOptionDay(plan.id, opt.year, opt.month, e.target.value.replace(/\D/g, ''))}
+                                              className="h-8 text-center font-black text-xs bg-white text-blue-700 border-none shadow-inner"
+                                            />
+                                          </div>
+                                        )}
+
+                                        {!isSelected && (
+                                          <div className={cn(
+                                            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
+                                            "bg-slate-50 border-slate-200 text-transparent group-hover:border-blue-200"
+                                          )}>
+                                            <CheckCircle2 className="h-4 w-4" />
+                                          </div>
+                                        )}
                                       </div>
                                     );
                                   })}
@@ -1026,7 +1059,7 @@ export default function FeriasPage() {
                                   <div className="flex flex-wrap gap-2">
                                     {(plan.selectedOptions || []).map((opt: any, idx: number) => (
                                       <Badge key={idx} className="bg-green-600 text-white font-black text-[9px] uppercase px-3">
-                                        {opt.month} / {opt.year}
+                                        {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year}
                                       </Badge>
                                     ))}
                                   </div>

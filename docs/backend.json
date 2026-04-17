@@ -82,7 +82,8 @@
             "type": "object",
             "properties": {
               "year": { "type": "string" },
-              "month": { "type": "string" }
+              "month": { "type": "string" },
+              "startDay": { "type": "string", "description": "Dia de início homologado pela gestão." }
             }
           }
         },
