@@ -65,22 +65,27 @@ export function AppSidebar() {
     if (!employeeData) return [];
     const role = normalizeStr(employeeData.role || "");
     
+    let result = navigation;
+
     if (role === "AGENTE") {
       // Agentes veem apenas os itens de autoatendimento
-      return navigation.filter(item => 
+      result = navigation.filter(item => 
         ["/meus-lancamentos", "/requests", "/profile", "/ferias"].includes(item.href)
       );
-    }
-
-    if (role === "INSPETOR" || role === "SUBINSPETOR") {
+    } else if (role === "INSPETOR" || role === "SUBINSPETOR") {
       // Inspetores e Subinspetores veem Relatórios + Autoatendimento
-      return navigation.filter(item => 
+      result = navigation.filter(item => 
         ["/relatorios", "/meus-lancamentos", "/requests", "/profile", "/ferias"].includes(item.href)
       );
     }
     
-    // Outros cargos (Gestor de RH, Inspetor Geral, Comandante, etc) veem tudo
-    return navigation;
+    // Regra adicional: Configurações APENAS para Comandante e Inspetor Geral
+    const isHighRank = ["COMANDANTE", "INSPETOR GERAL"].some(r => role.includes(r));
+    if (!isHighRank) {
+      result = result.filter(item => item.href !== "/settings");
+    }
+
+    return result;
   }, [employeeData]);
 
   // Lógica de monitoramento de requerimentos pendentes

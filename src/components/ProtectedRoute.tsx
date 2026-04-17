@@ -27,6 +27,15 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   useEffect(() => {
     if (!loading && user && employeeData) {
       const role = normalizeStr(employeeData.role || "");
+      const isHighRank = ["COMANDANTE", "INSPETOR GERAL"].some(r => role.includes(r));
+
+      // Bloqueio específico para /settings (apenas Comandante e Inspetor Geral)
+      if (pathname === '/settings' && !isHighRank) {
+        if (role === "AGENTE") router.push('/meus-lancamentos');
+        else if (role === "INSPETOR" || role === "SUBINSPETOR") router.push('/relatorios');
+        else router.push('/dashboard');
+        return;
+      }
       
       if (role === "AGENTE") {
         const allowedPaths = ['/meus-lancamentos', '/requests', '/profile', '/ferias'];
