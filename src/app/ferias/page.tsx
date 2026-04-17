@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Plane, CalendarDays, ClipboardList, ShieldCheck, Save, AlertCircle, Info, Loader2 } from "lucide-react"
+import { Plane, CalendarDays, ClipboardList, ShieldCheck, Save, AlertCircle, Info, Loader2, Star } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 
 const MONTHS = [
   "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
@@ -22,10 +23,12 @@ const MONTHS = [
 
 export default function FeriasPage() {
   const { toast } = useToast();
-  const [selectedYear, setSelectedYear] = React.useState("");
-  const [option1, setOption1] = React.useState("");
-  const [option2, setOption2] = React.useState("");
-  const [option3, setOption3] = React.useState("");
+  
+  // Estados independentes para cada opção
+  const [opt1, setOpt1] = React.useState({ year: "", month: "" });
+  const [opt2, setOpt2] = React.useState({ year: "", month: "" });
+  const [opt3, setOpt3] = React.useState({ year: "", month: "" });
+  
   const [isSubmitting, setIsSubmitting] = React.useState(false);
 
   // Calcula dinamicamente os próximos 2 anos
@@ -40,14 +43,84 @@ export default function FeriasPage() {
     setTimeout(() => {
       toast({
         title: "INTENÇÃO GRAVADA!",
-        description: `Sua solicitação para o exercício ${selectedYear} foi enviada com sucesso.`,
+        description: `Suas opções de férias foram enviadas com sucesso.`,
       });
       setIsSubmitting(false);
-      // Mantém os dados para conferência do usuário
     }, 1000);
   };
 
-  const isFormValid = selectedYear && option1 && option2 && option3;
+  // Verifica se uma combinação de Ano + Mês já foi selecionada em outras opções
+  const isCombinationTaken = (year: string, month: string, currentPriority: number) => {
+    if (!year || !month) return false;
+    
+    const selections = [
+      { year: opt1.year, month: opt1.month },
+      { year: opt2.year, month: opt2.month },
+      { year: opt3.year, month: opt3.month }
+    ];
+
+    return selections.some((sel, idx) => {
+      if (idx + 1 === currentPriority) return false;
+      return sel.year === year && sel.month === month;
+    });
+  };
+
+  const isFormValid = opt1.year && opt1.month && opt2.year && opt2.month && opt3.year && opt3.month;
+
+  const renderOptionRow = (
+    priority: number, 
+    data: { year: string, month: string }, 
+    setData: (val: { year: string, month: string }) => void,
+    label: string
+  ) => (
+    <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100 space-y-4 animate-in slide-in-from-left-2 duration-300">
+      <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
+        <div className="bg-primary/10 p-1.5 rounded-lg">
+          <Star className={cn("h-4 w-4", priority === 1 ? "text-amber-500 fill-amber-500" : "text-primary")} />
+        </div>
+        <span className="text-[11px] font-black uppercase text-slate-700 tracking-widest">{label}</span>
+      </div>
+      
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div className="space-y-1.5">
+          <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tight">Ano do Exercício</Label>
+          <Select value={data.year} onValueChange={(v) => setData({ ...data, year: v })}>
+            <SelectTrigger className="h-10 uppercase font-bold text-xs bg-white">
+              <SelectValue placeholder="ANO..." />
+            </SelectTrigger>
+            <SelectContent>
+              {nextYears.map(year => (
+                <SelectItem key={year} value={year.toString()} className="uppercase font-bold text-xs">
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-[9px] font-black uppercase text-muted-foreground tracking-tight">Mês Desejado</Label>
+          <Select value={data.month} onValueChange={(v) => setData({ ...data, month: v })}>
+            <SelectTrigger className="h-10 uppercase font-bold text-xs bg-white">
+              <SelectValue placeholder="MÊS..." />
+            </SelectTrigger>
+            <SelectContent>
+              {MONTHS.map(month => (
+                <SelectItem 
+                  key={month} 
+                  value={month} 
+                  disabled={isCombinationTaken(data.year, month, priority)}
+                  className="uppercase font-bold text-xs"
+                >
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="max-w-5xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
@@ -63,7 +136,7 @@ export default function FeriasPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="nova-solicitacao" className="w-full">
+      <Tabs value="nova-solicitacao" className="w-full">
         <TabsList className="grid w-full grid-cols-2 lg:w-[450px] h-12 bg-muted/50 p-1 rounded-xl">
           <TabsTrigger value="nova-solicitacao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
             <CalendarDays className="h-3.5 w-3.5" /> NOVA SOLICITAÇÃO
@@ -82,98 +155,15 @@ export default function FeriasPage() {
                 </div>
                 <div>
                   <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">Intenção de Férias</CardTitle>
-                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Escolha três opções de meses para o planejamento anual.</CardDescription>
+                  <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Indique três opções distintas para o planejamento do RH.</CardDescription>
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="p-6 sm:p-8 space-y-8">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                {/* SELETOR DE ANO */}
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-slate-700 tracking-widest flex items-center gap-2">
-                    <Info className="h-3 w-3 text-blue-600" /> Ano do Exercício
-                  </Label>
-                  <Select value={selectedYear} onValueChange={setSelectedYear}>
-                    <SelectTrigger className="h-11 uppercase font-bold text-xs bg-slate-50 border-slate-200">
-                      <SelectValue placeholder="SELECIONE..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {nextYears.map(year => (
-                        <SelectItem key={year} value={year.toString()} className="uppercase font-bold text-xs">
-                          {year}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="md:col-span-3 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                  {/* OPÇÃO 1 */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-700 tracking-widest">1ª Opção de Mês</Label>
-                    <Select value={option1} onValueChange={setOption1}>
-                      <SelectTrigger className="h-11 uppercase font-bold text-xs bg-slate-50 border-slate-200">
-                        <SelectValue placeholder="MÊS..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map(month => (
-                          <SelectItem 
-                            key={month} 
-                            value={month} 
-                            disabled={month === option2 || month === option3}
-                            className="uppercase font-bold text-xs"
-                          >
-                            {month}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* OPÇÃO 2 */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-700 tracking-widest">2ª Opção de Mês</Label>
-                    <Select value={option2} onValueChange={setOption2}>
-                      <SelectTrigger className="h-11 uppercase font-bold text-xs bg-slate-50 border-slate-200">
-                        <SelectValue placeholder="MÊS..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map(month => (
-                          <SelectItem 
-                            key={month} 
-                            value={month} 
-                            disabled={month === option1 || month === option3}
-                            className="uppercase font-bold text-xs"
-                          >
-                            {month}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  {/* OPÇÃO 3 */}
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-slate-700 tracking-widest">3ª Opção de Mês</Label>
-                    <Select value={option3} onValueChange={setOption3}>
-                      <SelectTrigger className="h-11 uppercase font-bold text-xs bg-slate-50 border-slate-200">
-                        <SelectValue placeholder="MÊS..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {MONTHS.map(month => (
-                          <SelectItem 
-                            key={month} 
-                            value={month} 
-                            disabled={month === option1 || month === option2}
-                            className="uppercase font-bold text-xs"
-                          >
-                            {month}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+            <CardContent className="p-6 sm:p-8 space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {renderOptionRow(1, opt1, setOpt1, "1ª Opção de Prioridade")}
+                {renderOptionRow(2, opt2, setOpt2, "2ª Opção de Prioridade")}
+                {renderOptionRow(3, opt3, setOpt3, "3ª Opção de Prioridade")}
               </div>
 
               <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-4">
@@ -181,7 +171,7 @@ export default function FeriasPage() {
                 <div className="space-y-1">
                   <p className="text-[11px] font-black uppercase text-amber-900 leading-none tracking-tight">Regras de Preenchimento</p>
                   <p className="text-[10px] text-amber-800 font-medium uppercase leading-relaxed mt-1">
-                    Você deve selecionar o ano do exercício e três meses distintos por ordem de preferência. O sistema bloqueia automaticamente a repetição de meses entre as opções.
+                    Cada opção deve ser única (combinação de Ano e Mês). O sistema permite escolher o mesmo mês em anos diferentes, mas bloqueia a repetição da mesma data exata.
                   </p>
                 </div>
               </div>
@@ -193,7 +183,7 @@ export default function FeriasPage() {
                 className="h-12 px-8 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
               >
                 {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Gravar Intenção de Férias
+                Gravar Intenções de Férias
               </Button>
             </CardFooter>
           </Card>
