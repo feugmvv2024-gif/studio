@@ -127,7 +127,7 @@ export default function FeriasPage() {
     firestore ? doc(firestore, 'settings', 'vacation') : null
   , [firestore]);
 
-  const { data: myRequests, loading: loadingMyPlans } = useCollection(myPlansQuery);
+  const { data: myRequests, loading: loadingMyRequests } = useCollection(myPlansQuery);
   const { data: allPlans, loading: loadingAllPlans } = useCollection(allPlansQuery);
   const { data: approvedPlans, loading: loadingApprovedPlans } = useCollection(approvedPlansQuery);
   const { data: vacationSettings, loading: loadingSettings } = useDoc(vacationSettingsRef);
@@ -850,7 +850,7 @@ export default function FeriasPage() {
                             )}
                             {plan.spouseIsTeacher && (
                               <div className="flex items-center gap-2">
-                                <GraduationCap className="h-3 w-3 text-purple-600" />
+                                <GraduateCap className="h-3 w-3 text-purple-600" />
                                 <span className="text-[8px] font-black uppercase text-slate-500">Cônjuge Professor:</span>
                                 <Badge className="text-[7px] font-black uppercase bg-purple-600 text-white border-none">SIM</Badge>
                               </div>
