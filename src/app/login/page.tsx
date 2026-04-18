@@ -1,4 +1,3 @@
-
 'use client';
 
 import * as React from 'react';
@@ -40,6 +39,14 @@ export default function LoginPage() {
       router.push('/dashboard');
     }
   }, [user, router]);
+
+  const validatePasswordComplexity = (password: string) => {
+    const minLength = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    return minLength && hasUpper && hasLower && hasSpecial;
+  };
 
   async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -113,6 +120,17 @@ export default function LoginPage() {
     const email = (formData.get('email') as string).toUpperCase();
     const password = formData.get('password') as string;
 
+    // Validação de complexidade de senha
+    if (!validatePasswordComplexity(password)) {
+      toast({
+        variant: 'destructive',
+        title: 'SENHA FRACA',
+        description: 'A SENHA DEVE CONTER: MÍNIMO 8 CARACTERES, LETRAS MAIÚSCULAS, MINÚSCULAS E UM SÍMBOLO.',
+      });
+      setLoading(false);
+      return;
+    }
+
     try {
       // 1. Valida QRA e Código
       const q = query(
@@ -170,7 +188,7 @@ export default function LoginPage() {
       if (error.code === 'auth/email-already-in-use') {
         message = 'ESTE E-MAIL JÁ ESTÁ SENDO UTILIZADO.';
       } else if (error.code === 'auth/weak-password') {
-        message = 'A SENHA DEVE TER PELO MENOS 6 CARACTERES.';
+        message = 'A SENHA É CONSIDERADA FRACA PELO SISTEMA.';
       }
       toast({
         variant: 'destructive',
@@ -281,7 +299,7 @@ export default function LoginPage() {
                         id="pass-reg" 
                         name="password" 
                         type={showRegisterPass ? "text" : "password"} 
-                        placeholder="MIN 6 CARACTERES" 
+                        placeholder="MÍNIMO 8 CHARS + SÍMBOLOS" 
                         required 
                         className="pr-10 h-12 bg-slate-50 border-slate-200 focus:bg-white transition-all" 
                       />
@@ -317,7 +335,7 @@ export default function LoginPage() {
     </div>
   );
 }
+
 function cn(...inputs: any[]) {
   return inputs.filter(Boolean).join(" ");
 }
-

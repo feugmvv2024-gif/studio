@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -135,6 +134,14 @@ export default function ProfilePage() {
     }
   }, [employeeData]);
 
+  const validatePasswordComplexity = (password: string) => {
+    const minLength = password.length >= 8;
+    const hasUpper = /[A-Z]/.test(password);
+    const hasLower = /[a-z]/.test(password);
+    const hasSpecial = /[!@#$%^&*(),.?":{}|<>]/.test(password);
+    return minLength && hasUpper && hasLower && hasSpecial;
+  };
+
   const handleAddChild = () => {
     setChildren([...children, { name: "", age: "", cpf: "" }]);
   };
@@ -213,8 +220,12 @@ export default function ProfilePage() {
   const handlePasswordChange = async () => {
     if (!user) return;
     
-    if (newPassword.length < 6) {
-      toast({ variant: "destructive", title: "SENHA INVÁLIDA", description: "A senha deve ter pelo menos 6 caracteres." });
+    if (!validatePasswordComplexity(newPassword)) {
+      toast({ 
+        variant: "destructive", 
+        title: "SENHA INVÁLIDA", 
+        description: "A SENHA DEVE TER NO MÍNIMO 8 CARACTERES, INCLUINDO LETRAS MAIÚSCULAS, MINÚSCULAS E SÍMBOLOS." 
+      });
       return;
     }
 
@@ -552,7 +563,7 @@ export default function ProfilePage() {
                       type={showNewPass ? "text" : "password"} 
                       value={newPassword} 
                       onChange={(e) => setNewPassword(e.target.value)} 
-                      placeholder="MÍNIMO 6 DÍGITOS"
+                      placeholder="8+ CHARS + SÍMBOLOS"
                       className="h-11 bg-slate-50/50 pr-10 transition-all" 
                     />
                     <button
@@ -607,7 +618,7 @@ export default function ProfilePage() {
               <div className="flex items-start gap-2 bg-amber-50/50 p-3 rounded-xl border border-amber-100">
                 <Info className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
                 <p className="text-[10px] text-amber-800 font-medium leading-relaxed uppercase">
-                  Por segurança, se você estiver logado há muito tempo, o sistema pode solicitar que você saia e entre novamente antes de permitir a troca da senha.
+                  Requisitos de segurança: No mínimo 8 caracteres, contendo letras maiúsculas, minúsculas e um caractere especial (!@#$...).
                 </p>
               </div>
             </div>
