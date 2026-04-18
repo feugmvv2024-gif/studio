@@ -164,7 +164,6 @@ export default function FeriasPage() {
     
     const startDate = new Date(y, monthIndex, d);
     const endDate = new Date(startDate);
-    // 15 ou 30 dias de duração (incluindo o primeiro dia)
     endDate.setDate(startDate.getDate() + (isSplit ? 14 : 29));
 
     const formatDate = (date: Date) => {
@@ -440,24 +439,26 @@ export default function FeriasPage() {
           html, body, main, [data-sidebar="inset"], .flex-1 { overflow: visible !important; height: auto !important; display: block !important; background: white !important; }
           .print-hidden, header, nav, footer, aside, .tabs-list { display: none !important; }
           .printable-content { display: block !important; width: 100% !important; color: black !important; }
-          .report-header { margin-bottom: 2rem; border-bottom: 2px solid black; padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-end; }
-          .month-section { margin-bottom: 2.5rem; break-inside: avoid-page; }
-          .month-title { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; padding: 8px 12px; font-size: 14pt; font-weight: 900; text-transform: uppercase; border-left: 6px solid black; margin-bottom: 1rem; }
+          .report-header { margin-bottom: 1.5rem; border-bottom: 2px solid black; padding-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: flex-end; }
+          .report-header h1 { font-size: 14pt !important; }
+          .month-section { margin-bottom: 1.5rem; break-inside: avoid-page; }
+          .month-title { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; padding: 4px 8px; font-size: 11pt; font-weight: 900; text-transform: uppercase; border-left: 5px solid black; margin-bottom: 0.5rem; }
           .report-table { width: 100%; border-collapse: collapse; }
-          .report-table th, .report-table td { border: 1px solid #000; padding: 8px; font-size: 10pt; text-align: left; text-transform: uppercase; }
+          .report-table th, .report-table td { border: 1px solid #000; padding: 4px 6px; font-size: 8.5pt; text-align: left; text-transform: uppercase; }
           .report-table th { font-weight: 900; background-color: #fafafa !important; }
           .report-table td.center { text-align: center; }
+          .report-table td.period-cell { font-size: 7.5pt; font-weight: 900; }
         }
       ` }} />
 
       <div className="hidden printable-content">
         <div className="report-header">
           <div>
-            <h1 className="text-xl font-black uppercase">Cronograma Geral de Férias</h1>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Núcleo de RH - GMVV</p>
+            <h1 className="font-black uppercase">Cronograma Geral de Férias</h1>
+            <p className="text-[8pt] font-bold text-muted-foreground uppercase tracking-widest">Núcleo de RH - GMVV</p>
           </div>
           <div className="text-right">
-            <p className="text-[8px] font-mono font-bold uppercase">Gerado em: {new Date().toLocaleString('pt-BR')}</p>
+            <p className="text-[7pt] font-mono font-bold uppercase">Gerado em: {new Date().toLocaleString('pt-BR')}</p>
           </div>
         </div>
 
@@ -478,7 +479,7 @@ export default function FeriasPage() {
                   <tr key={mIdx}>
                     <td className="font-bold">{member.employeeName} ({member.employeeQra})</td>
                     <td>{member.employeeEscala} / {member.employeeTurno}</td>
-                    <td className="center font-black" style={{ fontSize: '9pt' }}>{member.periodText}</td>
+                    <td className="center period-cell">{member.periodText}</td>
                     <td className="center font-bold">{member.splitVacation ? "15 DIAS" : "30 DIAS"}</td>
                   </tr>
                 ))}
