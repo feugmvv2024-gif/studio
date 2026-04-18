@@ -662,7 +662,7 @@ export default function FeriasPage() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {hasChildrenInProfile && (
-                        <Card className="bg-blue-50/30 border-blue-100 shadow-none rounded-xl overflow-hidden border">
+                        <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
                           <CardContent className="p-4 flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
                               <div className="bg-white p-2 rounded-lg border shadow-sm">
@@ -678,7 +678,7 @@ export default function FeriasPage() {
                       )}
 
                       {hasSpouseInProfile && (
-                        <Card className="bg-purple-50/30 border-purple-100 shadow-none rounded-xl overflow-hidden border">
+                        <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
                           <CardContent className="p-4 flex items-center justify-between gap-4">
                             <div className="flex items-center gap-3">
                               <div className="bg-white p-2 rounded-lg border shadow-sm">
@@ -702,7 +702,7 @@ export default function FeriasPage() {
                   </h4>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <Card className="bg-slate-50/30 border-dashed shadow-none rounded-xl overflow-hidden">
+                    <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <div className="bg-white p-2 rounded-lg border shadow-sm">
@@ -725,7 +725,7 @@ export default function FeriasPage() {
                       </CardContent>
                     </Card>
 
-                    <Card className="bg-slate-50/30 border-dashed shadow-none rounded-xl overflow-hidden">
+                    <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <div className="bg-white p-2 rounded-lg border shadow-sm">
@@ -781,7 +781,7 @@ export default function FeriasPage() {
               <h3 className="text-xl font-black uppercase text-slate-700 tracking-tight">Meu Histórico de Solicitações</h3>
             </div>
             
-            {loadingMyPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
+            {loadingMyRequests ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
               <div className="grid gap-4">
                 {myRequests.length === 0 ? (
                   <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">VOCÊ AINDA NÃO ENVIOU INTENÇÕES DE FÉRIAS.</div>
