@@ -43,6 +43,7 @@
         "voterId": { "type": "string" },
         "voterZone": { "type": "string" },
         "votingLocation": { "type": "string" },
+        "votingCity": { "type": "string" },
         "birthDate": { "type": "string", "format": "date" },
         "cpf": { "type": "string" },
         "cnhNumber": { "type": "string" },

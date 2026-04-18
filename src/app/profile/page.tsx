@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -99,6 +100,7 @@ export default function ProfilePage() {
   const [voterId, setVoterId] = React.useState("");
   const [voterZone, setVoterZone] = React.useState("");
   const [votingLocation, setVotingLocation] = React.useState("");
+  const [votingCity, setVotingCity] = React.useState("");
   const [birthDate, setBirthDate] = React.useState("");
   const [admissionDate, setAdmissionDate] = React.useState("");
   const [cpf, setCpf] = React.useState("");
@@ -124,6 +126,7 @@ export default function ProfilePage() {
       setVoterId((employeeData.voterId || "").toUpperCase());
       setVoterZone((employeeData.voterZone || "").toUpperCase());
       setVotingLocation((employeeData.votingLocation || "").toUpperCase());
+      setVotingCity((employeeData.votingCity || "").toUpperCase());
       setBirthDate(employeeData.birthDate || "");
       setAdmissionDate(employeeData.admissionDate || "");
       setCpf(employeeData.cpf || "");
@@ -198,6 +201,7 @@ export default function ProfilePage() {
       voterId: voterId.toUpperCase(),
       voterZone: voterZone.toUpperCase(),
       votingLocation: votingLocation.toUpperCase(),
+      votingCity: votingCity.toUpperCase(),
       birthDate,
       admissionDate,
       cpf: cpf.toUpperCase(),
@@ -367,7 +371,7 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Título de Eleitor (Nº)</Label>
                   <Input 
@@ -379,11 +383,21 @@ export default function ProfilePage() {
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Zona Eleitoral</Label>
-                  <Input value={voterZone} onChange={(e) => setVoterZone(e.target.value)} placeholder="000" className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
+                  <Input 
+                    value={voterZone} 
+                    onChange={(e) => setVoterZone(e.target.value.replace(/\D/g, "").slice(0, 4))} 
+                    placeholder="0000" 
+                    maxLength={4}
+                    className="uppercase font-bold text-xs h-11 bg-slate-50/50 text-center" 
+                  />
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Local de Votação (Escola/Sede)</Label>
-                  <Input value={votingLocation} onChange={(e) => setVotingLocation(e.target.value)} placeholder="NOME DA ESCOLA..." className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Local de Votação (Escola)</Label>
+                  <Input value={votingLocation} onChange={(e) => setVotingLocation(e.target.value.toUpperCase())} placeholder="NOME DA ESCOLA..." className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cidade onde vota</Label>
+                  <Input value={votingCity} onChange={(e) => setVotingCity(e.target.value.toUpperCase())} placeholder="CIDADE" className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
                 </div>
               </div>
 

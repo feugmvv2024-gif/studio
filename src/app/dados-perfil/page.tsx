@@ -179,6 +179,7 @@ export default function DadosPerfilPage() {
                                     {renderInfoRow("Título Eleitor", emp.voterId)}
                                     {renderInfoRow("Zona", emp.voterZone)}
                                     {renderInfoRow("Local Votação", emp.votingLocation)}
+                                    {renderInfoRow("Cidade Votação", emp.votingCity)}
                                   </div>
                                 </div>
 
