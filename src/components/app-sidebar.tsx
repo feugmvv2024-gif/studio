@@ -206,7 +206,7 @@ export function AppSidebar() {
           <SidebarMenuItem className="group-data-[collapsible=icon]:hidden">
             <div className="px-2 py-2 text-center">
               <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest opacity-50">
-                Versão 1.0 - F3U
+                Versão 1.1 - F3U
               </span>
             </div>
           </SidebarMenuItem>
