@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -84,8 +83,8 @@ export default function FeriasPage() {
   
   const [advance13th, setAdvance13th] = React.useState("nao");
   const [splitVacation, setSplitVacation] = React.useState("nao");
-  const [hasMinorChildren, setHasMinorChildren] = React.useState(false);
-  const [spouseIsTeacher, setSpouseIsTeacher] = React.useState(false);
+  const [hasMinorChildren, setHasMinorChildren] = React.useState("nao");
+  const [spouseIsTeacher, setSpouseIsTeacher] = React.useState("nao");
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("nova-solicitacao");
@@ -130,7 +129,7 @@ export default function FeriasPage() {
   const { data: myRequests, loading: loadingMyRequests } = useCollection(myPlansQuery);
   const { data: allPlans, loading: loadingAllPlans } = useCollection(allPlansQuery);
   const { data: approvedPlans, loading: loadingApprovedPlans } = useCollection(approvedPlansQuery);
-  const { data: vacationSettings, loading: loadingSettings } = useDoc(vacationSettingsRef);
+  const { data: vacationSettings } = useDoc(vacationSettingsRef);
 
   // Status de abertura do sistema
   const isSolicitationOpen = React.useMemo(() => {
@@ -222,8 +221,8 @@ export default function FeriasPage() {
       employeeTurno: employeeData.turno || "N/A",
       advance13th: advance13th === "sim",
       splitVacation: splitVacation === "sim",
-      hasMinorChildren: hasMinorChildren,
-      spouseIsTeacher: spouseIsTeacher,
+      hasMinorChildren: hasMinorChildren === "sim",
+      spouseIsTeacher: spouseIsTeacher === "sim",
       options: [opt1, opt2, opt3],
       status: "PENDENTE",
       createdAt: serverTimestamp(),
@@ -238,8 +237,8 @@ export default function FeriasPage() {
       setOpt3({ year: "", month: "" });
       setAdvance13th("nao");
       setSplitVacation("nao");
-      setHasMinorChildren(false);
-      setSpouseIsTeacher(false);
+      setHasMinorChildren("nao");
+      setSpouseIsTeacher("nao");
       setActiveTab("meus-pedidos");
     } catch (error) {
       toast({ variant: "destructive", title: "ERRO AO ENVIAR", description: "Tente novamente mais tarde." });
@@ -447,8 +446,7 @@ export default function FeriasPage() {
 
           .report-header {
             margin-bottom: 2rem;
-            border-bottom: 2px solid black;
-            padding-bottom: 1rem;
+            border-bottom: 2px solid black; padding-bottom: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: flex-end;
@@ -672,7 +670,16 @@ export default function FeriasPage() {
                                 Tem filhos menores 18 anos, em idade escolar?
                               </Label>
                             </div>
-                            <Switch checked={hasMinorChildren} onCheckedChange={setHasMinorChildren} />
+                            <RadioGroup value={hasMinorChildren} onValueChange={setHasMinorChildren} className="flex gap-4">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="sim" id="hmc-sim" />
+                                <Label htmlFor="hmc-sim" className="text-[10px] font-bold uppercase">SIM</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="nao" id="hmc-nao" />
+                                <Label htmlFor="hmc-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
+                              </div>
+                            </RadioGroup>
                           </CardContent>
                         </Card>
                       )}
@@ -688,7 +695,16 @@ export default function FeriasPage() {
                                 Cônjuge professor(a) do Município de Vila Velha?
                               </Label>
                             </div>
-                            <Switch checked={spouseIsTeacher} onCheckedChange={setSpouseIsTeacher} />
+                            <RadioGroup value={spouseIsTeacher} onValueChange={setSpouseIsTeacher} className="flex gap-4">
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="sim" id="sit-sim" />
+                                <Label htmlFor="sit-sim" className="text-[10px] font-bold uppercase">SIM</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="nao" id="sit-nao" />
+                                <Label htmlFor="sit-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
+                              </div>
+                            </RadioGroup>
                           </CardContent>
                         </Card>
                       )}
