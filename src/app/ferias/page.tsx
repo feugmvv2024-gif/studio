@@ -7,19 +7,16 @@ import {
   ClipboardList, 
   ShieldCheck, 
   Save, 
-  AlertCircle, 
   Loader2, 
   Star, 
   CheckCircle2, 
   XCircle, 
   History,
   Lock,
-  ArrowRight,
   MessageSquare,
   X,
   Coins,
   Scissors,
-  User,
   Search,
   LayoutList,
   Printer,
@@ -72,6 +69,11 @@ const MONTHS = [
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
+const formatDateBR = (dateStr: string) => {
+  if (!dateStr) return "---";
+  return dateStr.split('-').reverse().join('/');
+};
+
 export default function FeriasPage() {
   const { user, employeeData } = useAuth();
   const firestore = useFirestore();
@@ -90,23 +92,19 @@ export default function FeriasPage() {
   const [activeTab, setActiveTab] = React.useState("nova-solicitacao");
   const [searchTermApproved, setSearchTermApproved] = React.useState("");
 
-  // Estados para Modal de Indeferimento
   const [isDenyModalOpen, setIsDenyModalOpen] = React.useState(false);
   const [planToDenyId, setPlanToDenyId] = React.useState<string | null>(null);
   const [denialReason, setDenialReason] = React.useState("");
   const [isProcessingDeny, setIsProcessingDeny] = React.useState(false);
 
-  // Estado para Seleção Múltipla de Homologação (RH)
   const [selectionMap, setSelectionMap] = React.useState<Record<string, any[]>>({});
 
-  // Controle de Acesso de Gestão
   const isManager = React.useMemo(() => {
     if (!employeeData) return false;
     const role = normalizeStr(employeeData.role || "");
     return ["COMANDANTE", "INSPETOR GERAL", "GESTOR DE RH"].some(r => role.includes(r));
   }, [employeeData]);
 
-  // Queries para o Firestore
   const myPlansQuery = React.useMemo(() => {
     if (!firestore || !user) return null;
     return query(collection(firestore, 'vacationPlans'), where('employeeId', '==', user.uid), orderBy('createdAt', 'desc'));
@@ -131,16 +129,13 @@ export default function FeriasPage() {
   const { data: approvedPlans, loading: loadingApprovedPlans } = useCollection(approvedPlansQuery);
   const { data: vacationSettings } = useDoc(vacationSettingsRef);
 
-  // Status de abertura do sistema
   const isSolicitationOpen = React.useMemo(() => {
     return vacationSettings?.isOpen ?? true;
   }, [vacationSettings]);
 
-  // Verificações para campos de prioridade baseados no perfil fixo do servidor
-  const hasChildrenInProfile = !!(employeeData?.children && employeeData.children.length > 0);
-  const hasSpouseInProfile = !!employeeData?.spouseName;
+  const hasChildrenInProfile = React.useMemo(() => !!(employeeData?.children && employeeData.children.length > 0), [employeeData]);
+  const hasSpouseInProfile = React.useMemo(() => !!employeeData?.spouseName, [employeeData]);
 
-  // Histórico de datas negadas para o servidor logado
   const deniedDates = React.useMemo(() => {
     if (!myRequests) return [];
     const denied = myRequests.filter(p => p.status === "NEGADO");
@@ -160,7 +155,28 @@ export default function FeriasPage() {
     );
   }, [approvedPlans, searchTermApproved]);
 
-  // Lógica de agrupamento por mês para a impressão
+  const calculatePeriod = (day: string, month: string, year: string, isSplit: boolean) => {
+    const monthIndex = MONTHS.indexOf(month);
+    if (monthIndex === -1) return "DATA INVÁLIDA";
+    
+    const d = parseInt(day) || 15;
+    const y = parseInt(year);
+    
+    const startDate = new Date(y, monthIndex, d);
+    const endDate = new Date(startDate);
+    // 15 ou 30 dias de duração (incluindo o primeiro dia)
+    endDate.setDate(startDate.getDate() + (isSplit ? 14 : 29));
+
+    const formatDate = (date: Date) => {
+      const dd = String(date.getDate()).padStart(2, '0');
+      const mm = String(date.getMonth() + 1).padStart(2, '0');
+      const yyyy = date.getFullYear();
+      return `${dd}/${mm}/${yyyy}`;
+    };
+
+    return `DE ${formatDate(startDate)} ATÉ ${formatDate(endDate)}`;
+  };
+
   const groupedPrintData = React.useMemo(() => {
     if (!approvedPlans) return [];
     
@@ -176,7 +192,8 @@ export default function FeriasPage() {
           employeeEscala: plan.employeeEscala,
           employeeTurno: plan.employeeTurno,
           processedByQra: plan.processedByQra,
-          splitVacation: plan.splitVacation
+          splitVacation: plan.splitVacation,
+          periodText: calculatePeriod(opt.startDay, opt.month, opt.year, plan.splitVacation)
         });
       });
     });
@@ -450,11 +467,10 @@ export default function FeriasPage() {
             <table className="report-table">
               <thead>
                 <tr>
-                  <th style={{ width: '250px' }}>Servidor / QRA</th>
+                  <th style={{ width: '220px' }}>Servidor / QRA</th>
                   <th>Escala / Turno</th>
-                  <th style={{ width: '100px' }} className="center">Início</th>
-                  <th style={{ width: '100px' }} className="center">Duração</th>
-                  <th style={{ width: '120px' }} className="center">Auditoria</th>
+                  <th style={{ width: '240px' }} className="center">Período</th>
+                  <th style={{ width: '90px' }} className="center">Duração</th>
                 </tr>
               </thead>
               <tbody>
@@ -462,9 +478,8 @@ export default function FeriasPage() {
                   <tr key={mIdx}>
                     <td className="font-bold">{member.employeeName} ({member.employeeQra})</td>
                     <td>{member.employeeEscala} / {member.employeeTurno}</td>
-                    <td className="center font-black">{member.startDay || "15"}</td>
+                    <td className="center font-black" style={{ fontSize: '9pt' }}>{member.periodText}</td>
                     <td className="center font-bold">{member.splitVacation ? "15 DIAS" : "30 DIAS"}</td>
-                    <td className="center font-mono" style={{ fontSize: '8pt' }}>{member.processedByQra}</td>
                   </tr>
                 ))}
               </tbody>
@@ -523,21 +538,21 @@ export default function FeriasPage() {
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full print-hidden">
         <TabsList className={cn(
-          "grid w-full bg-muted/50 p-1 rounded-xl h-12",
+          "grid w-full bg-muted/50 p-1 rounded-xl h-auto",
           isManager ? "grid-cols-4 lg:w-[850px]" : "grid-cols-2 lg:w-[400px]"
         )}>
-          <TabsTrigger value="nova-solicitacao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
+          <TabsTrigger value="nova-solicitacao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 py-2">
             <CalendarDays className="h-3.5 w-3.5" /> NOVA SOLICITAÇÃO
           </TabsTrigger>
-          <TabsTrigger value="meus-pedidos" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2">
+          <TabsTrigger value="meus-pedidos" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 py-2">
             <History className="h-3.5 w-3.5" /> MEUS PEDIDOS
           </TabsTrigger>
           {isManager && (
             <>
-              <TabsTrigger value="painel-gestao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-primary">
+              <TabsTrigger value="painel-gestao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-primary py-2">
                 <ShieldCheck className="h-3.5 w-3.5" /> PAINEL DE GESTÃO
               </TabsTrigger>
-              <TabsTrigger value="cronograma" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-blue-600">
+              <TabsTrigger value="cronograma" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-blue-600 py-2">
                 <LayoutList className="h-3.5 w-3.5" /> CRONOGRAMA GERAL
               </TabsTrigger>
             </>
@@ -579,65 +594,63 @@ export default function FeriasPage() {
                   {renderOptionRow(3, opt3, setOpt3, "3ª Prioridade")}
                 </div>
 
-                {(hasChildrenInProfile || hasSpouseInProfile) && (
-                  <div className="pt-6 border-t border-slate-100 space-y-6">
-                    <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-widest flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-primary" /> Critérios de Prioridade (Baseado no Perfil)
-                    </h4>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {hasChildrenInProfile && (
-                        <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
-                          <CardContent className="p-4 flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                              <div className="bg-white p-2 rounded-lg border shadow-sm">
-                                <Baby className="h-5 w-5 text-blue-600" />
-                              </div>
-                              <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
-                                Tem filhos menores 18 anos, em idade escolar?
-                              </Label>
+                <div className="pt-6 border-t border-slate-100 space-y-6">
+                  <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-widest flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" /> Critérios de Prioridade (Baseado no Perfil)
+                  </h4>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {hasChildrenInProfile && (
+                      <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
+                        <CardContent className="p-4 flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white p-2 rounded-lg border shadow-sm">
+                              <Baby className="h-5 w-5 text-blue-600" />
                             </div>
-                            <RadioGroup value={hasMinorChildren} onValueChange={setHasMinorChildren} className="flex gap-4">
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="sim" id="hmc-sim" />
-                                <Label htmlFor="hmc-sim" className="text-[10px] font-bold uppercase">SIM</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="nao" id="hmc-nao" />
-                                <Label htmlFor="hmc-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
-                              </div>
-                            </RadioGroup>
-                          </CardContent>
-                        </Card>
-                      )}
+                            <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
+                              Tem filhos menores 18 anos, em idade escolar?
+                            </Label>
+                          </div>
+                          <RadioGroup value={hasMinorChildren} onValueChange={setHasMinorChildren} className="flex gap-4">
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="sim" id="hmc-sim" />
+                              <Label htmlFor="hmc-sim" className="text-[10px] font-bold uppercase">SIM</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="nao" id="hmc-nao" />
+                              <Label htmlFor="hmc-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
+                            </div>
+                          </RadioGroup>
+                        </CardContent>
+                      </Card>
+                    )}
 
-                      {hasSpouseInProfile && (
-                        <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
-                          <CardContent className="p-4 flex items-center justify-between gap-4">
-                            <div className="flex items-center gap-3">
-                              <div className="bg-white p-2 rounded-lg border shadow-sm">
-                                <GraduationCap className="h-5 w-5 text-purple-600" />
-                              </div>
-                              <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
-                                Cônjuge professor(a) do Município de Vila Velha?
-                              </Label>
+                    {hasSpouseInProfile && (
+                      <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
+                        <CardContent className="p-4 flex items-center justify-between gap-4">
+                          <div className="flex items-center gap-3">
+                            <div className="bg-white p-2 rounded-lg border shadow-sm">
+                              <GraduationCap className="h-5 w-5 text-purple-600" />
                             </div>
-                            <RadioGroup value={spouseIsTeacher} onValueChange={setSpouseIsTeacher} className="flex gap-4">
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="sim" id="sit-sim" />
-                                <Label htmlFor="sit-sim" className="text-[10px] font-bold uppercase">SIM</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="nao" id="sit-nao" />
-                                <Label htmlFor="sit-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
-                              </div>
-                            </RadioGroup>
-                          </CardContent>
-                        </Card>
-                      )}
-                    </div>
+                            <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
+                              Cônjuge professor(a) do Município de Vila Velha?
+                            </Label>
+                          </div>
+                          <RadioGroup value={spouseIsTeacher} onValueChange={setSpouseIsTeacher} className="flex gap-4">
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="sim" id="sit-sim" />
+                              <Label htmlFor="sit-sim" className="text-[10px] font-bold uppercase">SIM</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="nao" id="sit-nao" />
+                              <Label htmlFor="sit-nao" className="text-[10px] font-bold uppercase">NÃO</Label>
+                            </div>
+                          </RadioGroup>
+                        </CardContent>
+                      </Card>
+                    )}
                   </div>
-                )}
+                </div>
 
                 <div className="pt-6 border-t border-slate-100 space-y-6">
                   <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-widest flex items-center gap-2">
