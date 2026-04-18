@@ -204,7 +204,6 @@ export default function DadosPerfilPage() {
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     {renderInfoRow("Cônjuge", emp.spouseName)}
-                                    {renderInfoRow("Servidor Educação?", emp.isSpouseEducationEmployee ? "SIM" : "NÃO")}
                                   </div>
                                   {emp.children && emp.children.length > 0 && (
                                     <div className="space-y-2 mt-4">
@@ -213,9 +212,14 @@ export default function DadosPerfilPage() {
                                       </span>
                                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                                         {emp.children.map((child: any, idx: number) => (
-                                          <div key={idx} className="p-2 bg-slate-50 rounded-lg border border-slate-100 flex justify-between items-center">
-                                            <span className="text-[10px] font-bold uppercase">{child.name}</span>
-                                            <Badge variant="secondary" className="text-[8px] font-black">{child.age} ANOS</Badge>
+                                          <div key={idx} className="p-2 bg-slate-50 rounded-lg border border-slate-100 flex flex-col gap-1">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-[10px] font-bold uppercase">{child.name}</span>
+                                              <Badge variant="secondary" className="text-[8px] font-black">{child.age} ANOS</Badge>
+                                            </div>
+                                            {child.cpf && (
+                                              <span className="text-[9px] font-mono font-bold text-muted-foreground">CPF: {child.cpf}</span>
+                                            )}
                                           </div>
                                         ))}
                                       </div>

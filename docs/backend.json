@@ -35,7 +35,8 @@
             "type": "object",
             "properties": {
               "name": { "type": "string" },
-              "age": { "type": "string" }
+              "age": { "type": "string" },
+              "cpf": { "type": "string" }
             }
           }
         },
