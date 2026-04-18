@@ -28,7 +28,6 @@ import { useAuth, useFirestore } from "@/firebase"
 import { doc, updateDoc } from "firebase/firestore"
 import { updatePassword } from "firebase/auth"
 import { useToast } from "@/hooks/use-toast"
-import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { cn } from "@/lib/utils"
 
@@ -443,18 +442,18 @@ export default function ProfilePage() {
                       <p className="text-[10px] text-muted-foreground uppercase font-bold italic">Nenhum filho cadastrado.</p>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 gap-4">
                       {children.map((child, index) => (
                         <div key={index} className="flex gap-2 items-end p-3 border rounded-xl bg-slate-50/50 animate-in zoom-in-95 duration-200">
                           <div className="flex-1 space-y-1.5">
                             <Label className="text-[8px] font-bold uppercase text-muted-foreground">Nome Completo</Label>
                             <Input value={child.name} onChange={(e) => handleUpdateChild(index, "name", e.target.value)} className="h-9 uppercase text-xs font-bold bg-white" />
                           </div>
-                          <div className="w-32 space-y-1.5">
+                          <div className="w-40 space-y-1.5">
                             <Label className="text-[8px] font-bold uppercase text-muted-foreground">CPF</Label>
                             <Input value={child.cpf || ""} onChange={(e) => handleUpdateChild(index, "cpf", e.target.value)} placeholder="000.000.000-00" className="h-9 text-center text-xs font-bold bg-white" />
                           </div>
-                          <div className="w-16 space-y-1.5">
+                          <div className="w-20 space-y-1.5">
                             <Label className="text-[8px] font-bold uppercase text-muted-foreground">Idade</Label>
                             <Input value={child.age} onChange={(e) => handleUpdateChild(index, "age", e.target.value)} className="h-9 text-center text-xs font-bold bg-white" />
                           </div>
