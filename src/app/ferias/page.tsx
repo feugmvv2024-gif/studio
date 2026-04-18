@@ -133,17 +133,12 @@ export default function FeriasPage() {
 
   // Status de abertura do sistema
   const isSolicitationOpen = React.useMemo(() => {
-    return vacationSettings?.isOpen ?? true; // Padrão aberto se não configurado
+    return vacationSettings?.isOpen ?? true;
   }, [vacationSettings]);
 
-  // Verificações para campos de prioridade
-  const hasChildrenInProfile = React.useMemo(() => {
-    return employeeData?.children && employeeData.children.length > 0;
-  }, [employeeData]);
-
-  const hasSpouseInProfile = React.useMemo(() => {
-    return !!employeeData?.spouseName;
-  }, [employeeData]);
+  // Verificações para campos de prioridade baseados no perfil fixo do servidor
+  const hasChildrenInProfile = !!(employeeData?.children && employeeData.children.length > 0);
+  const hasSpouseInProfile = !!employeeData?.spouseName;
 
   // Histórico de datas negadas para o servidor logado
   const deniedDates = React.useMemo(() => {
@@ -325,7 +320,7 @@ export default function FeriasPage() {
     if (isSelected) {
       setSelectionMap({ ...selectionMap, [planId]: current.filter(s => !(s.year === opt.year && s.month === opt.month)) });
     } else {
-      const newSelection = { ...opt, startDay: "15" }; // Padrão 15
+      const newSelection = { ...opt, startDay: "15" };
       if (!isSplit) {
         setSelectionMap({ ...selectionMap, [planId]: [newSelection] });
       } else {
@@ -422,75 +417,22 @@ export default function FeriasPage() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20 print:p-0">
-      {/* Configurações de Impressão */}
       <style dangerouslySetInnerHTML={{ __html: `
         @media print {
           @page { size: A4 portrait; margin: 1.5cm; }
-          
-          html, body, main, [data-sidebar="inset"], .flex-1 { 
-            overflow: visible !important; 
-            height: auto !important; 
-            display: block !important;
-            background: white !important;
-          }
-
-          .print-hidden, header, nav, footer, aside, .tabs-list {
-            display: none !important;
-          }
-
-          .printable-content {
-            display: block !important;
-            width: 100% !important;
-            color: black !important;
-          }
-
-          .report-header {
-            margin-bottom: 2rem;
-            border-bottom: 2px solid black; padding-bottom: 1rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-end;
-          }
-
-          .month-section {
-            margin-bottom: 2.5rem;
-            break-inside: avoid-page;
-          }
-
-          .month-title {
-            background-color: #f0f0f0 !important;
-            -webkit-print-color-adjust: exact;
-            padding: 8px 12px;
-            font-size: 14pt;
-            font-weight: 900;
-            text-transform: uppercase;
-            border-left: 6px solid black;
-            margin-bottom: 1rem;
-          }
-
-          .report-table {
-            width: 100%;
-            border-collapse: collapse;
-          }
-
-          .report-table th, .report-table td {
-            border: 1px solid #000;
-            padding: 8px;
-            font-size: 10pt;
-            text-align: left;
-            text-transform: uppercase;
-          }
-
-          .report-table th {
-            font-weight: 900;
-            background-color: #fafafa !important;
-          }
-
+          html, body, main, [data-sidebar="inset"], .flex-1 { overflow: visible !important; height: auto !important; display: block !important; background: white !important; }
+          .print-hidden, header, nav, footer, aside, .tabs-list { display: none !important; }
+          .printable-content { display: block !important; width: 100% !important; color: black !important; }
+          .report-header { margin-bottom: 2rem; border-bottom: 2px solid black; padding-bottom: 1rem; display: flex; justify-content: space-between; align-items: flex-end; }
+          .month-section { margin-bottom: 2.5rem; break-inside: avoid-page; }
+          .month-title { background-color: #f0f0f0 !important; -webkit-print-color-adjust: exact; padding: 8px 12px; font-size: 14pt; font-weight: 900; text-transform: uppercase; border-left: 6px solid black; margin-bottom: 1rem; }
+          .report-table { width: 100%; border-collapse: collapse; }
+          .report-table th, .report-table td { border: 1px solid #000; padding: 8px; font-size: 10pt; text-align: left; text-transform: uppercase; }
+          .report-table th { font-weight: 900; background-color: #fafafa !important; }
           .report-table td.center { text-align: center; }
         }
       ` }} />
 
-      {/* ÁREA DE IMPRESSÃO EXCLUSIVA */}
       <div className="hidden printable-content">
         <div className="report-header">
           <div>
@@ -529,13 +471,8 @@ export default function FeriasPage() {
             </table>
           </div>
         ))}
-
-        <div className="mt-12 pt-4 border-t border-slate-200 text-center">
-          <p className="text-[8px] font-bold uppercase text-muted-foreground">Sistema de Gestão Operacional GMVV - Módulo de Férias</p>
-        </div>
       </div>
 
-      {/* Modal de Justificativa de Indeferimento */}
       <div className="print-hidden">
         <Dialog open={isDenyModalOpen} onOpenChange={setIsDenyModalOpen}>
           <DialogContent className="rounded-2xl border-none shadow-2xl p-6 sm:p-8">
@@ -555,12 +492,6 @@ export default function FeriasPage() {
                   value={denialReason}
                   onChange={(e) => setDenialReason(e.target.value.toUpperCase())}
                 />
-              </div>
-              <div className="bg-amber-50 p-3 rounded-xl border border-amber-100 flex items-start gap-3">
-                <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
-                <p className="text-[9px] text-amber-800 font-bold uppercase leading-relaxed">
-                  Ao confirmar, estas datas ficarão bloqueadas para o servidor. Ele deverá realizar um novo pedido com períodos diferentes.
-                </p>
               </div>
             </div>
             <DialogFooter className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
@@ -625,10 +556,6 @@ export default function FeriasPage() {
                   <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest max-w-md leading-relaxed">
                     O formulário para novas intenções de férias encontra-se desabilitado ou ainda não foi iniciado pela administração da unidade.
                   </p>
-                </div>
-                <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-xl border border-slate-200 shadow-sm">
-                  <Lock className="h-4 w-4 text-slate-400" />
-                  <span className="text-[10px] font-black uppercase text-slate-500 tracking-tighter">Aguarde novas orientações do RH</span>
                 </div>
               </CardContent>
             </Card>
@@ -765,16 +692,6 @@ export default function FeriasPage() {
                     </Card>
                   </div>
                 </div>
-
-                <div className="bg-amber-50 border border-amber-100 rounded-xl p-4 flex items-start gap-4">
-                  <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-[11px] font-black uppercase text-amber-900 leading-none tracking-tight">Regras do Sistema</p>
-                    <p className="text-[10px] text-amber-800 font-medium uppercase leading-relaxed mt-1">
-                      Cada opção deve ser uma combination única. O sistema bloqueia automaticamente a escolha de meses que já foram negados pela administração para o seu perfil.
-                    </p>
-                  </div>
-                </div>
               </CardContent>
               <CardFooter className="bg-slate-50 border-t p-6 flex justify-end">
                 <Button 
@@ -884,16 +801,6 @@ export default function FeriasPage() {
                                   </p>
                                 </div>
                               </div>
-                              {plan.adminResponse && (
-                                <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 border-l-4 border-l-red-600">
-                                  <p className="text-[9px] font-black uppercase text-slate-500 mb-1 flex items-center gap-1.5">
-                                    <MessageSquare className="h-3 w-3" /> Justificativa do RH: ({plan.processedByQra || ""})
-                                  </p>
-                                  <p className="text-[11px] font-bold uppercase text-slate-800 italic leading-relaxed">
-                                    "{plan.adminResponse}"
-                                  </p>
-                                </div>
-                              )}
                             </div>
                           )}
                         </div>
@@ -909,7 +816,6 @@ export default function FeriasPage() {
         {isManager && (
           <>
             <TabsContent value="painel-gestao" className="mt-6 space-y-6">
-              {/* CONTROLE DE SISTEMA */}
               <Card className="card-shadow border-none rounded-2xl bg-white overflow-hidden animate-in slide-in-from-top-4 duration-500">
                 <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
                   <div className="flex items-center gap-4">
@@ -934,9 +840,7 @@ export default function FeriasPage() {
                     <Switch 
                       checked={isSolicitationOpen} 
                       onCheckedChange={handleToggleSystem}
-                      className={cn(
-                        "data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-500"
-                      )}
+                      className="data-[state=checked]:bg-green-500 data-[state=unchecked]:bg-red-500"
                     />
                   </div>
                 </CardContent>
@@ -965,11 +869,6 @@ export default function FeriasPage() {
                                 <div className="space-y-1">
                                   <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
                                   <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
-                                  <div className="flex flex-col mt-1">
-                                    <span className="text-[9px] font-black uppercase text-blue-600 tracking-tighter leading-tight">
-                                      {plan.employeeEscala || "N/A"} / {plan.employeeTurno || "N/A"}
-                                    </span>
-                                  </div>
                                 </div>
 
                                 <div className="flex flex-wrap gap-2 pt-2 border-t">
@@ -1001,14 +900,6 @@ export default function FeriasPage() {
                                     </Badge>
                                   </div>
                                 </div>
-                                {plan.splitVacation && (
-                                  <div className="pt-2">
-                                    <Badge variant="secondary" className="w-full justify-center bg-blue-100 text-blue-700 border-none font-black text-[9px] py-1">
-                                      SELECIONADO: {currentSelections.length} DE 2
-                                    </Badge>
-                                  </div>
-                                )}
-                                <p className="text-[9px] font-bold text-muted-foreground uppercase pt-2">Solicitado em: {new Date(plan.createdAt?.seconds * 1000).toLocaleDateString('pt-BR')}</p>
                               </div>
                               <div className="flex-1 p-6 space-y-6">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -1047,15 +938,6 @@ export default function FeriasPage() {
                                               onChange={(e) => updateOptionDay(plan.id, opt.year, opt.month, e.target.value.replace(/\D/g, ''))}
                                               className="h-8 text-center font-black text-xs bg-white text-blue-700 border-none shadow-inner"
                                             />
-                                          </div>
-                                        )}
-
-                                        {!isSelected && (
-                                          <div className={cn(
-                                            "w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors",
-                                            "bg-slate-50 border-slate-200 text-transparent group-hover:border-blue-200"
-                                          )}>
-                                            <CheckCircle2 className="h-4 w-4" />
                                           </div>
                                         )}
                                       </div>
@@ -1176,7 +1058,6 @@ export default function FeriasPage() {
                                     {plan.spouseIsTeacher && (
                                       <Badge variant="outline" className="text-[8px] font-black uppercase border-purple-200 text-purple-600 bg-purple-50">PROFESSOR</Badge>
                                     )}
-                                    {!plan.hasMinorChildren && !plan.spouseIsTeacher && <span className="text-[8px] text-slate-400 uppercase font-bold">PADRÃO</span>}
                                   </div>
                                 </TableCell>
                                 <TableCell>
@@ -1187,14 +1068,8 @@ export default function FeriasPage() {
                                 </TableCell>
                                 <TableCell className="text-center">
                                   <div className="flex items-center justify-center gap-3">
-                                    <div className="flex items-center gap-1">
-                                      <Coins className={cn("h-3.5 w-3.5", plan.advance13th ? "text-amber-500" : "text-slate-300")} />
-                                      <span className={cn("text-[8px] font-black", plan.advance13th ? "text-amber-600" : "text-slate-400")}>13º</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
-                                      <Scissors className={cn("h-3.5 w-3.5", plan.splitVacation ? "text-blue-500" : "text-slate-300")} />
-                                      <span className={cn("text-[8px] font-black", plan.splitVacation ? "text-blue-600" : "text-slate-400")}>DIV.</span>
-                                    </div>
+                                    <Coins className={cn("h-3.5 w-3.5", plan.advance13th ? "text-amber-500" : "text-slate-300")} />
+                                    <Scissors className={cn("h-3.5 w-3.5", plan.splitVacation ? "text-blue-500" : "text-slate-300")} />
                                   </div>
                                 </TableCell>
                               </TableRow>
@@ -1210,12 +1085,6 @@ export default function FeriasPage() {
           </>
         )}
       </Tabs>
-
-      <div className="text-center print:hidden">
-        <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-          NRH - GMVV • SISTEMA DE GESTÃO OPERACIONAL • VERSÃO 1.0
-        </p>
-      </div>
     </div>
   )
 }
