@@ -68,7 +68,6 @@ export default function ProfilePage() {
   const [city, setCity] = React.useState("");
   const [state, setState] = React.useState("");
   const [spouseName, setSpouseName] = React.useState("");
-  const [isSpouseEducationEmployee, setIsSpouseEducationEmployee] = React.useState(false);
   const [voterId, setVoterId] = React.useState("");
   const [voterZone, setVoterZone] = React.useState("");
   const [votingLocation, setVotingLocation] = React.useState("");
@@ -94,7 +93,6 @@ export default function ProfilePage() {
       setCity((employeeData.city || "").toUpperCase());
       setState((employeeData.state || "").toUpperCase());
       setSpouseName((employeeData.spouseName || "").toUpperCase());
-      setIsSpouseEducationEmployee(!!employeeData.isSpouseEducationEmployee);
       setVoterId((employeeData.voterId || "").toUpperCase());
       setVoterZone((employeeData.voterZone || "").toUpperCase());
       setVotingLocation((employeeData.votingLocation || "").toUpperCase());
@@ -135,7 +133,6 @@ export default function ProfilePage() {
       city: city.toUpperCase(),
       state: state.toUpperCase(),
       spouseName: spouseName.toUpperCase(),
-      isSpouseEducationEmployee,
       voterId: voterId.toUpperCase(),
       voterZone: voterZone.toUpperCase(),
       votingLocation: votingLocation.toUpperCase(),
@@ -420,18 +417,9 @@ export default function ProfilePage() {
 
               <div className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="md:col-span-2 space-y-1.5">
+                  <div className="md:col-span-3 space-y-1.5">
                     <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nome do Cônjuge</Label>
                     <Input value={spouseName} onChange={(e) => setSpouseName(e.target.value.toUpperCase())} className="uppercase font-bold text-xs h-11 bg-slate-50/50" />
-                  </div>
-
-                  <div className="flex flex-col justify-end gap-2 p-3 bg-slate-50 border border-dashed rounded-xl">
-                    <div className="flex items-center justify-between gap-4">
-                      <Label className="text-[9px] font-bold text-muted-foreground uppercase leading-tight tracking-tighter">
-                        {spouseName ? `O(A) ${spouseName} É SERVIDOR(A) DA EDUCAÇÃO DE VILA VELHA?` : "O CÔNJUGE É SERVIDOR DA EDUCAÇÃO DE VILA VELHA?"}
-                      </Label>
-                      <Switch checked={isSpouseEducationEmployee} onCheckedChange={setIsSpouseEducationEmployee} />
-                    </div>
                   </div>
                 </div>
 
@@ -574,7 +562,7 @@ export default function ProfilePage() {
             disabled={isSaving} 
             className="w-full md:w-auto h-14 px-12 rounded-2xl bg-primary hover:bg-primary/90 text-white font-black uppercase text-xs tracking-widest shadow-xl shadow-blue-200 transition-all active:scale-95"
           >
-            {isSaving ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
+            {isSaving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-5 w-5 mr-2" />}
             GRAVAR ATUALIZAÇÃO CADASTRAL
           </Button>
         </div>
@@ -582,4 +570,3 @@ export default function ProfilePage() {
     </div>
   )
 }
-
