@@ -755,7 +755,7 @@ export default function FeriasPage() {
                   <div className="space-y-1">
                     <p className="text-[11px] font-black uppercase text-amber-900 leading-none tracking-tight">Regras do Sistema</p>
                     <p className="text-[10px] text-amber-800 font-medium uppercase leading-relaxed mt-1">
-                      Cada opção deve ser uma combinação única. O sistema bloqueia automaticamente a escolha de meses que já foram negados pela administração para o seu perfil.
+                      Cada opção deve ser uma combination única. O sistema bloqueia automaticamente a escolha de meses que já foram negados pela administração para o seu perfil.
                     </p>
                   </div>
                 </div>
@@ -850,7 +850,7 @@ export default function FeriasPage() {
                             )}
                             {plan.spouseIsTeacher && (
                               <div className="flex items-center gap-2">
-                                <GraduateCap className="h-3 w-3 text-purple-600" />
+                                <GraduationCap className="h-3 w-3 text-purple-600" />
                                 <span className="text-[8px] font-black uppercase text-slate-500">Cônjuge Professor:</span>
                                 <Badge className="text-[7px] font-black uppercase bg-purple-600 text-white border-none">SIM</Badge>
                               </div>
@@ -864,7 +864,7 @@ export default function FeriasPage() {
                                 <div className="space-y-1">
                                   <p className="text-[10px] text-red-800 font-black uppercase tracking-tight">DATAS BLOQUEADAS PELA ADMINISTRAÇÃO</p>
                                   <p className="text-[9px] text-red-700 font-medium uppercase leading-relaxed">
-                                    ESTAS OPÇÕES NÃO PODEM SER SELECIONADAS NOVAMENTE. POR FAVOR, ENVIE UM NOVO PEDIDO COM DIFERENTES MESES.
+                                    ESTAS OPÇÕES NÃO PODEM SE SELECIONADAS NOVAMENTE. POR FAVOR, ENVIE UM NOVO PEDIDO COM DIFERENTES MESES.
                                   </p>
                                 </div>
                               </div>
