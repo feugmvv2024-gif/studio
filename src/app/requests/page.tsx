@@ -47,6 +47,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useFirestore, useCollection, useAuth } from '@/firebase';
 import { collection, addDoc, query, orderBy, where, serverTimestamp, updateDoc, doc, getDoc } from 'firebase/firestore';
@@ -300,6 +308,29 @@ export default function RequestsPage() {
   const managementBadgeCount = React.useMemo(() => 
     filteredManagementRequests.length
   , [filteredManagementRequests]);
+
+  const resetForm = () => {
+    setRequestType("");
+    setMultiDates([""]);
+    setCurrentVacationStart("");
+    setCurrentVacationEnd("");
+    setNewVacationStart("");
+    setNewVacationEnd("");
+    setBirthdayDate("");
+    setAbonoDate("");
+    setSwapFromDate("");
+    setSwapToDate("");
+    setPermutaMyOriginalDate("");
+    setPermutaMyNewDate("");
+    setPermutaPartnerId("");
+    setPermutaPartnerTerm("");
+    setPermutaPartnerData(null);
+    setAtestadoConsultaDate("");
+    setAtestadoCid("");
+    setAtestadoQtdDias("");
+    setAtestadoEndDate("");
+    setChefiaRows([{ id: Math.random().toString(), uid: "", term: "", show: false }]);
+  };
 
   const addChefiaRow = () => setChefiaRows([...chefiaRows, { id: Math.random().toString(), uid: "", term: "", show: false }]);
   const removeChefiaRow = (index: number) => {
