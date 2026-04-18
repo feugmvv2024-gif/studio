@@ -40,6 +40,36 @@ const applyCpfMask = (value: string) => {
   return `${limited.slice(0, 3)}.${limited.slice(3, 6)}.${limited.slice(6, 9)}-${limited.slice(9)}`;
 };
 
+const isValidCpf = (cpf: string) => {
+  const digits = cpf.replace(/\D/g, "");
+  if (digits.length !== 11) return false;
+  
+  // Rejeita sequências conhecidas de números iguais
+  if (/^(\d)\1{10}$/.test(digits)) return false;
+
+  let sum = 0;
+  let remainder;
+
+  // Validação do 1º dígito verificador
+  for (let i = 1; i <= 9; i++) {
+    sum = sum + parseInt(digits.substring(i - 1, i)) * (11 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(digits.substring(9, 10))) return false;
+
+  // Validação do 2º dígito verificador
+  sum = 0;
+  for (let i = 1; i <= 10; i++) {
+    sum = sum + parseInt(digits.substring(i - 1, i)) * (12 - i);
+  }
+  remainder = (sum * 10) % 11;
+  if (remainder === 10 || remainder === 11) remainder = 0;
+  if (remainder !== parseInt(digits.substring(10, 11))) return false;
+
+  return true;
+};
+
 const applyPhoneMask = (value: string) => {
   const digits = value.replace(/\D/g, "");
   const limited = digits.slice(0, 11);
@@ -126,6 +156,28 @@ export default function ProfilePage() {
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!employeeData?.id || !firestore) return;
+
+    // Validação matemática do CPF do Titular
+    if (cpf && !isValidCpf(cpf)) {
+      toast({ 
+        variant: "destructive", 
+        title: "CPF INVÁLIDO", 
+        description: "O CPF informado para o titular não é um documento válido." 
+      });
+      return;
+    }
+
+    // Validação matemática do CPF dos Dependentes
+    for (const child of children) {
+      if (child.cpf && !isValidCpf(child.cpf)) {
+        toast({ 
+          variant: "destructive", 
+          title: "CPF DE DEPENDENTE INVÁLIDO", 
+          description: `O CPF informado para o dependente ${child.name || '(Sem nome)'} não é válido.` 
+        });
+        return;
+      }
+    }
 
     setIsSaving(true);
     const updates = {
@@ -261,8 +313,12 @@ export default function ProfilePage() {
                     value={cpf} 
                     onChange={(e) => setCpf(applyCpfMask(e.target.value))} 
                     placeholder="000.000.000-00" 
-                    className="uppercase font-bold text-xs h-11 bg-slate-50/50" 
+                    className={cn(
+                      "uppercase font-bold text-xs h-11 bg-slate-50/50",
+                      cpf && !isValidCpf(cpf) && "border-red-500 bg-red-50"
+                    )} 
                   />
+                  {cpf && !isValidCpf(cpf) && <span className="text-[8px] font-black text-red-600 uppercase">CPF titular inválido</span>}
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Data de Nascimento</Label>
@@ -449,9 +505,18 @@ export default function ProfilePage() {
                             <Label className="text-[8px] font-bold uppercase text-muted-foreground">Nome Completo</Label>
                             <Input value={child.name} onChange={(e) => handleUpdateChild(index, "name", e.target.value)} className="h-9 uppercase text-xs font-bold bg-white" />
                           </div>
-                          <div className="w-40 space-y-1.5">
+                          <div className="w-48 space-y-1.5">
                             <Label className="text-[8px] font-bold uppercase text-muted-foreground">CPF</Label>
-                            <Input value={child.cpf || ""} onChange={(e) => handleUpdateChild(index, "cpf", e.target.value)} placeholder="000.000.000-00" className="h-9 text-center text-xs font-bold bg-white" />
+                            <Input 
+                              value={child.cpf || ""} 
+                              onChange={(e) => handleUpdateChild(index, "cpf", e.target.value)} 
+                              placeholder="000.000.000-00" 
+                              className={cn(
+                                "h-9 text-center text-xs font-bold bg-white",
+                                child.cpf && !isValidCpf(child.cpf) && "border-red-500 bg-red-50"
+                              )} 
+                            />
+                            {child.cpf && !isValidCpf(child.cpf) && <span className="text-[7px] font-black text-red-600 uppercase block text-center">CPF inválido</span>}
                           </div>
                           <div className="w-20 space-y-1.5">
                             <Label className="text-[8px] font-bold uppercase text-muted-foreground">Idade</Label>
