@@ -25,7 +25,9 @@ import {
   LayoutList,
   Printer,
   Settings2,
-  CalendarX
+  CalendarX,
+  Baby,
+  GraduationCap
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -82,6 +84,8 @@ export default function FeriasPage() {
   
   const [advance13th, setAdvance13th] = React.useState("nao");
   const [splitVacation, setSplitVacation] = React.useState("nao");
+  const [hasMinorChildren, setHasMinorChildren] = React.useState(false);
+  const [spouseIsTeacher, setSpouseIsTeacher] = React.useState(false);
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("nova-solicitacao");
@@ -132,6 +136,15 @@ export default function FeriasPage() {
   const isSolicitationOpen = React.useMemo(() => {
     return vacationSettings?.isOpen ?? true; // Padrão aberto se não configurado
   }, [vacationSettings]);
+
+  // Verificações para campos de prioridade
+  const hasChildrenInProfile = React.useMemo(() => {
+    return employeeData?.children && employeeData.children.length > 0;
+  }, [employeeData]);
+
+  const hasSpouseInProfile = React.useMemo(() => {
+    return !!employeeData?.spouseName;
+  }, [employeeData]);
 
   // Histórico de datas negadas para o servidor logado
   const deniedDates = React.useMemo(() => {
@@ -209,6 +222,8 @@ export default function FeriasPage() {
       employeeTurno: employeeData.turno || "N/A",
       advance13th: advance13th === "sim",
       splitVacation: splitVacation === "sim",
+      hasMinorChildren: hasMinorChildren,
+      spouseIsTeacher: spouseIsTeacher,
       options: [opt1, opt2, opt3],
       status: "PENDENTE",
       createdAt: serverTimestamp(),
@@ -223,6 +238,8 @@ export default function FeriasPage() {
       setOpt3({ year: "", month: "" });
       setAdvance13th("nao");
       setSplitVacation("nao");
+      setHasMinorChildren(false);
+      setSpouseIsTeacher(false);
       setActiveTab("meus-pedidos");
     } catch (error) {
       toast({ variant: "destructive", title: "ERRO AO ENVIAR", description: "Tente novamente mais tarde." });
@@ -637,6 +654,48 @@ export default function FeriasPage() {
                   {renderOptionRow(3, opt3, setOpt3, "3ª Prioridade")}
                 </div>
 
+                {(hasChildrenInProfile || hasSpouseInProfile) && (
+                  <div className="pt-6 border-t border-slate-100 space-y-6">
+                    <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-widest flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-primary" /> Critérios de Prioridade (Baseado no Perfil)
+                    </h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {hasChildrenInProfile && (
+                        <Card className="bg-blue-50/30 border-blue-100 shadow-none rounded-xl overflow-hidden border">
+                          <CardContent className="p-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-white p-2 rounded-lg border shadow-sm">
+                                <Baby className="h-5 w-5 text-blue-600" />
+                              </div>
+                              <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
+                                Tem filhos menores 18 anos, em idade escolar?
+                              </Label>
+                            </div>
+                            <Switch checked={hasMinorChildren} onCheckedChange={setHasMinorChildren} />
+                          </CardContent>
+                        </Card>
+                      )}
+
+                      {hasSpouseInProfile && (
+                        <Card className="bg-purple-50/30 border-purple-100 shadow-none rounded-xl overflow-hidden border">
+                          <CardContent className="p-4 flex items-center justify-between gap-4">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-white p-2 rounded-lg border shadow-sm">
+                                <GraduationCap className="h-5 w-5 text-purple-600" />
+                              </div>
+                              <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
+                                Cônjuge professor(a) do Município de Vila Velha?
+                              </Label>
+                            </div>
+                            <Switch checked={spouseIsTeacher} onCheckedChange={setSpouseIsTeacher} />
+                          </CardContent>
+                        </Card>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 <div className="pt-6 border-t border-slate-100 space-y-6">
                   <h4 className="text-[11px] font-black uppercase text-slate-800 tracking-widest flex items-center gap-2">
                     <ClipboardList className="h-4 w-4 text-blue-600" /> Preferências de Gozo e Pagamento
@@ -771,7 +830,7 @@ export default function FeriasPage() {
                             </div>
                           </div>
 
-                          <div className="flex gap-4 pt-2 border-t border-slate-100">
+                          <div className="flex flex-wrap gap-4 pt-2 border-t border-slate-100">
                             <div className="flex items-center gap-2">
                               <Coins className="h-3 w-3 text-amber-500" />
                               <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
@@ -782,6 +841,20 @@ export default function FeriasPage() {
                               <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
                               <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.splitVacation ? "SIM" : "NÃO"}</Badge>
                             </div>
+                            {plan.hasMinorChildren && (
+                              <div className="flex items-center gap-2">
+                                <Baby className="h-3 w-3 text-blue-600" />
+                                <span className="text-[8px] font-black uppercase text-slate-500">Filhos Escolares:</span>
+                                <Badge className="text-[7px] font-black uppercase bg-blue-600 text-white border-none">SIM</Badge>
+                              </div>
+                            )}
+                            {plan.spouseIsTeacher && (
+                              <div className="flex items-center gap-2">
+                                <GraduationCap className="h-3 w-3 text-purple-600" />
+                                <span className="text-[8px] font-black uppercase text-slate-500">Cônjuge Professor:</span>
+                                <Badge className="text-[7px] font-black uppercase bg-purple-600 text-white border-none">SIM</Badge>
+                              </div>
+                            )}
                           </div>
 
                           {plan.status === 'NEGADO' && (
@@ -882,6 +955,20 @@ export default function FeriasPage() {
                                     </span>
                                   </div>
                                 </div>
+
+                                <div className="flex flex-wrap gap-2 pt-2 border-t">
+                                  {plan.hasMinorChildren && (
+                                    <Badge className="bg-blue-600 text-white font-black text-[8px] uppercase gap-1 px-2 h-5">
+                                      <Baby className="h-2.5 w-2.5" /> Prioridade Escolar
+                                    </Badge>
+                                  )}
+                                  {plan.spouseIsTeacher && (
+                                    <Badge className="bg-purple-600 text-white font-black text-[8px] uppercase gap-1 px-2 h-5">
+                                      <GraduationCap className="h-2.5 w-2.5" /> Cônjuge Prof.
+                                    </Badge>
+                                  )}
+                                </div>
+
                                 <div className="space-y-1.5 pt-2 border-t">
                                   <div className="flex items-center gap-2">
                                     <Coins className="h-3 w-3 text-amber-500" />
@@ -1029,6 +1116,7 @@ export default function FeriasPage() {
                             <TableHead className="font-bold uppercase text-[10px] h-12">Servidor / QRA</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] h-12">Operacional</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] h-12">Período(s) Aprovado(s)</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] h-12">Prioridades</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] h-12">Auditor RH</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] h-12 text-center">Opções</TableHead>
                           </TableRow>
@@ -1036,7 +1124,7 @@ export default function FeriasPage() {
                         <TableBody>
                           {filteredApprovedPlans.length === 0 ? (
                             <TableRow>
-                              <TableCell colSpan={5} className="h-40 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                              <TableCell colSpan={6} className="h-40 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
                                 NENHUM REGISTRO HOMOLOGADO ENCONTRADO.
                               </TableCell>
                             </TableRow>
@@ -1062,6 +1150,17 @@ export default function FeriasPage() {
                                         {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year}
                                       </Badge>
                                     ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-wrap gap-1">
+                                    {plan.hasMinorChildren && (
+                                      <Badge variant="outline" className="text-[8px] font-black uppercase border-blue-200 text-blue-600 bg-blue-50">ESCOLAR</Badge>
+                                    )}
+                                    {plan.spouseIsTeacher && (
+                                      <Badge variant="outline" className="text-[8px] font-black uppercase border-purple-200 text-purple-600 bg-purple-50">PROFESSOR</Badge>
+                                    )}
+                                    {!plan.hasMinorChildren && !plan.spouseIsTeacher && <span className="text-[8px] text-slate-400 uppercase font-bold">PADRÃO</span>}
                                   </div>
                                 </TableCell>
                                 <TableCell>
