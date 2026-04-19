@@ -1036,7 +1036,7 @@ export default function RelatoriosPage() {
           }
 
           .signature-section {
-            margin-top: 4rem;
+            margin-top: 10rem;
             display: flex;
             justify-content: space-around;
             page-break-inside: avoid;
