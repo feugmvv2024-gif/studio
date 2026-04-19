@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -13,7 +12,9 @@ import {
   Baby,
   Heart,
   Calendar,
-  ExternalLink
+  ExternalLink,
+  MapPinned,
+  CreditCard
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { 
@@ -119,13 +120,15 @@ export default function DadosPerfilPage() {
                   <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">MATRÍCULA</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">CPF</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">TELEFONE</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">CAT. CNH</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">CIDADE VOTAÇÃO</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[100px] text-center">DETALHES</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                    <TableCell colSpan={7} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
                       NENHUM PERFIL ATIVO ENCONTRADO.
                     </TableCell>
                   </TableRow>
@@ -141,6 +144,14 @@ export default function DadosPerfilPage() {
                       <TableCell className="font-mono text-[10px] uppercase font-bold text-slate-600">{emp.matricula}</TableCell>
                       <TableCell className="font-mono text-[10px] uppercase font-bold text-slate-600">{emp.cpf || "---"}</TableCell>
                       <TableCell className="text-[10px] font-bold text-slate-600 uppercase">{emp.phone || "---"}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200 text-slate-600 bg-white">
+                          {emp.cnhCategory || "---"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[10px] font-bold text-slate-600 uppercase">{emp.votingCity || "---"}</span>
+                      </TableCell>
                       <TableCell className="text-center">
                         <Dialog>
                           <DialogTrigger asChild>
@@ -174,12 +185,12 @@ export default function DadosPerfilPage() {
                                     {renderInfoRow("Data Nascimento", emp.birthDate?.split('-').reverse().join('/'), <Calendar className="h-2.5 w-2.5" />)}
                                     {renderInfoRow("Admissão", emp.admissionDate?.split('-').reverse().join('/'), <Calendar className="h-2.5 w-2.5" />)}
                                     {renderInfoRow("CNH (Nº)", emp.cnhNumber)}
-                                    {renderInfoRow("CNH (Cat)", emp.cnhCategory)}
+                                    {renderInfoRow("CNH (Cat)", emp.cnhCategory, <CreditCard className="h-2.5 w-2.5" />)}
                                     {renderInfoRow("CNH (Val)", emp.cnhExpiration?.split('-').reverse().join('/'))}
                                     {renderInfoRow("Título Eleitor", emp.voterId)}
                                     {renderInfoRow("Zona", emp.voterZone)}
                                     {renderInfoRow("Local Votação", emp.votingLocation)}
-                                    {renderInfoRow("Cidade Votação", emp.votingCity)}
+                                    {renderInfoRow("Cidade Votação", emp.votingCity, <MapPinned className="h-2.5 w-2.5" />)}
                                   </div>
                                 </div>
 
