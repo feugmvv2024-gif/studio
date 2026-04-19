@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -307,7 +306,12 @@ export default function MeusLancamentosPage() {
             <History className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">MEUS LANÇAMENTOS</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary flex items-center gap-2">
+              MEUS LANÇAMENTOS
+              <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-2 py-0.5 rounded-lg text-xs">
+                {filteredLaunches.length}
+              </Badge>
+            </h2>
             <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">CONSULTA INDIVIDUAL DE REGISTROS E SALDOS NO PERÍODO.</p>
           </div>
         </div>
@@ -371,7 +375,7 @@ export default function MeusLancamentosPage() {
                 <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITOS</p>
                 <div className="flex items-center gap-1">
                   <ArrowDownRight className="h-3 w-3 text-red-600" />
-                  <p className="text-xs font-bold text-red-600">-{myStats.treDebit}D</p>
+                  <p className="text-xs font-bold text-red-600">-{minutesToHHmm(myStats.treDebit)}D</p>
                 </div>
               </div>
             </div>
