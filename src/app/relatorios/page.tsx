@@ -1036,16 +1036,17 @@ export default function RelatoriosPage() {
           }
 
           .signature-section {
-            margin-top: 10rem;
-            display: flex;
-            justify-content: space-around;
-            page-break-inside: avoid;
+            margin-top: 5cm !important;
+            display: flex !important;
+            justify-content: space-around !important;
+            page-break-inside: avoid !important;
+            clear: both !important;
           }
 
           .sig-box {
             text-align: center;
             width: 250px;
-            border-top: 1px solid black;
+            border-top: 1px solid black !important;
             padding-top: 8px;
             font-size: 10px;
             font-weight: bold;
@@ -1257,7 +1258,7 @@ export default function RelatoriosPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 gap-2">
-            <AlertDialogCancel onClick={() => { setIsFormItemDeleteDialogOpen(false); setFormItemToDelete(null); }} className="h-12 uppercase font-black text-xs tracking-widest">CANCELAR</AlertDialogCancel>
+            <AlertDialogCancel className="uppercase text-xs font-bold rounded-xl h-11 border-none bg-slate-100 text-slate-600 hover:bg-slate-200">CANCELAR</AlertDialogCancel>
             <AlertDialogAction onClick={executeFormItemDelete} className="h-12 uppercase font-black text-xs tracking-widest bg-red-600 hover:bg-red-700 text-white shadow-xl shadow-red-100">REMOVER ITEM</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
