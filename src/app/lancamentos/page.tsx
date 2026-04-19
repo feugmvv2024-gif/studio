@@ -446,7 +446,7 @@ export default function LancamentosPage() {
         <div className="grid gap-1.5 relative">
           <Label className="uppercase text-[10px] font-bold text-muted-foreground tracking-wide">SERVIDOR (NOME OU QRA)</Label>
           <div className="relative">
-            <Input 
+            <input 
               ref={servidorSearchInputRef}
               type="text"
               placeholder="DIGITE O NOME OU QRA..."
@@ -458,7 +458,7 @@ export default function LancamentosPage() {
                 if (!val) setSelectedEmployeeId('');
               }}
               onFocus={() => setShowServidorSuggestions(true)}
-              className="w-full h-11 uppercase text-[11px] pr-10 border-muted bg-background/50 focus:bg-background transition-colors"
+              className="w-full h-11 uppercase text-[11px] pr-10 border-muted bg-background/50 focus:bg-background transition-colors border rounded-md px-3 outline-none"
             />
             {selectedEmployeeId && (
               <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5 pointer-events-none">
@@ -612,7 +612,7 @@ export default function LancamentosPage() {
           <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">
             LANÇAMENTOS
             <Badge variant="secondary" className="ml-2 bg-blue-50 text-blue-600 border-blue-100 font-bold px-2 py-0.5 rounded-lg text-xs">
-              {launches?.length || 0}
+              {filteredLaunches.length}
             </Badge>
           </h2>
           <p className="text-muted-foreground uppercase text-[10px]">GESTOR DE BANCO DE HORAS E AFASTAMENTOS.</p>
