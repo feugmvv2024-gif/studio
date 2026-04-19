@@ -166,6 +166,7 @@ export default function DadosPerfilPage() {
                   <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">CPF</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">TELEFONE</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">CAT. CNH</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">LOCAL VOTAÇÃO</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">CIDADE VOTAÇÃO</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[100px] text-center">DETALHES</TableHead>
                 </TableRow>
@@ -173,7 +174,7 @@ export default function DadosPerfilPage() {
               <TableBody>
                 {filteredData.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={7} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                    <TableCell colSpan={8} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
                       NENHUM PERFIL ENCONTRADO PARA ESTA BUSCA.
                     </TableCell>
                   </TableRow>
@@ -193,6 +194,9 @@ export default function DadosPerfilPage() {
                         <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200 text-slate-600 bg-white">
                           {emp.cnhCategory || "---"}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-[10px] font-bold text-slate-600 uppercase">{emp.votingLocation || "---"}</span>
                       </TableCell>
                       <TableCell>
                         <span className="text-[10px] font-bold text-slate-600 uppercase">{emp.votingCity || "---"}</span>
