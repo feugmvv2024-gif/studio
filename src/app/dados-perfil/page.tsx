@@ -101,7 +101,12 @@ export default function DadosPerfilPage() {
             <FileText className="h-6 w-6 text-blue-600" />
           </div>
           <div>
-            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">DADOS PERFIL</h2>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary flex items-center gap-2">
+              DADOS PERFIL
+              <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-2 py-0.5 rounded-lg text-xs">
+                {filteredData.length}
+              </Badge>
+            </h2>
             <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">AUDITORIA DE FICHAS FUNCIONAIS ATIVAS.</p>
           </div>
         </div>
