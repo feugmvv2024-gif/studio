@@ -14,7 +14,9 @@ import {
   Calendar,
   ExternalLink,
   MapPinned,
-  CreditCard
+  CreditCard,
+  Printer,
+  X
 } from "lucide-react"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { 
@@ -76,6 +78,10 @@ export default function DadosPerfilPage() {
     });
   }, [activatedEmployees, searchTerm, searchCnh, searchCity]);
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (loading) {
     return (
       <div className="flex h-full items-center justify-center min-h-[400px]">
@@ -94,8 +100,62 @@ export default function DadosPerfilPage() {
   );
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-12">
-      <div className="flex flex-col gap-2">
+    <div className="space-y-6 animate-in fade-in duration-500 pb-12 print:p-0 print:space-y-0">
+      {/* Estilos Globais de Impressão */}
+      <style dangerouslySetInnerHTML={{ __html: `
+        @media print {
+          @page { size: A4 portrait; margin: 1.5cm; }
+          
+          /* Remove interface do sistema */
+          header, nav, aside, footer, .print-hidden, [data-sidebar="inset"] header {
+            display: none !important;
+          }
+
+          /* Ajusta container principal */
+          body, main, .flex-1, [data-sidebar="inset"] {
+            overflow: visible !important;
+            height: auto !important;
+            background: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            display: block !important;
+          }
+
+          /* Remove bordas de card e sombras */
+          .card-shadow, .border {
+            box-shadow: none !important;
+            border: none !important;
+          }
+
+          /* Tabela Profissional */
+          table { width: 100% !important; border-collapse: collapse !important; }
+          th { background-color: #f8fafc !important; -webkit-print-color-adjust: exact; color: black !important; border: 1px solid #e2e8f0 !important; }
+          td { border: 1px solid #e2e8f0 !important; color: black !important; padding: 6px 4px !important; }
+          
+          /* Garante que o cabeçalho se repita em novas páginas */
+          thead { display: table-header-group; }
+          tr { page-break-inside: avoid; }
+
+          /* Oculta coluna de detalhes na impressão */
+          .col-actions { display: none !important; }
+        }
+      ` }} />
+
+      {/* Cabeçalho de Impressão (Visível apenas no papel) */}
+      <div className="hidden print:block mb-8 border-b-2 border-primary pb-4">
+        <div className="flex justify-between items-end">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-black uppercase tracking-tight text-primary leading-none">NRH - GMVV</h1>
+            <p className="text-xs font-bold uppercase tracking-widest text-slate-600">Relatório Consolidado de Fichas Funcionais</p>
+          </div>
+          <div className="text-right">
+            <p className="text-[10px] font-black uppercase text-slate-900">Referência: Efetivo Ativo</p>
+            <p className="text-[8px] font-mono font-bold text-muted-foreground uppercase mt-1">Gerado em: {new Date().toLocaleString('pt-BR')}</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 print:hidden">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
             <FileText className="h-6 w-6 text-blue-600" />
@@ -110,10 +170,18 @@ export default function DadosPerfilPage() {
             <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">AUDITORIA DE FICHAS FUNCIONAIS ATIVAS.</p>
           </div>
         </div>
+        <Button 
+          variant="outline" 
+          onClick={handlePrint}
+          className="gap-2 uppercase font-black text-xs h-10 border-blue-200 text-blue-700 hover:bg-blue-50"
+        >
+          <Printer className="h-4 w-4" />
+          Gerar Relatório
+        </Button>
       </div>
 
-      <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
-        <CardHeader className="p-4 bg-muted/5 border-b space-y-4">
+      <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border print:border-none">
+        <CardHeader className="p-4 bg-muted/5 border-b space-y-4 print:hidden">
           <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
             <div className="relative sm:col-span-6">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -152,7 +220,7 @@ export default function DadosPerfilPage() {
                   className="h-7 text-[9px] font-bold uppercase text-red-600 hover:text-red-700 hover:bg-red-50"
                   onClick={() => { setSearchTerm(""); setSearchCnh(""); setSearchCity(""); }}
                 >
-                  Limpar Filtros
+                  <X className="h-3 w-3 mr-1" /> Limpar Filtros
                 </Button>
               ) }
             </div>
@@ -166,14 +234,14 @@ export default function DadosPerfilPage() {
             <Table>
               <TableHeader className="bg-muted/20">
                 <TableRow className="hover:bg-transparent border-b">
-                  <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">SERVIDOR / QRA</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">SERVIDOR / QRA</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[100px]">MATRÍCULA</TableHead>
                   <TableHead className="font-bold uppercase text-[9px] min-w-[120px]">CPF</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">TELEFONE</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">CAT. CNH</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] min-w-[180px]">LOCAL VOTAÇÃO</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">CIDADE VOTAÇÃO</TableHead>
-                  <TableHead className="font-bold uppercase text-[9px] min-w-[100px] text-center">DETALHES</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[130px]">TELEFONE</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[70px] text-center">CAT.</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">LOCAL VOTAÇÃO</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[150px]">CIDADE</TableHead>
+                  <TableHead className="font-bold uppercase text-[9px] min-w-[80px] text-center col-actions">DETALHES</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -188,25 +256,25 @@ export default function DadosPerfilPage() {
                     <TableRow key={emp.id} className="hover:bg-blue-50/30 transition-colors">
                       <TableCell>
                         <div className="flex flex-col">
-                          <span className="font-bold text-[11px] uppercase text-slate-800">{emp.name}</span>
-                          <span className="text-[9px] text-muted-foreground uppercase font-bold tracking-tighter">QRA: {emp.qra} • {emp.role}</span>
+                          <span className="font-bold text-[11px] uppercase text-slate-800 leading-tight">{emp.name}</span>
+                          <span className="text-[9px] text-primary uppercase font-bold tracking-tighter">QRA: {emp.qra} • {emp.role}</span>
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-[10px] uppercase font-bold text-slate-600">{emp.matricula}</TableCell>
                       <TableCell className="font-mono text-[10px] uppercase font-bold text-slate-600">{emp.cpf || "---"}</TableCell>
                       <TableCell className="text-[10px] font-bold text-slate-600 uppercase">{emp.phone || "---"}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200 text-slate-600 bg-white">
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="text-[9px] font-black uppercase border-slate-200 text-slate-700 bg-white px-2">
                           {emp.cnhCategory || "---"}
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="text-[10px] font-bold text-slate-600 uppercase">{emp.votingLocation || "---"}</span>
+                        <span className="text-[10px] font-bold text-slate-600 uppercase block max-w-[150px] truncate">{emp.votingLocation || "---"}</span>
                       </TableCell>
                       <TableCell>
                         <span className="text-[10px] font-bold text-slate-600 uppercase">{emp.votingCity || "---"}</span>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center col-actions">
                         <Dialog>
                           <DialogTrigger asChild>
                             <Button variant="ghost" size="sm" className="h-8 w-8 p-0 hover:bg-blue-50 text-blue-600">
@@ -305,6 +373,18 @@ export default function DadosPerfilPage() {
           </div>
         </CardContent>
       </Card>
+      
+      <div className="bg-slate-50 border border-slate-200 rounded-xl p-4 flex items-start gap-4 print:hidden">
+        <div className="bg-white p-2 rounded-lg border shadow-sm shrink-0">
+          <Printer className="h-5 w-5 text-blue-500" />
+        </div>
+        <div className="space-y-1">
+          <p className="text-[11px] font-black uppercase text-slate-900 leading-none">Dica de Impressão</p>
+          <p className="text-[10px] text-muted-foreground uppercase leading-relaxed font-bold mt-1">
+            Ao gerar o relatório, o sistema ajustará a lista automaticamente para o formato A4 Retrato. Utilize os filtros de busca para imprimir listas específicas (ex: apenas motoristas ou servidores de uma cidade).
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
