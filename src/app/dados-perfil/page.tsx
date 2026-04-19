@@ -41,6 +41,8 @@ import { collection, query, orderBy } from 'firebase/firestore'
 
 export default function DadosPerfilPage() {
   const [searchTerm, setSearchTerm] = React.useState("")
+  const [searchCnh, setSearchCnh] = React.useState("")
+  const [searchCity, setSearchCity] = React.useState("")
   const firestore = useFirestore()
 
   const employeesRef = React.useMemo(() => {
@@ -58,12 +60,21 @@ export default function DadosPerfilPage() {
 
   const filteredData = React.useMemo(() => {
     const term = searchTerm.toLowerCase();
-    return activatedEmployees.filter(emp => 
-      emp.name?.toLowerCase().includes(term) ||
-      emp.qra?.toLowerCase().includes(term) ||
-      emp.matricula?.toLowerCase().includes(term)
-    );
-  }, [activatedEmployees, searchTerm]);
+    const cnhTerm = searchCnh.toLowerCase();
+    const cityTerm = searchCity.toLowerCase();
+
+    return activatedEmployees.filter(emp => {
+      const matchesGeneral = 
+        emp.name?.toLowerCase().includes(term) ||
+        emp.qra?.toLowerCase().includes(term) ||
+        emp.matricula?.toLowerCase().includes(term);
+      
+      const matchesCnh = !searchCnh || emp.cnhCategory?.toLowerCase().includes(cnhTerm);
+      const matchesCity = !searchCity || emp.votingCity?.toLowerCase().includes(cityTerm);
+
+      return matchesGeneral && matchesCnh && matchesCity;
+    });
+  }, [activatedEmployees, searchTerm, searchCnh, searchCity]);
 
   if (loading) {
     return (
@@ -97,19 +108,53 @@ export default function DadosPerfilPage() {
       </div>
 
       <Card className="card-shadow border-primary/10 overflow-hidden rounded-xl border">
-        <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 p-4 bg-muted/5 border-b">
-          <div className="relative flex-1">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="BUSCAR POR NOME, QRA OU MATRÍCULA..." 
-              className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" 
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <CardHeader className="p-4 bg-muted/5 border-b space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-12 gap-3">
+            <div className="relative sm:col-span-6">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="BUSCAR POR NOME, QRA OU MATRÍCULA..." 
+                className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" 
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="relative sm:col-span-2">
+              <CreditCard className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="CAT. CNH..." 
+                className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" 
+                value={searchCnh}
+                onChange={(e) => setSearchCnh(e.target.value)}
+              />
+            </div>
+            <div className="relative sm:col-span-4">
+              <MapPinned className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="CIDADE VOTAÇÃO..." 
+                className="pl-8 uppercase h-9 text-[10px] border-muted/50 bg-background/50" 
+                value={searchCity}
+                onChange={(e) => setSearchCity(e.target.value)}
+              />
+            </div>
           </div>
-          <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-3 py-1 rounded-lg text-xs">
-            {filteredData.length} SERVIDORES ATIVOS
-          </Badge>
+          <div className="flex justify-between items-center pt-2">
+            <div className="flex gap-2">
+              { (searchTerm || searchCnh || searchCity) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-7 text-[9px] font-bold uppercase text-red-600 hover:text-red-700 hover:bg-red-50"
+                  onClick={() => { setSearchTerm(""); setSearchCnh(""); setSearchCity(""); }}
+                >
+                  Limpar Filtros
+                </Button>
+              ) }
+            </div>
+            <Badge variant="secondary" className="bg-blue-50 text-blue-600 border-blue-100 font-bold px-3 py-1 rounded-lg text-xs">
+              {filteredData.length} SERVIDORES ENCONTRADOS
+            </Badge>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <div className="overflow-x-auto">
@@ -129,7 +174,7 @@ export default function DadosPerfilPage() {
                 {filteredData.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
-                      NENHUM PERFIL ATIVO ENCONTRADO.
+                      NENHUM PERFIL ENCONTRADO PARA ESTA BUSCA.
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -165,8 +210,8 @@ export default function DadosPerfilPage() {
                                 <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm">
                                   <User className="h-8 w-8 text-white" />
                                 </div>
-                                <div>
-                                  <DialogTitle className="text-2xl font-black uppercase tracking-tight leading-none">{emp.name}</DialogTitle>
+                                <div className="min-w-0">
+                                  <DialogTitle className="text-2xl font-black uppercase tracking-tight leading-none truncate">{emp.name}</DialogTitle>
                                   <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest mt-1">
                                     QRA: {emp.qra} • MAT: {emp.matricula} • {emp.status}
                                   </p>
