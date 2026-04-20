@@ -805,6 +805,21 @@ export default function FeriasPage() {
                             )}
                           </div>
 
+                          <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2 border-t border-slate-100/50">
+                            <div className="flex items-center gap-1.5 text-muted-foreground">
+                              <Clock className="h-3 w-3" />
+                              <span className="text-[8px] font-black uppercase tracking-widest">Enviado em:</span>
+                              <span className="text-[9px] font-mono font-bold">{plan.createdAt?.toDate ? plan.createdAt.toDate().toLocaleString('pt-BR') : '---'}</span>
+                            </div>
+                            {(plan.status === 'APROVADO' || plan.status === 'NEGADO') && (
+                              <div className="flex items-center gap-1.5 text-blue-600">
+                                <CheckCircle2 className="h-3 w-3" />
+                                <span className="text-[8px] font-black uppercase tracking-widest">Processado em:</span>
+                                <span className="text-[9px] font-mono font-bold">{plan.updatedAt?.toDate ? plan.updatedAt.toDate().toLocaleString('pt-BR') : '---'}</span>
+                              </div>
+                            )}
+                          </div>
+
                           {plan.status === 'NEGADO' && (
                             <div className="space-y-3 mt-2 animate-in slide-in-from-top-1 duration-500">
                               <div className="flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
@@ -886,10 +901,10 @@ export default function FeriasPage() {
                                   <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
                                   <div className="flex flex-col gap-0.5 mt-1">
                                     <p className="text-[10px] font-black uppercase text-slate-600 flex items-center gap-1">
-                                      <ShieldCheck className="h-3 w-3" /> {plan.employeeEscala}
+                                      <ShieldCheck className="h-3.5 w-3.5 text-primary/70" /> {plan.employeeEscala}
                                     </p>
                                     <p className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
-                                      <Clock className="h-3 w-3" /> {plan.employeeTurno}
+                                      <Clock className="h-3.5 w-3.5 text-primary/70" /> {plan.employeeTurno}
                                     </p>
                                   </div>
                                 </div>
