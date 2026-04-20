@@ -135,7 +135,6 @@ export default function FeriasPage() {
     return vacationSettings?.isOpen ?? true;
   }, [vacationSettings]);
 
-  // Lógica de cálculo de saldo de dias aprovados para travar o switch de divisão
   const totalApprovedDays = React.useMemo(() => {
     if (!myRequests) return 0;
     const approved = myRequests.filter(p => p.status === "APROVADO");
@@ -147,7 +146,18 @@ export default function FeriasPage() {
     return days;
   }, [myRequests]);
 
-  // Se já tem 15 dias aprovados, obrigatoriamente a próxima deve ser dividida (para completar os 30)
+  const alreadyApprovedMonths = React.useMemo(() => {
+    if (!myRequests) return [];
+    const approved = myRequests.filter(p => p.status === "APROVADO");
+    const months: string[] = [];
+    approved.forEach(p => {
+      (p.selectedOptions || []).forEach((opt: any) => {
+        months.push(`${opt.month} / ${opt.year}`);
+      });
+    });
+    return months;
+  }, [myRequests]);
+
   React.useEffect(() => {
     if (totalApprovedDays === 15) {
       setSplitVacation("sim");
@@ -157,17 +167,14 @@ export default function FeriasPage() {
   const hasChildrenInProfile = React.useMemo(() => !!(employeeData?.children && employeeData.children.length > 0), [employeeData]);
   const hasSpouseInProfile = React.useMemo(() => !!employeeData?.spouseName, [employeeData]);
 
-  // Datas bloqueadas: Negadas explicitamente ou rejeitadas em homologação parcial
   const deniedDates = React.useMemo(() => {
     if (!myRequests) return [];
     const dates: string[] = [];
     
     myRequests.forEach(p => {
-      // Se o pedido foi negado por completo
       if (p.status === "NEGADO") {
         p.options?.forEach((o: any) => dates.push(`${o.year}-${o.month}`));
       }
-      // Se houve opções rejeitadas em uma homologação parcial
       if (p.deniedOptions) {
         p.deniedOptions.forEach((o: any) => dates.push(`${o.year}-${o.month}`));
       }
@@ -264,7 +271,7 @@ export default function FeriasPage() {
       splitVacation: splitVacation === "sim",
       hasMinorChildren: hasMinorChildren === "sim",
       spouseIsTeacher: spouseIsTeacher === "sim",
-      options: [opt1, opt2, opt3],
+      options: totalApprovedDays === 15 ? [opt1, opt2] : [opt1, opt2, opt3],
       status: "PENDENTE",
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
@@ -301,9 +308,7 @@ export default function FeriasPage() {
       if (action === 'approve' && selectedOpts) {
         updates.selectedOptions = selectedOpts;
         
-        // Se for uma homologação parcial (selecionou menos do que o pedido de divisão),
-        // guardamos as opções não selecionadas como NEGADAS.
-        if (plan.splitVacation && selectedOpts.length < 2) {
+        if (plan.splitVacation && selectedOpts.length < (plan.options.length === 2 ? 1 : 2)) {
           const denied = plan.options.filter((o: any) => 
             !selectedOpts.some(s => s.year === o.year && s.month === o.month)
           );
@@ -371,7 +376,7 @@ export default function FeriasPage() {
     });
   };
 
-  const toggleOptionSelection = (planId: string, opt: any, isSplit: boolean) => {
+  const toggleOptionSelection = (planId: string, opt: any, isSplit: boolean, requiredCount: number) => {
     const current = selectionMap[planId] || [];
     const isSelected = current.some(s => s.year === opt.year && s.month === opt.month);
     
@@ -382,10 +387,12 @@ export default function FeriasPage() {
       if (!isSplit) {
         setSelectionMap({ ...selectionMap, [planId]: [newSelection] });
       } else {
-        if (current.length < 2) {
+        if (current.length < requiredCount) {
           setSelectionMap({ ...selectionMap, [planId]: [...current, newSelection] });
+        } else if (requiredCount === 1) {
+          setSelectionMap({ ...selectionMap, [planId]: [newSelection] });
         } else {
-          toast({ variant: "default", title: "LIMITE ATINGIDO", description: "O servidor solicitou dividir em apenas 2 períodos." });
+          toast({ variant: "default", title: "LIMITE ATINGIDO", description: `Selecione apenas ${requiredCount} períodos.` });
         }
       }
     }
@@ -406,7 +413,9 @@ export default function FeriasPage() {
     window.print();
   };
 
-  const isFormValid = opt1.year && opt1.month && opt2.year && opt2.month && opt3.year && opt3.month;
+  const isFormValid = totalApprovedDays === 15 
+    ? (opt1.year && opt1.month && opt2.year && opt2.month)
+    : (opt1.year && opt1.month && opt2.year && opt2.month && opt3.year && opt3.month);
 
   const renderOptionRow = (
     priority: number, 
@@ -651,19 +660,23 @@ export default function FeriasPage() {
                 {totalApprovedDays === 15 && (
                   <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-start gap-4">
                     <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
-                    <div>
+                    <div className="space-y-2">
                       <p className="text-[10px] font-black uppercase text-amber-800 leading-tight">Continuidade de Férias Divididas</p>
-                      <p className="text-[9px] font-bold text-amber-700 uppercase leading-relaxed mt-1">
-                        Você já possui 15 dias homologados. A opção de divisão foi travada em "SIM" para que você complete seu saldo restante de 15 dias.
+                      <p className="text-[9px] font-bold text-amber-700 uppercase leading-relaxed">
+                        Você já possui 15 dias homologados para o período de: <strong>{alreadyApprovedMonths.join(", ")}</strong>.
                       </p>
+                      <Badge variant="outline" className="bg-white border-amber-200 text-amber-800 font-black text-[8px] uppercase">Selecione 2 novas opções para completar seu saldo anual.</Badge>
                     </div>
                   </div>
                 )}
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className={cn(
+                  "grid grid-cols-1 gap-6",
+                  totalApprovedDays === 15 ? "md:grid-cols-2" : "md:grid-cols-3"
+                )}>
                   {renderOptionRow(1, opt1, setOpt1, "1ª Prioridade")}
                   {renderOptionRow(2, opt2, setOpt2, "2ª Prioridade")}
-                  {renderOptionRow(3, opt3, setOpt3, "3ª Prioridade")}
+                  {totalApprovedDays < 15 && renderOptionRow(3, opt3, setOpt3, "3ª Prioridade")}
                 </div>
 
                 <div className="pt-6 border-t border-slate-100 space-y-6">
@@ -967,9 +980,10 @@ export default function FeriasPage() {
                     ) : (
                       allPlans.map(plan => {
                         const currentSelections = selectionMap[plan.id] || [];
-                        const requiredCount = plan.splitVacation ? 2 : 1;
+                        const isSecondParcelRound = plan.options.length === 2 && plan.splitVacation;
+                        const requiredCount = isSecondParcelRound ? 1 : (plan.splitVacation ? 2 : 1);
                         const isComplete = currentSelections.length === requiredCount;
-                        const isPartialApproval = plan.splitVacation && currentSelections.length === 1;
+                        const isPartialApproval = plan.splitVacation && currentSelections.length === 1 && !isSecondParcelRound;
 
                         return (
                           <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden">
@@ -987,6 +1001,13 @@ export default function FeriasPage() {
                                     </p>
                                   </div>
                                 </div>
+
+                                {isSecondParcelRound && (
+                                  <div className="bg-amber-100/50 p-2 rounded-lg border border-amber-200 animate-pulse">
+                                    <p className="text-[8px] font-black uppercase text-amber-800 leading-none">Completando Saldo Anual</p>
+                                    <p className="text-[7px] font-bold text-amber-700 uppercase mt-1 leading-tight">HOMOLOGUE APENAS 1 MÊS.</p>
+                                  </div>
+                                )}
 
                                 <div className="flex flex-wrap gap-2 pt-2 border-t">
                                   {plan.hasMinorChildren && (
@@ -1027,7 +1048,7 @@ export default function FeriasPage() {
                                     return (
                                       <div 
                                         key={idx} 
-                                        onClick={() => toggleOptionSelection(plan.id, opt, plan.splitVacation)}
+                                        onClick={() => toggleOptionSelection(plan.id, opt, plan.splitVacation, requiredCount)}
                                         className={cn(
                                           "p-4 rounded-xl border transition-all cursor-pointer space-y-3 flex flex-col items-center text-center group",
                                           isSelected ? "bg-blue-600 border-blue-600 shadow-lg shadow-blue-200" : "bg-white border-slate-100 hover:border-blue-300 shadow-sm"
@@ -1079,9 +1100,11 @@ export default function FeriasPage() {
                                     )}
                                   >
                                     <CheckCircle2 className="h-5 w-5" /> 
-                                    {isPartialApproval 
-                                      ? "Homologar 1ª Parcela (15 dias)" 
-                                      : (plan.splitVacation ? "Homologar 2 Períodos (30 dias)" : "Homologar Escolha (30 dias)")
+                                    {isSecondParcelRound 
+                                      ? "Homologar Última Parcela (15 dias)"
+                                      : (isPartialApproval 
+                                        ? "Homologar 1ª Parcela (15 dias)" 
+                                        : (plan.splitVacation ? "Homologar 2 Períodos (30 dias)" : "Homologar Escolha (30 dias)"))
                                     }
                                   </Button>
                                 </div>
