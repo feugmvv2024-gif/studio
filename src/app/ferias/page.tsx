@@ -23,7 +23,8 @@ import {
   Settings2,
   CalendarX,
   Baby,
-  GraduationCap
+  GraduationCap,
+  Clock
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -883,6 +884,14 @@ export default function FeriasPage() {
                                 <div className="space-y-1">
                                   <p className="text-sm font-black uppercase text-slate-900 leading-tight">{plan.employeeName}</p>
                                   <Badge className="bg-primary text-white font-black text-[9px] h-5">QRA: {plan.employeeQra}</Badge>
+                                  <div className="flex flex-col gap-0.5 mt-1">
+                                    <p className="text-[10px] font-black uppercase text-slate-600 flex items-center gap-1">
+                                      <ShieldCheck className="h-3 w-3" /> {plan.employeeEscala}
+                                    </p>
+                                    <p className="text-[10px] font-bold uppercase text-muted-foreground flex items-center gap-1">
+                                      <Clock className="h-3 w-3" /> {plan.employeeTurno}
+                                    </p>
+                                  </div>
                                 </div>
 
                                 <div className="flex flex-wrap gap-2 pt-2 border-t">
