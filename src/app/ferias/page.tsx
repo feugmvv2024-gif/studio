@@ -24,7 +24,8 @@ import {
   CalendarX,
   Baby,
   GraduationCap,
-  Clock
+  Clock,
+  AlertCircle
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -134,16 +135,44 @@ export default function FeriasPage() {
     return vacationSettings?.isOpen ?? true;
   }, [vacationSettings]);
 
+  // Lógica de cálculo de saldo de dias aprovados para travar o switch de divisão
+  const totalApprovedDays = React.useMemo(() => {
+    if (!myRequests) return 0;
+    const approved = myRequests.filter(p => p.status === "APROVADO");
+    let days = 0;
+    approved.forEach(p => {
+      const optsCount = p.selectedOptions?.length || 0;
+      days += (p.splitVacation ? optsCount * 15 : optsCount * 30);
+    });
+    return days;
+  }, [myRequests]);
+
+  // Se já tem 15 dias aprovados, obrigatoriamente a próxima deve ser dividida (para completar os 30)
+  React.useEffect(() => {
+    if (totalApprovedDays === 15) {
+      setSplitVacation("sim");
+    }
+  }, [totalApprovedDays]);
+
   const hasChildrenInProfile = React.useMemo(() => !!(employeeData?.children && employeeData.children.length > 0), [employeeData]);
   const hasSpouseInProfile = React.useMemo(() => !!employeeData?.spouseName, [employeeData]);
 
+  // Datas bloqueadas: Negadas explicitamente ou rejeitadas em homologação parcial
   const deniedDates = React.useMemo(() => {
     if (!myRequests) return [];
-    const denied = myRequests.filter(p => p.status === "NEGADO");
     const dates: string[] = [];
-    denied.forEach(p => {
-      p.options?.forEach((o: any) => dates.push(`${o.year}-${o.month}`));
+    
+    myRequests.forEach(p => {
+      // Se o pedido foi negado por completo
+      if (p.status === "NEGADO") {
+        p.options?.forEach((o: any) => dates.push(`${o.year}-${o.month}`));
+      }
+      // Se houve opções rejeitadas em uma homologação parcial
+      if (p.deniedOptions) {
+        p.deniedOptions.forEach((o: any) => dates.push(`${o.year}-${o.month}`));
+      }
     });
+    
     return Array.from(new Set(dates));
   }, [myRequests]);
 
@@ -218,7 +247,7 @@ export default function FeriasPage() {
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
-    return [currentYear + 1, currentYear + 2];
+    return [currentYear, currentYear + 1, currentYear + 2];
   }, []);
 
   const handleSave = async () => {
@@ -248,7 +277,7 @@ export default function FeriasPage() {
       setOpt2({ year: "", month: "" });
       setOpt3({ year: "", month: "" });
       setAdvance13th("nao");
-      setSplitVacation("nao");
+      setSplitVacation(totalApprovedDays === 15 ? "sim" : "nao");
       setHasMinorChildren("nao");
       setSpouseIsTeacher("nao");
       setActiveTab("meus-pedidos");
@@ -259,7 +288,7 @@ export default function FeriasPage() {
     }
   };
 
-  const handleProcess = async (planId: string, action: 'approve' | 'deny', selectedOpts?: any[], reason?: string) => {
+  const handleProcess = async (plan: any, action: 'approve' | 'deny', selectedOpts?: any[], reason?: string) => {
     if (!firestore || !employeeData) return;
     
     try {
@@ -271,18 +300,27 @@ export default function FeriasPage() {
 
       if (action === 'approve' && selectedOpts) {
         updates.selectedOptions = selectedOpts;
+        
+        // Se for uma homologação parcial (selecionou menos do que o pedido de divisão),
+        // guardamos as opções não selecionadas como NEGADAS.
+        if (plan.splitVacation && selectedOpts.length < 2) {
+          const denied = plan.options.filter((o: any) => 
+            !selectedOpts.some(s => s.year === o.year && s.month === o.month)
+          );
+          updates.deniedOptions = denied;
+        }
       }
 
       if (reason) {
         updates.adminResponse = reason.toUpperCase();
       }
 
-      await updateDoc(doc(firestore, 'vacationPlans', planId), updates);
+      await updateDoc(doc(firestore, 'vacationPlans', plan.id), updates);
       toast({ title: action === 'approve' ? "FÉRIAS HOMOLOGADAS!" : "PEDIDO INDEFERIDO" });
       
       setSelectionMap(prev => {
         const next = { ...prev };
-        delete next[planId];
+        delete next[plan.id];
         return next;
       });
     } catch (error) {
@@ -296,8 +334,11 @@ export default function FeriasPage() {
       return;
     }
 
+    const plan = allPlans.find(p => p.id === planToDenyId);
+    if (!plan) return;
+
     setIsProcessingDeny(true);
-    await handleProcess(planToDenyId, 'deny', undefined, denialReason);
+    await handleProcess(plan, 'deny', undefined, denialReason);
     setIsProcessingDeny(false);
     setIsDenyModalOpen(false);
     setPlanToDenyId(null);
@@ -576,6 +617,21 @@ export default function FeriasPage() {
                 </div>
               </CardContent>
             </Card>
+          ) : totalApprovedDays >= 30 ? (
+             <Card className="card-shadow border-none rounded-3xl overflow-hidden animate-in zoom-in-95 duration-500">
+              <CardContent className="flex flex-col items-center justify-center p-20 text-center space-y-6 bg-green-50/50">
+                <div className="bg-green-100 p-6 rounded-full border-4 border-white shadow-xl">
+                  <CheckCircle2 className="h-16 w-16 text-green-600" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black uppercase text-slate-900 tracking-tight">Saldo de Férias Completo</h3>
+                  <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest max-w-md leading-relaxed">
+                    Você já possui 30 dias de férias homologados para o período atual.
+                  </p>
+                </div>
+                <Button variant="outline" onClick={() => setActiveTab("meus-pedidos")} className="uppercase font-black text-[10px] h-10 border-green-200 text-green-700 hover:bg-green-50">VER MEU CRONOGRAMA</Button>
+              </CardContent>
+            </Card>
           ) : (
             <Card className="card-shadow border-none rounded-2xl overflow-hidden">
               <CardHeader className="bg-blue-50/50 border-b p-6">
@@ -584,12 +640,26 @@ export default function FeriasPage() {
                     <CalendarDays className="h-6 w-6 text-blue-600" />
                   </div>
                   <div>
-                    <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">Intenção de Férias</CardTitle>
+                    <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">
+                      {totalApprovedDays === 15 ? "Intenção de Férias (2ª Parcela)" : "Intenção de Férias"}
+                    </CardTitle>
                     <CardDescription className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Escolha períodos distintos. Datas negadas anteriormente ficam bloqueadas.</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-6 sm:p-8 space-y-8">
+                {totalApprovedDays === 15 && (
+                  <div className="bg-amber-50 border border-amber-100 p-4 rounded-xl flex items-start gap-4">
+                    <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[10px] font-black uppercase text-amber-800 leading-tight">Continuidade de Férias Divididas</p>
+                      <p className="text-[9px] font-bold text-amber-700 uppercase leading-relaxed mt-1">
+                        Você já possui 15 dias homologados. A opção de divisão foi travada em "SIM" para que você complete seu saldo restante de 15 dias.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {renderOptionRow(1, opt1, setOpt1, "1ª Prioridade")}
                   {renderOptionRow(2, opt2, setOpt2, "2ª Prioridade")}
@@ -683,7 +753,10 @@ export default function FeriasPage() {
                       </CardContent>
                     </Card>
 
-                    <Card className="bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border">
+                    <Card className={cn(
+                      "bg-slate-50/50 border-slate-200 shadow-sm rounded-xl overflow-hidden border",
+                      totalApprovedDays === 15 && "bg-amber-50/30 border-amber-100"
+                    )}>
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <div className="bg-white p-2 rounded-lg border shadow-sm">
@@ -693,7 +766,12 @@ export default function FeriasPage() {
                             Dividir minhas férias em dois períodos?
                           </Label>
                         </div>
-                        <RadioGroup value={splitVacation} onValueChange={setSplitVacation} className="flex gap-4">
+                        <RadioGroup 
+                          value={splitVacation} 
+                          onValueChange={setSplitVacation} 
+                          className="flex gap-4"
+                          disabled={totalApprovedDays === 15}
+                        >
                           <div className="flex items-center space-x-2">
                             <RadioGroupItem value="sim" id="sv-sim" />
                             <Label htmlFor="sv-sim" className="text-[10px] font-bold uppercase">SIM</Label>
@@ -891,6 +969,7 @@ export default function FeriasPage() {
                         const currentSelections = selectionMap[plan.id] || [];
                         const requiredCount = plan.splitVacation ? 2 : 1;
                         const isComplete = currentSelections.length === requiredCount;
+                        const isPartialApproval = plan.splitVacation && currentSelections.length === 1;
 
                         return (
                           <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden">
@@ -992,15 +1071,18 @@ export default function FeriasPage() {
                                     <XCircle className="h-4 w-4" /> INDEFERIR TODAS AS OPÇÕES
                                   </Button>
                                   <Button 
-                                    disabled={!isComplete}
-                                    onClick={() => handleProcess(plan.id, 'approve', currentSelections)}
+                                    disabled={!isComplete && !isPartialApproval}
+                                    onClick={() => handleProcess(plan, 'approve', currentSelections)}
                                     className={cn(
                                       "w-full sm:w-auto h-11 px-10 uppercase font-black text-[11px] gap-2 rounded-xl transition-all shadow-xl",
-                                      isComplete ? "bg-green-600 hover:bg-green-700 shadow-green-100" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
+                                      (isComplete || isPartialApproval) ? "bg-green-600 hover:bg-green-700 shadow-green-100" : "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none"
                                     )}
                                   >
                                     <CheckCircle2 className="h-5 w-5" /> 
-                                    {plan.splitVacation ? "Homologar 2 Períodos" : "Homologar Escolha"}
+                                    {isPartialApproval 
+                                      ? "Homologar 1ª Parcela (15 dias)" 
+                                      : (plan.splitVacation ? "Homologar 2 Períodos (30 dias)" : "Homologar Escolha (30 dias)")
+                                    }
                                   </Button>
                                 </div>
                               </div>
