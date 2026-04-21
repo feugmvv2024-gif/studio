@@ -14,7 +14,6 @@ import {
   History,
   Lock,
   MessageSquare,
-  X,
   Coins,
   Scissors,
   Search,
@@ -72,9 +71,25 @@ const MONTHS = [
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
-const formatDateBR = (dateStr: string) => {
-  if (!dateStr) return "---";
-  return dateStr.split('-').reverse().join('/');
+const calculatePeriod = (day: string, month: string, year: string, isSplit: boolean) => {
+  const monthIndex = MONTHS.indexOf(month);
+  if (monthIndex === -1) return "DATA INVÁLIDA";
+  
+  const d = parseInt(day) || 15;
+  const y = parseInt(year);
+  
+  const startDate = new Date(y, monthIndex, d);
+  const endDate = new Date(startDate);
+  endDate.setDate(startDate.getDate() + (isSplit ? 14 : 29));
+
+  const formatDate = (date: Date) => {
+    const dd = String(date.getDate()).padStart(2, '0');
+    const mm = String(date.getMonth() + 1).padStart(2, '0');
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  return `DE ${formatDate(startDate)} ATÉ ${formatDate(endDate)}`;
 };
 
 export default function FeriasPage() {
@@ -231,27 +246,6 @@ export default function FeriasPage() {
       return getEarliest(a) - getEarliest(b);
     });
   }, [approvedPlans, searchTermApproved, cronogramaFilterMonth, cronogramaFilterYear]);
-
-  const calculatePeriod = (day: string, month: string, year: string, isSplit: boolean) => {
-    const monthIndex = MONTHS.indexOf(month);
-    if (monthIndex === -1) return "DATA INVÁLIDA";
-    
-    const d = parseInt(day) || 15;
-    const y = parseInt(year);
-    
-    const startDate = new Date(y, monthIndex, d);
-    const endDate = new Date(startDate);
-    endDate.setDate(startDate.getDate() + (isSplit ? 14 : 29));
-
-    const formatDate = (date: Date) => {
-      const dd = String(date.getDate()).padStart(2, '0');
-      const mm = String(date.getMonth() + 1).padStart(2, '0');
-      const yyyy = date.getFullYear();
-      return `${dd}/${mm}/${yyyy}`;
-    };
-
-    return `DE ${formatDate(startDate)} ATÉ ${formatDate(endDate)}`;
-  };
 
   // LÓGICA DE IMPRESSÃO SELETIVA (Baseada na lista filtrada)
   const groupedPrintData = React.useMemo(() => {
