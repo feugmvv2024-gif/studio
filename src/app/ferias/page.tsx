@@ -747,7 +747,7 @@ export default function FeriasPage() {
                       <CardContent className="p-4 flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3">
                           <div className="bg-white p-2 rounded-lg border shadow-sm">
-                            <Coins className="h-5 w-5 text-amber-500" />
+                            <Coins className="h-5 w-5 text-amber-50" />
                           </div>
                           <Label className="text-[10px] font-bold uppercase text-slate-700 leading-tight">
                             Deseja receber o 13º antecipado (nas férias)?
@@ -915,11 +915,22 @@ export default function FeriasPage() {
                             <div className="space-y-3 mt-2 animate-in slide-in-from-top-1 duration-500">
                               <div className="flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
                                 <Lock className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                                <div className="space-y-1">
-                                  <p className="text-[10px] text-red-800 font-black uppercase tracking-tight">DATAS BLOQUEADAS PELA ADMINISTRAÇÃO</p>
-                                  <p className="text-[9px] text-red-700 font-medium uppercase leading-relaxed">
-                                    ESTAS OPÇÕES NÃO PODEM SE SELECIONADAS NOVAMENTE. POR FAVOR, ENVIE UM NOVO PEDIDO COM DIFERENTES MESES.
-                                  </p>
+                                <div className="space-y-2 flex-1">
+                                  <div className="space-y-1">
+                                    <p className="text-[10px] text-red-800 font-black uppercase tracking-tight">DATAS BLOQUEADAS PELA ADMINISTRAÇÃO</p>
+                                    <p className="text-[9px] text-red-700 font-medium uppercase leading-relaxed">
+                                      ESTAS OPÇÕES NÃO PODEM SE SELECIONADAS NOVAMENTE. POR FAVOR, ENVIE UM NOVO PEDIDO COM DIFERENTES MESES.
+                                    </p>
+                                  </div>
+                                  
+                                  {plan.adminResponse && (
+                                    <div className="pt-2 border-t border-red-200/50">
+                                      <p className="text-[8px] font-black uppercase text-red-500 mb-0.5">Parecer do RH:</p>
+                                      <p className="text-[10px] font-black text-red-900 uppercase leading-relaxed italic">
+                                        "{plan.adminResponse}"
+                                      </p>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
