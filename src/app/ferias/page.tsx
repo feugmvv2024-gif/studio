@@ -254,7 +254,6 @@ export default function FeriasPage() {
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
-    // Retorna apenas os próximos dois anos (ex: se 2026, mostra 2027 e 2028)
     return [currentYear + 1, currentYear + 2];
   }, []);
 
@@ -851,7 +850,7 @@ export default function FeriasPage() {
                                     {(plan.selectedOptions || []).map((opt: any, i: number) => (
                                       <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
                                         <p className="text-xl font-black uppercase text-green-900 leading-none">
-                                          {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year}
+                                          {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year} - {plan.splitVacation ? "15" : "30"} DIAS
                                         </p>
                                       </div>
                                     ))}
@@ -862,7 +861,7 @@ export default function FeriasPage() {
                                   {plan.options.map((opt: any, i: number) => (
                                     <div key={i} className="px-3 py-2 bg-slate-50 rounded-lg border border-slate-100 flex items-center justify-between">
                                       <span className="text-[10px] font-bold text-slate-500 uppercase">{i + 1}ª Opção</span>
-                                      <span className="text-[11px] font-black uppercase text-slate-800">{opt.month} / {opt.year}</span>
+                                      <span className="text-[11px] font-black uppercase text-slate-800">{opt.month} / {opt.year} - {plan.splitVacation ? "15" : "30"} DIAS</span>
                                     </div>
                                   ))}
                                 </div>
