@@ -113,9 +113,13 @@ export default function MeusLancamentosPage() {
 
       const matchesType = !filterType || l.type === filterType;
       
+      // Lógica de Filtro por Período Operacional (Início/Fim)
+      const lStart = l.startDate || l.date;
+      const lEnd = l.endDate || l.startDate || l.date;
+
       const matchesDate = (
-        (!filterStartDate || l.date >= filterStartDate) &&
-        (!filterEndDate || l.date <= filterEndDate)
+        (!filterStartDate || lEnd >= filterStartDate) &&
+        (!filterEndDate || lStart <= filterEndDate)
       );
 
       return matchesSearch && matchesType && matchesDate;
