@@ -254,7 +254,8 @@ export default function FeriasPage() {
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
-    return [currentYear, currentYear + 1, currentYear + 2];
+    // Retorna apenas os próximos dois anos (ex: se 2026, mostra 2027 e 2028)
+    return [currentYear + 1, currentYear + 2];
   }, []);
 
   const handleSave = async () => {
@@ -1171,7 +1172,7 @@ export default function FeriasPage() {
                             </TableRow>
                           ) : (
                             filteredApprovedPlans.map((plan) => (
-                              <TableRow key={plan.id} className="hover:bg-slate-50 transition-colors border-b last:border-0">
+                              <TableRow key={plan.id} className="hover:bg-slate-50 transition-colors border-b last:border-0 group">
                                 <TableCell className="py-4">
                                   <div className="flex flex-col gap-0.5">
                                     <span className="font-black uppercase text-[13px] text-slate-900 leading-tight">{plan.employeeName}</span>
