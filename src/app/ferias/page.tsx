@@ -657,6 +657,11 @@ export default function FeriasPage() {
             <>
               <TabsTrigger value="painel-gestao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-primary py-2">
                 <ShieldCheck className="h-3.5 w-3.5" /> PAINEL DE GESTÃO
+                {allPlans?.length > 0 && (
+                  <Badge className="ml-1.5 h-4 w-4 p-0 flex items-center justify-center bg-primary text-primary-foreground text-[8px] rounded-full">
+                    {allPlans.length}
+                  </Badge>
+                )}
               </TabsTrigger>
               <TabsTrigger value="cronograma" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 text-blue-600 py-2">
                 <LayoutList className="h-3.5 w-3.5" /> CRONOGRAMA GERAL
@@ -1301,7 +1306,7 @@ export default function FeriasPage() {
                                             isMatch ? "bg-green-600 text-white" : "bg-slate-200 text-slate-500 opacity-50"
                                           )}
                                         >
-                                          {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year}
+                                          {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year} - {plan.splitVacation ? "15" : "30"} DIAS
                                         </Badge>
                                       );
                                     })}
