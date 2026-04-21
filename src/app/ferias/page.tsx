@@ -25,7 +25,8 @@ import {
   Baby,
   GraduationCap,
   Clock,
-  AlertCircle
+  AlertCircle,
+  FilterX
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -92,7 +93,11 @@ export default function FeriasPage() {
   
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("nova-solicitacao");
+  
+  // Estados de Filtro do Cronograma
   const [searchTermApproved, setSearchTermApproved] = React.useState("");
+  const [cronogramaFilterMonth, setCronogramaFilterMonth] = React.useState("ALL");
+  const [cronogramaFilterYear, setCronogramaFilterYear] = React.useState("ALL");
 
   const [isDenyModalOpen, setIsDenyModalOpen] = React.useState(false);
   const [planToDenyId, setPlanToDenyId] = React.useState<string | null>(null);
@@ -183,14 +188,45 @@ export default function FeriasPage() {
     return Array.from(new Set(dates));
   }, [myRequests]);
 
+  // LÓGICA DE FILTRAGEM E ORDENAÇÃO DO CRONOGRAMA
   const filteredApprovedPlans = React.useMemo(() => {
     if (!approvedPlans) return [];
     const term = searchTermApproved.toLowerCase();
-    return approvedPlans.filter(p => 
+    
+    // 1. Filtragem Inicial (Nome/QRA)
+    let filtered = approvedPlans.filter(p => 
       p.employeeName?.toLowerCase().includes(term) ||
       p.employeeQra?.toLowerCase().includes(term)
     );
-  }, [approvedPlans, searchTermApproved]);
+
+    // 2. Filtro de Mês (Sincronizado com os períodos aprovados)
+    if (cronogramaFilterMonth !== "ALL") {
+      filtered = filtered.filter(p => 
+        p.selectedOptions?.some((opt: any) => opt.month === cronogramaFilterMonth)
+      );
+    }
+
+    // 3. Filtro de Ano
+    if (cronogramaFilterYear !== "ALL") {
+      filtered = filtered.filter(p => 
+        p.selectedOptions?.some((opt: any) => opt.year === cronogramaFilterYear)
+      );
+    }
+
+    // 4. Ordenação Cronológica
+    return filtered.sort((a, b) => {
+      const getEarliest = (p: any) => {
+        if (!p.selectedOptions?.length) return Infinity;
+        const sortedOpts = [...p.selectedOptions].sort((o1, o2) => {
+          if (o1.year !== o2.year) return parseInt(o1.year) - parseInt(o2.year);
+          return MONTHS.indexOf(o1.month) - MONTHS.indexOf(o2.month);
+        });
+        const first = sortedOpts[0];
+        return parseInt(first.year) * 100 + MONTHS.indexOf(first.month);
+      };
+      return getEarliest(a) - getEarliest(b);
+    });
+  }, [approvedPlans, searchTermApproved, cronogramaFilterMonth, cronogramaFilterYear]);
 
   const calculatePeriod = (day: string, month: string, year: string, isSplit: boolean) => {
     const monthIndex = MONTHS.indexOf(month);
@@ -213,24 +249,31 @@ export default function FeriasPage() {
     return `DE ${formatDate(startDate)} ATÉ ${formatDate(endDate)}`;
   };
 
+  // LÓGICA DE IMPRESSÃO SELETIVA (Baseada na lista filtrada)
   const groupedPrintData = React.useMemo(() => {
-    if (!approvedPlans) return [];
+    if (!filteredApprovedPlans) return [];
     
     const entries: any[] = [];
-    approvedPlans.forEach(plan => {
+    filteredApprovedPlans.forEach(plan => {
       (plan.selectedOptions || []).forEach(opt => {
-        entries.push({
-          month: opt.month,
-          year: opt.year,
-          startDay: opt.startDay,
-          employeeName: plan.employeeName,
-          employeeQra: plan.employeeQra,
-          employeeEscala: plan.employeeEscala,
-          employeeTurno: plan.employeeTurno,
-          processedByQra: plan.processedByQra,
-          splitVacation: plan.splitVacation,
-          periodText: calculatePeriod(opt.startDay, opt.month, opt.year, plan.splitVacation)
-        });
+        // Garante que apenas os períodos que batem com o filtro entrem na impressão seletiva
+        const matchesMonth = cronogramaFilterMonth === "ALL" || opt.month === cronogramaFilterMonth;
+        const matchesYear = cronogramaFilterYear === "ALL" || opt.year === cronogramaFilterYear;
+
+        if (matchesMonth && matchesYear) {
+          entries.push({
+            month: opt.month,
+            year: opt.year,
+            startDay: opt.startDay,
+            employeeName: plan.employeeName,
+            employeeQra: plan.employeeQra,
+            employeeEscala: plan.employeeEscala,
+            employeeTurno: plan.employeeTurno,
+            processedByQra: plan.processedByQra,
+            splitVacation: plan.splitVacation,
+            periodText: calculatePeriod(opt.startDay, opt.month, opt.year, plan.splitVacation)
+          });
+        }
       });
     });
 
@@ -250,7 +293,7 @@ export default function FeriasPage() {
       title: key,
       members: groups[key].sort((a, b) => a.employeeName.localeCompare(b.employeeName))
     }));
-  }, [approvedPlans]);
+  }, [filteredApprovedPlans, cronogramaFilterMonth, cronogramaFilterYear]);
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
@@ -417,6 +460,12 @@ export default function FeriasPage() {
     ? (opt1.year && opt1.month && opt2.year && opt2.month)
     : (opt1.year && opt1.month && opt2.year && opt2.month && opt3.year && opt3.month);
 
+  const clearCronogramaFilters = () => {
+    setSearchTermApproved("");
+    setCronogramaFilterMonth("ALL");
+    setCronogramaFilterYear("ALL");
+  };
+
   const renderOptionRow = (
     priority: number, 
     data: { year: string, month: string }, 
@@ -510,10 +559,15 @@ export default function FeriasPage() {
           </div>
           <div className="text-right">
             <p className="text-[7pt] font-mono font-bold uppercase">Gerado em: {new Date().toLocaleString('pt-BR')}</p>
+            {(cronogramaFilterMonth !== "ALL" || cronogramaFilterYear !== "ALL") && (
+              <p className="text-[7pt] font-black uppercase mt-1">Filtro: {cronogramaFilterMonth !== "ALL" ? cronogramaFilterMonth : ""} {cronogramaFilterYear !== "ALL" ? cronogramaFilterYear : ""}</p>
+            )}
           </div>
         </div>
 
-        {groupedPrintData.map((group, idx) => (
+        {groupedPrintData.length === 0 ? (
+          <div className="text-center py-20 uppercase font-bold">Nenhum registro encontrado para o filtro selecionado.</div>
+        ) : groupedPrintData.map((group, idx) => (
           <div key={idx} className="month-section">
             <div className="month-title">{group.title}</div>
             <table className="report-table">
@@ -1132,12 +1186,12 @@ export default function FeriasPage() {
 
             <TabsContent value="cronograma" className="mt-6 space-y-6">
               <Card className="card-shadow border-none rounded-2xl overflow-hidden">
-                <CardHeader className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 bg-blue-50/30 border-b p-6">
+                <CardHeader className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-4 bg-blue-50/30 border-b p-6">
                   <div>
                     <CardTitle className="text-xl font-black uppercase text-slate-900 tracking-tight">Férias Homologadas</CardTitle>
                     <CardDescription className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Cronograma consolidado de afastamentos aprovados pela unidade.</CardDescription>
                   </div>
-                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-3">
                     <div className="relative w-full sm:w-64">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
@@ -1147,13 +1201,50 @@ export default function FeriasPage() {
                         onChange={(e) => setSearchTermApproved(e.target.value.toUpperCase())}
                       />
                     </div>
+                    
+                    <Select value={cronogramaFilterMonth} onValueChange={setCronogramaFilterMonth}>
+                      <SelectTrigger className="h-10 w-[140px] uppercase text-[10px] font-bold bg-white">
+                        <SelectValue placeholder="MÊS" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL" className="uppercase text-[10px] font-bold">TODOS MESES</SelectItem>
+                        {MONTHS.map(m => (
+                          <SelectItem key={m} value={m} className="uppercase text-[10px] font-bold">{m}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <Select value={cronogramaFilterYear} onValueChange={setCronogramaFilterYear}>
+                      <SelectTrigger className="h-10 w-[100px] uppercase text-[10px] font-bold bg-white">
+                        <SelectValue placeholder="ANO" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="ALL" className="uppercase text-[10px] font-bold">TODOS</SelectItem>
+                        {nextYears.map(y => (
+                          <SelectItem key={y} value={y.toString()} className="uppercase text-[10px] font-bold">{y}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    {(cronogramaFilterMonth !== "ALL" || cronogramaFilterYear !== "ALL" || searchTermApproved) && (
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={clearCronogramaFilters}
+                        className="h-10 w-10 text-red-600 hover:bg-red-50 hover:text-red-700"
+                        title="Limpar Filtros"
+                      >
+                        <FilterX className="h-4 w-4" />
+                      </Button>
+                    )}
+
                     <Button 
                       variant="outline" 
                       onClick={handlePrint}
                       className="h-10 uppercase text-[10px] font-black gap-2 border-blue-200 text-blue-700 hover:bg-blue-50"
                     >
                       <Printer className="h-4 w-4" />
-                      Imprimir Cronograma
+                      Imprimir
                     </Button>
                   </div>
                 </CardHeader>
@@ -1177,7 +1268,7 @@ export default function FeriasPage() {
                           {filteredApprovedPlans.length === 0 ? (
                             <TableRow>
                               <TableCell colSpan={6} className="h-40 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
-                                NENHUM REGISTRO HOMOLOGADO ENCONTRADO.
+                                NENHUM REGISTRO ENCONTRADO PARA OS FILTROS APLICADOS.
                               </TableCell>
                             </TableRow>
                           ) : (
@@ -1197,11 +1288,23 @@ export default function FeriasPage() {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex flex-wrap gap-2">
-                                    {(plan.selectedOptions || []).map((opt: any, idx: number) => (
-                                      <Badge key={idx} className="bg-green-600 text-white font-black text-[9px] uppercase px-3">
-                                        {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year}
-                                      </Badge>
-                                    ))}
+                                    {(plan.selectedOptions || []).map((opt: any, idx: number) => {
+                                      // Realça o badge se bater com o filtro de mês/ano
+                                      const isMatch = (cronogramaFilterMonth === "ALL" || opt.month === cronogramaFilterMonth) && 
+                                                      (cronogramaFilterYear === "ALL" || opt.year === cronogramaFilterYear);
+                                      
+                                      return (
+                                        <Badge 
+                                          key={idx} 
+                                          className={cn(
+                                            "font-black text-[9px] uppercase px-3",
+                                            isMatch ? "bg-green-600 text-white" : "bg-slate-200 text-slate-500 opacity-50"
+                                          )}
+                                        >
+                                          {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year}
+                                        </Badge>
+                                      );
+                                    })}
                                   </div>
                                 </TableCell>
                                 <TableCell>
