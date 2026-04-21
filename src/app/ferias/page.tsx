@@ -151,6 +151,10 @@ export default function FeriasPage() {
     return days;
   }, [myRequests]);
 
+  const hasPendingPlan = React.useMemo(() => {
+    return myRequests?.some(p => p.status === "PENDENTE");
+  }, [myRequests]);
+
   const alreadyApprovedMonths = React.useMemo(() => {
     if (!myRequests) return [];
     const approved = myRequests.filter(p => p.status === "APROVADO");
@@ -683,6 +687,27 @@ export default function FeriasPage() {
                     O formulário para novas intenções de férias encontra-se desabilitado ou ainda não foi iniciado pela administração da unidade.
                   </p>
                 </div>
+              </CardContent>
+            </Card>
+          ) : hasPendingPlan ? (
+            <Card className="card-shadow border-none rounded-3xl overflow-hidden animate-in zoom-in-95 duration-500">
+              <CardContent className="flex flex-col items-center justify-center p-20 text-center space-y-6 bg-amber-50/50">
+                <div className="bg-amber-100 p-6 rounded-full border-4 border-white shadow-xl">
+                  <Clock className="h-16 w-16 text-amber-600" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-2xl font-black uppercase text-slate-900 tracking-tight">Solicitação em Análise</h3>
+                  <p className="text-muted-foreground uppercase text-xs font-bold tracking-widest max-w-md leading-relaxed">
+                    Você já possui uma intenção de férias enviada que aguarda processamento pelo RH. Não é possível enviar uma nova enquanto a atual estiver pendente.
+                  </p>
+                </div>
+                <Button 
+                  variant="outline" 
+                  onClick={() => setActiveTab("meus-pedidos")} 
+                  className="uppercase font-black text-[10px] h-10 border-amber-200 text-amber-700 hover:bg-amber-50"
+                >
+                  VER MINHA SOLICITAÇÃO ATUAL
+                </Button>
               </CardContent>
             </Card>
           ) : totalApprovedDays >= 30 ? (
