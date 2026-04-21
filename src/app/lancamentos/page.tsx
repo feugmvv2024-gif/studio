@@ -203,6 +203,7 @@ export default function LancamentosPage() {
   const filteredLaunches = React.useMemo(() => {
     if (!launches) return [];
     const term = searchTerm.toLowerCase();
+    
     return launches.filter(l => {
       const matchesSearch = !searchTerm || (
         l.employeeName?.toLowerCase().includes(term) || 
@@ -213,15 +214,48 @@ export default function LancamentosPage() {
 
       if (!matchesSearch) return false;
 
-      // Filtro Temporal
-      const launchDate = l.date; // YYYY-MM-DD
-      if (!launchDate) return true;
+      // --- NOVA LÓGICA DE FILTRO TEMPORAL POR PERÍODO (INÍCIO/FIM) ---
+      // Se não houver filtro de mês e ano, exibe tudo
+      if (filterMonth === "ALL" && filterYear === "ALL") return true;
 
-      const [y, m] = launchDate.split('-');
-      const matchesMonth = filterMonth === "ALL" || parseInt(m) === parseInt(filterMonth) + 1;
-      const matchesYear = filterYear === "ALL" || y === filterYear;
+      // Define o intervalo de datas do lançamento (usa a data do registro como fallback)
+      const lStart = l.startDate || l.date;
+      const lEnd = l.endDate || l.startDate || l.date;
 
-      return matchesMonth && matchesYear;
+      if (!lStart || !lEnd) return true;
+
+      // Define o intervalo alvo baseado nos filtros selecionados
+      let targetStart = "";
+      let targetEnd = "";
+
+      if (filterYear !== "ALL") {
+        if (filterMonth !== "ALL") {
+          // Filtro por Mês e Ano específicos
+          const month = parseInt(filterMonth);
+          const year = parseInt(filterYear);
+          const startDate = new Date(year, month, 1);
+          const endDate = new Date(year, month + 1, 0);
+          targetStart = startDate.toISOString().split('T')[0];
+          targetEnd = endDate.toISOString().split('T')[0];
+        } else {
+          // Filtro apenas por Ano
+          targetStart = `${filterYear}-01-01`;
+          targetEnd = `${filterYear}-12-31`;
+        }
+      } else if (filterMonth !== "ALL") {
+        // Filtro apenas por Mês (ignora ano)
+        const monthNum = (parseInt(filterMonth) + 1).toString().padStart(2, '0');
+        const startM = lStart.split('-')[1];
+        const endM = lEnd.split('-')[1];
+        return startM === monthNum || endM === monthNum;
+      }
+
+      // Verificação de interseção entre os intervalos [lStart, lEnd] e [targetStart, targetEnd]
+      if (targetStart && targetEnd) {
+        return lStart <= targetEnd && lEnd >= targetStart;
+      }
+
+      return true;
     });
   }, [launches, searchTerm, filterMonth, filterYear]);
 
