@@ -20,7 +20,8 @@ import {
   Filter,
   ArrowRight,
   Briefcase,
-  History
+  History,
+  BellRing
 } from "lucide-react"
 import {
   BarChart,
@@ -407,7 +408,7 @@ export default function Dashboard() {
                   (normalizeStr(item.type || item.status).includes("LICENCA")) ? "bg-purple-600 text-white" :
                   (normalizeStr(item.type || item.status).includes("ATESTADO")) ? "bg-red-600 text-white" :
                   (normalizeStr(item.type || item.status).includes("FALTA")) ? "bg-red-900 text-white" :
-                  (normalizeStr(item.type || item.status).includes("TRE DEBITO") || normalizeStr(item.type || item.status).includes("FOLGA")) ? "bg-orange-500 text-white" :
+                  (normalizeStr(item.type || item.status).includes("TRE DEBITO") || normalizeStr(item.type || item.status).includes("FOLGA")) ? "bg-orange-50 text-white" :
                   "bg-slate-500 text-white"
                 )}>
                   {item.type || item.status}
@@ -448,7 +449,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
         <Card className="card-shadow border-primary/20 bg-primary/5 transition-all">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">EFETIVO DISPONÍVEL</CardTitle>
@@ -595,6 +596,21 @@ export default function Dashboard() {
             {renderModalTable(afastadosList, 'afastado')}
           </DialogContent>
         </Dialog>
+
+        {/* NOVO CARD: MURAL DE AVISOS (PLACEHOLDER) */}
+        <Card className="card-shadow border-amber-500/20 bg-amber-50/5 transition-all cursor-pointer hover:bg-amber-50/20 group">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-[10px] font-bold uppercase group-hover:text-amber-700 transition-colors">NOTIFICAÇÕES / MURAL</CardTitle>
+            <BellRing className="h-4 w-4 text-amber-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="text-2xl font-bold text-amber-700">MURAL</div>
+              <Badge variant="outline" className="text-[7px] uppercase font-bold border-amber-200 text-amber-700">EM BREVE</Badge>
+            </div>
+            <p className="text-[9px] text-muted-foreground uppercase mt-2">ENVIO DE COMUNICADOS PARA O EFETIVO.</p>
+          </CardContent>
+        </Card>
       </div>
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
@@ -761,7 +777,7 @@ export default function Dashboard() {
                       <span className="text-[11px] font-bold uppercase text-slate-700">BH Crédito</span>
                       <span className="text-sm font-black font-mono text-green-700">+{minutesToHHmm(monthlySummary?.horas.credito || 0)}H</span>
                     </div>
-                    <div className="flex items-center justify-between p-3 bg-red-50/30 rounded-xl border border-red-100">
+                    <div className="flex Paradox items-center justify-between p-3 bg-red-50/30 rounded-xl border border-red-100">
                       <span className="text-[11px] font-bold uppercase text-slate-700">BH Débito</span>
                       <span className="text-sm font-black font-mono text-red-700">-{minutesToHHmm(monthlySummary?.horas.debito || 0)}H</span>
                     </div>
