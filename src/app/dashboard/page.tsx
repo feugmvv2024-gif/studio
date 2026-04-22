@@ -13,9 +13,7 @@ import {
   ShieldCheck,
   UserMinus,
   Plane,
-  BellRing,
   Info,
-  ArrowRight,
   Briefcase,
   History,
   Calendar
@@ -27,7 +25,7 @@ import {
   Cell,
   Tooltip
 } from "recharts"
-import { useFirestore, useCollection, useAuth } from '@/firebase'
+import { useFirestore, useCollection } from '@/firebase'
 import { collection, query, where, updateDoc, doc, orderBy } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import {
@@ -55,7 +53,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import Link from "next/link"
 
 // Utilitários de cálculo
 const hhmmToMinutes = (hhmm: string) => {
@@ -342,7 +339,7 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         {/* CARD 1: EFETIVO DISPONÍVEL */}
         <Card className="card-shadow border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -502,23 +499,6 @@ export default function Dashboard() {
             </ScrollArea>
           </DialogContent>
         </Dialog>
-
-        {/* CARD 6: MURAL DE AVISOS (ATALHO) */}
-        <Link href="/notifications">
-          <Card className="card-shadow border-amber-500/20 bg-amber-50/5 transition-all cursor-pointer hover:bg-amber-50/20 group active:scale-95 h-full">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-[10px] font-bold uppercase group-hover:text-amber-700">MURAL DE AVISOS</CardTitle>
-              <BellRing className="h-4 w-4 text-amber-600" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center justify-between">
-                <div className="text-2xl font-bold text-amber-700">COMUNICAR</div>
-                <Badge variant="outline" className="text-[7px] uppercase font-bold border-amber-200 text-amber-700 animate-pulse">VER MURAL</Badge>
-              </div>
-              <p className="text-[9px] text-muted-foreground uppercase mt-2">Clique para ler ou gerenciar comunicados.</p>
-            </CardContent>
-          </Card>
-        </Link>
       </div>
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
