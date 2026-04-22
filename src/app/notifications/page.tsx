@@ -1,0 +1,418 @@
+"use client"
+
+import * as React from "react"
+import { 
+  BellRing, 
+  Send, 
+  Trash2, 
+  Loader2, 
+  Plus, 
+  ShieldCheck, 
+  User, 
+  Users, 
+  Check, 
+  Search,
+  AlertCircle,
+  Megaphone,
+  History,
+  X,
+  Info,
+  CalendarDays,
+  Clock
+} from "lucide-react"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+  DialogClose
+} from "@/components/ui/dialog"
+import { ScrollArea } from "@/components/ui/scroll-area"
+import { useFirestore, useCollection, useAuth } from '@/firebase'
+import { collection, query, orderBy, where, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { useToast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
+
+const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
+
+export default function NotificationsPage() {
+  const { user, employeeData } = useAuth();
+  const firestore = useFirestore();
+  const { toast } = useToast();
+
+  const [activeTab, setActiveTab] = React.useState("mural");
+  const [isNotifyModalOpen, setIsNotifyModalOpen] = React.useState(false);
+  const [isSendingNotify, setIsSendingNotify] = React.useState(false);
+
+  // Estados do Formulário de Envio
+  const [notifyPriority, setNotifyPriority] = React.useState("NORMAL");
+  const [notifyTargetType, setNotifyTargetType] = React.useState("TODOS");
+  const [notifyTargetId, setNotifyTargetId] = React.useState("");
+  const [notifyTargetLabel, setNotifyTargetLabel] = React.useState("");
+  const [notifySearchTerm, setNotifySearchTerm] = React.useState("");
+  const [showTargetSuggestions, setShowTargetSuggestions] = React.useState(false);
+
+  // Lógica de Permissão de Gestão
+  const canManageMural = React.useMemo(() => {
+    if (!employeeData) return false;
+    const role = normalizeStr(employeeData.role || "");
+    return ["COMANDANTE", "INSPETOR GERAL", "GESTOR DE RH"].some(r => role.includes(r));
+  }, [employeeData]);
+
+  // Consulta: Todas as notificações (para gestão)
+  const allNotificationsRef = React.useMemo(() => {
+    if (!firestore || !canManageMural) return null;
+    return query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'));
+  }, [firestore, canManageMural]);
+
+  // Consulta: Notificações do Servidor (Mural)
+  const myNotificationsRef = React.useMemo(() => {
+    if (!firestore || !user || !employeeData) return null;
+    return query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'));
+  }, [firestore, user, employeeData]);
+
+  const { data: allNotifications, loading: loadingAll } = useCollection(allNotificationsRef);
+  const { data: myNotifications, loading: loadingMy } = useCollection(myNotificationsRef);
+  
+  const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
+  const rolesRef = React.useMemo(() => firestore ? query(collection(firestore, 'roles'), orderBy('name', 'asc')) : null, [firestore]);
+  const { data: employees } = useCollection(employeesRef);
+  const { data: roles } = useCollection(rolesRef);
+
+  // Filtragem das notificações para o Mural do Servidor
+  const filteredMyNotifications = React.useMemo(() => {
+    if (!myNotifications || !user || !employeeData) return [];
+    const userRole = normalizeStr(employeeData.role || "");
+    
+    return myNotifications.filter(n => {
+      if (n.targetType === "TODOS") return true;
+      if (n.targetType === "CARGO") {
+        // Busca o nome do cargo pelo targetId
+        const targetRole = roles?.find(r => r.id === n.targetId)?.name || "";
+        return normalizeStr(targetRole) === userRole;
+      }
+      if (n.targetType === "INDIVIDUAL") return n.targetId === user.uid;
+      return false;
+    });
+  }, [myNotifications, user, employeeData, roles]);
+
+  const resetNotifyForm = () => {
+    setNotifyPriority("NORMAL");
+    setNotifyTargetType("TODOS");
+    setNotifyTargetId("");
+    setNotifyTargetLabel("");
+    setNotifySearchTerm("");
+  };
+
+  async function handleSendNotification(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!firestore || !employeeData) return;
+
+    if (notifyTargetType !== "TODOS" && !notifyTargetId) {
+      toast({ variant: "destructive", title: "DESTINATÁRIO AUSENTE", description: "SELECIONE O GRUPO OU SERVIDOR." });
+      return;
+    }
+
+    setIsSendingNotify(true);
+    const formData = new FormData(e.currentTarget);
+    const title = (formData.get('title') as string).toUpperCase();
+    const message = (formData.get('message') as string).toUpperCase();
+
+    const payload = {
+      title,
+      message,
+      priority: notifyPriority,
+      targetType: notifyTargetType,
+      targetId: notifyTargetId,
+      targetLabel: notifyTargetType === "TODOS" ? "TODOS OS SERVIDORES" : notifyTargetLabel,
+      authorQra: (employeeData.qra || "SISTEMA").toUpperCase(),
+      authorName: (employeeData.name || "SISTEMA").toUpperCase(),
+      createdAt: serverTimestamp()
+    };
+
+    try {
+      await addDoc(collection(firestore, 'notifications'), payload);
+      toast({ title: "COMUNICADO PUBLICADO!", description: "O aviso já está disponível para os destinatários." });
+      setIsNotifyModalOpen(false);
+      resetNotifyForm();
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERRO AO PUBLICAR" });
+    } finally {
+      setIsSendingNotify(false);
+    }
+  }
+
+  async function handleDeleteNotification(id: string) {
+    if (!firestore) return;
+    try {
+      await deleteDoc(doc(firestore, 'notifications', id));
+      toast({ title: "AVISO REMOVIDO", description: "O comunicado foi excluído do mural." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERRO AO EXCLUIR" });
+    }
+  }
+
+  const filteredEmployeesForSelection = React.useMemo(() => {
+    if (!employees || !notifySearchTerm) return [];
+    const term = notifySearchTerm.toLowerCase();
+    return employees.filter(emp => 
+      emp.name?.toLowerCase().includes(term) || 
+      emp.qra?.toLowerCase().includes(term)
+    ).slice(0, 5);
+  }, [employees, notifySearchTerm]);
+
+  if (loadingMy) {
+    return <div className="flex h-full items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  }
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-blue-50 p-2 rounded-xl">
+            <BellRing className="h-6 w-6 text-blue-600" />
+          </div>
+          <div>
+            <h2 className="text-2xl sm:text-3xl font-bold tracking-tight uppercase text-primary">Mural de Avisos</h2>
+            <p className="text-muted-foreground uppercase text-[10px] font-bold tracking-widest">Comunicados Oficiais e Ordens de Serviço.</p>
+          </div>
+        </div>
+      </div>
+
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <TabsList className={cn(
+          "grid w-full bg-muted/50 p-1 rounded-xl h-auto",
+          canManageMural ? "grid-cols-2 lg:w-[400px]" : "grid-cols-1 lg:w-[200px]"
+        )}>
+          <TabsTrigger value="mural" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 py-2">
+            <Megaphone className="h-3.5 w-3.5" /> COMUNICADOS
+          </TabsTrigger>
+          {canManageMural && (
+            <TabsTrigger value="gestao" className="rounded-lg uppercase text-[10px] font-bold flex items-center gap-2 py-2 text-primary">
+              <ShieldCheck className="h-3.5 w-3.5" /> GERENCIAR MURAL
+            </TabsTrigger>
+          )}
+        </TabsList>
+
+        <TabsContent value="mural" className="mt-6 space-y-4">
+          {filteredMyNotifications.length === 0 ? (
+            <Card className="border-dashed border-2 bg-muted/5 rounded-3xl">
+              <CardContent className="flex flex-col items-center justify-center p-20 text-center space-y-4">
+                <BellRing className="h-12 w-12 text-muted-foreground/20" />
+                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest italic">Nenhum aviso no momento.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid gap-4">
+              {filteredMyNotifications.map(n => (
+                <Card key={n.id} className={cn(
+                  "card-shadow border-none rounded-2xl overflow-hidden transition-all animate-in slide-in-from-bottom-2 duration-500",
+                  n.priority === "URGENTE" ? "ring-2 ring-red-500 bg-red-50/10" : 
+                  n.priority === "ALERTA" ? "ring-2 ring-amber-400 bg-amber-50/10" : "bg-white"
+                )}>
+                  <div className="flex flex-col">
+                    <div className={cn(
+                      "p-4 flex items-center justify-between border-b",
+                      n.priority === "URGENTE" ? "bg-red-600 text-white" : 
+                      n.priority === "ALERTA" ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
+                    )}>
+                      <div className="flex items-center gap-3">
+                        {n.priority === "URGENTE" ? <AlertCircle className="h-5 w-5 animate-pulse" /> : <Info className="h-5 w-5" />}
+                        <span className="text-[11px] font-black uppercase tracking-widest">{n.priority}</span>
+                      </div>
+                      <span className="text-[9px] font-mono font-bold opacity-80">
+                        {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
+                      </span>
+                    </div>
+                    <CardContent className="p-6 space-y-4">
+                      <h3 className="text-lg font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
+                      <p className="text-sm font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
+                    </CardContent>
+                    <CardFooter className="bg-slate-50 p-4 border-t flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className="text-[8px] font-black uppercase border-slate-200 text-slate-500 bg-white">
+                          De: {n.authorName} ({n.authorQra})
+                        </Badge>
+                      </div>
+                      {n.targetType === "INDIVIDUAL" && (
+                        <Badge className="bg-primary text-white text-[8px] font-black uppercase">Direcionado a Você</Badge>
+                      )}
+                    </CardFooter>
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="gestao" className="mt-6 space-y-6">
+          <div className="flex justify-end">
+            <Dialog open={isNotifyModalOpen} onOpenChange={setIsNotifyModalOpen}>
+              <DialogTrigger asChild>
+                <Button size="lg" className="h-12 px-8 uppercase font-black text-xs tracking-widest shadow-xl bg-primary hover:bg-primary/90">
+                  <Plus className="h-4 w-4 mr-2" /> Publicar Novo Aviso
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden">
+                <form onSubmit={handleSendNotification}>
+                  <DialogHeader className="bg-amber-600 p-6 text-white">
+                    <div className="flex items-center gap-4">
+                      <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm"><BellRing className="h-6 w-6 text-white" /></div>
+                      <div>
+                        <DialogTitle className="uppercase text-xl font-black tracking-tight leading-none">Publicar no Mural</DialogTitle>
+                        <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest mt-1">COMUNICAÇÃO OFICIAL DA UNIDADE.</p>
+                      </div>
+                    </div>
+                  </DialogHeader>
+                  <div className="p-6 space-y-6">
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase text-slate-700">Prioridade</Label>
+                        <Select value={notifyPriority} onValueChange={setNotifyPriority}>
+                          <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="NORMAL" className="uppercase text-[10px]">NORMAL (INFORMATIVO)</SelectItem>
+                            <SelectItem value="ALERTA" className="uppercase text-[10px] text-orange-600 font-black">ALERTA (ATENÇÃO)</SelectItem>
+                            <SelectItem value="URGENTE" className="uppercase text-[10px] text-red-600 font-black">URGENTE (IMEDIATO)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase text-slate-700">Destinatário</Label>
+                        <Select value={notifyTargetType} onValueChange={(v) => { setNotifyTargetType(v); setNotifyTargetId(""); setNotifyTargetLabel(""); }}>
+                          <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="TODOS" className="uppercase text-[10px]">TODOS OS SERVIDORES</SelectItem>
+                            <SelectItem value="CARGO" className="uppercase text-[10px]">POR GRUPO (CARGO)</SelectItem>
+                            <SelectItem value="INDIVIDUAL" className="uppercase text-[10px]">SERVIDOR INDIVIDUAL</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {notifyTargetType === "CARGO" && (
+                      <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                        <Label className="text-[10px] font-black uppercase text-slate-700">Selecionar Grupo</Label>
+                        <Select value={notifyTargetId} onValueChange={(v) => { setNotifyTargetId(v); setNotifyTargetLabel(roles?.find((r: any) => r.id === v)?.name || "GRUPO"); }}>
+                          <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue placeholder="SELECIONE O CARGO..." /></SelectTrigger>
+                          <SelectContent>
+                            {roles?.map((r: any) => <SelectItem key={r.id} value={r.id} className="uppercase text-[10px]">{r.name}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+
+                    {notifyTargetType === "INDIVIDUAL" && (
+                      <div className="space-y-1.5 relative animate-in slide-in-from-top-2 duration-300">
+                        <Label className="text-[10px] font-black uppercase text-slate-700">Buscar Servidor</Label>
+                        <div className="relative">
+                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                          <Input 
+                            placeholder="NOME OU QRA..." 
+                            value={notifySearchTerm} 
+                            onChange={(e) => { setNotifySearchTerm(e.target.value.toUpperCase()); setShowTargetSuggestions(true); }}
+                            onFocus={() => setShowTargetSuggestions(true)}
+                            className="pl-9 h-10 uppercase text-[10px] font-bold"
+                          />
+                          {notifyTargetId && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
+                        </div>
+                        {showTargetSuggestions && notifySearchTerm && (
+                          <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border rounded-xl shadow-2xl overflow-hidden">
+                            {filteredEmployeesForSelection.map(emp => (
+                              <button key={emp.id} type="button" onClick={() => { setNotifyTargetId(emp.uid || emp.id); setNotifyTargetLabel(`${emp.name} (${emp.qra})`); setNotifySearchTerm(`${emp.name} (${emp.qra})`); setShowTargetSuggestions(false); }} className="w-full px-4 py-3 text-left hover:bg-amber-50 flex flex-col border-b last:border-0">
+                                <span className="text-[10px] font-black uppercase">{emp.name}</span>
+                                <span className="text-[8px] font-bold text-muted-foreground uppercase">QRA: {emp.qra} • {emp.role}</span>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase text-slate-700">Título do Aviso</Label>
+                        <Input name="title" required placeholder="EX: CONVOCAÇÃO PARA TREINAMENTO" className="h-11 uppercase font-bold text-xs" />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-black uppercase text-slate-700">Mensagem</Label>
+                        <Textarea name="message" required placeholder="DIGITE O CONTEÚDO DO COMUNICADO..." className="min-h-[120px] uppercase text-xs p-4 resize-none leading-relaxed" />
+                      </div>
+                    </div>
+                  </div>
+                  <DialogFooter className="bg-slate-50 p-4 border-t gap-3">
+                    <DialogClose asChild><Button variant="ghost" className="uppercase text-[10px] font-black">Cancelar</Button></DialogClose>
+                    <Button type="submit" disabled={isSendingNotify} className="h-11 px-8 uppercase font-black text-xs tracking-widest bg-amber-600 hover:bg-amber-700 shadow-lg shadow-amber-100">
+                      {isSendingNotify ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} Publicar Agora
+                    </Button>
+                  </DialogFooter>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex items-center gap-2 border-b pb-2">
+              <History className="h-4 w-4 text-slate-500" />
+              <h4 className="text-xs font-black uppercase text-slate-700 tracking-widest">Histórico de Publicações</h4>
+            </div>
+            
+            {loadingAll ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
+              <div className="grid gap-3">
+                {allNotifications?.length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold italic text-center py-10">Nenhum histórico disponível.</p>
+                ) : (
+                  allNotifications?.map(n => (
+                    <Card key={n.id} className="border border-slate-100 bg-slate-50/50 hover:bg-white transition-colors group">
+                      <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div className="flex items-center gap-4">
+                          <div className={cn(
+                            "w-2 h-10 rounded-full",
+                            n.priority === "URGENTE" ? "bg-red-500" : n.priority === "ALERTA" ? "bg-amber-500" : "bg-blue-500"
+                          )} />
+                          <div>
+                            <p className="text-[11px] font-black uppercase text-slate-900 leading-tight">{n.title}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5">{n.targetType}: {n.targetLabel}</Badge>
+                              <span className="text-[8px] font-mono text-muted-foreground uppercase">
+                                Em: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          onClick={() => handleDeleteNotification(n.id)}
+                          className="h-9 px-4 text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity uppercase text-[10px] font-black gap-2"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" /> Excluir Aviso
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  ))
+                )}
+              </div>
+            )}
+          </div>
+        </TabsContent>
+      </Tabs>
+    </div>
+  )
+}

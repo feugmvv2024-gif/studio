@@ -15,6 +15,7 @@ import {
   FileText,
   CalendarCheck,
   Plane,
+  BellRing,
 } from "lucide-react"
 
 import {
@@ -39,6 +40,7 @@ import { collection, query, where } from "firebase/firestore"
 
 const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
+  { name: "Mural de Avisos", href: "/notifications", icon: BellRing },
   { name: "Lançamentos", href: "/lancamentos", icon: FilePlus },
   { name: "Efetivo", href: "/efetivo", icon: Users },
   { name: "Frequência", href: "/frequencia", icon: CalendarCheck },
@@ -68,14 +70,14 @@ export function AppSidebar() {
     let result = navigation;
 
     if (role === "AGENTE") {
-      // Agentes veem apenas os itens de autoatendimento
+      // Agentes veem apenas os itens de autoatendimento + Mural
       result = navigation.filter(item => 
-        ["/meus-lancamentos", "/requests", "/profile", "/ferias"].includes(item.href)
+        ["/notifications", "/meus-lancamentos", "/requests", "/profile", "/ferias"].includes(item.href)
       );
     } else if (role === "INSPETOR" || role === "SUBINSPETOR") {
-      // Inspetores e Subinspetores veem Relatórios + Autoatendimento
+      // Inspetores e Subinspetores veem Relatórios + Autoatendimento + Mural
       result = navigation.filter(item => 
-        ["/relatorios", "/meus-lancamentos", "/requests", "/profile", "/ferias"].includes(item.href)
+        ["/notifications", "/relatorios", "/meus-lancamentos", "/requests", "/profile", "/ferias"].includes(item.href)
       );
     }
     

@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { 
   Users, 
   Clock, 
@@ -13,43 +13,29 @@ import {
   ShieldCheck,
   UserMinus,
   Plane,
-  Stethoscope,
+  BellRing,
   Info,
-  X,
-  Calendar,
-  Filter,
   ArrowRight,
   Briefcase,
   History,
-  BellRing,
-  Send,
-  User,
-  Check,
-  Search
+  Calendar
 } from "lucide-react"
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
+  PieChart,
+  Pie,
   ResponsiveContainer,
   Cell,
-  PieChart,
-  Pie
+  Tooltip
 } from "recharts"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
-import { collection, query, where, updateDoc, doc, addDoc, serverTimestamp, orderBy } from 'firebase/firestore'
+import { collection, query, where, updateDoc, doc, orderBy } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-  DialogClose
+  DialogTrigger
 } from "@/components/ui/dialog"
 import {
   Table,
@@ -69,10 +55,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 // Utilitários de cálculo
 const hhmmToMinutes = (hhmm: string) => {
@@ -113,21 +96,10 @@ const MONTHS = [
 
 export default function Dashboard() {
   const firestore = useFirestore();
-  const { employeeData } = useAuth();
   const { toast } = useToast();
 
   const [isAbsentModalOpen, setIsAbsentModalOpen] = React.useState(false);
   const [isAfastadosModalOpen, setIsAfastadosModalOpen] = React.useState(false);
-  const [isNotifyModalOpen, setIsNotifyModalOpen] = React.useState(false);
-
-  // Estados para o Envio de Notificação
-  const [notifyPriority, setNotifyPriority] = React.useState("NORMAL");
-  const [notifyTargetType, setNotifyTargetType] = React.useState("TODOS");
-  const [notifyTargetId, setNotifyTargetId] = React.useState("");
-  const [notifyTargetLabel, setNotifyTargetLabel] = React.useState("");
-  const [notifySearchTerm, setNotifySearchTerm] = React.useState("");
-  const [showTargetSuggestions, setShowTargetSuggestions] = React.useState(false);
-  const [isSendingNotify, setIsSendingNotify] = React.useState(false);
 
   // Estados para o Resumo Mensal
   const [summaryMonth, setSummaryMonth] = React.useState(new Date().getMonth());
@@ -135,7 +107,6 @@ export default function Dashboard() {
 
   const employeesRef = React.useMemo(() => collection(firestore, 'employees'), [firestore]);
   const launchesRef = React.useMemo(() => collection(firestore, 'launches'), [firestore]);
-  const rolesRef = React.useMemo(() => query(collection(firestore, 'roles'), orderBy('name', 'asc')), [firestore]);
   
   const todayReportsRef = React.useMemo(() => {
     const today = getSaoPauloDate();
@@ -145,7 +116,6 @@ export default function Dashboard() {
   const { data: employees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: launches, loading: loadingLaunches } = useCollection(launchesRef);
   const { data: todayReports, loading: loadingReports } = useCollection(todayReportsRef);
-  const { data: roles } = useCollection(rolesRef);
 
   // Automação de Reconciliação de Status
   React.useEffect(() => {
@@ -280,62 +250,6 @@ export default function Dashboard() {
 
     return summary;
   }, [launches, summaryMonth, summaryYear]);
-
-  // Envio de Notificação
-  async function handleSendNotification(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    if (!firestore || !employeeData) return;
-
-    if (notifyTargetType !== "TODOS" && !notifyTargetId) {
-      toast({ variant: "destructive", title: "DESTINATÁRIO AUSENTE", description: "SELECIONE O GRUPO OU SERVIDOR." });
-      return;
-    }
-
-    setIsSendingNotify(true);
-    const formData = new FormData(e.currentTarget);
-    const title = (formData.get('title') as string).toUpperCase();
-    const message = (formData.get('message') as string).toUpperCase();
-
-    const payload = {
-      title,
-      message,
-      priority: notifyPriority,
-      targetType: notifyTargetType,
-      targetId: notifyTargetId,
-      targetLabel: notifyTargetType === "TODOS" ? "TODOS OS SERVIDORES" : notifyTargetLabel,
-      authorQra: (employeeData.qra || "SISTEMA").toUpperCase(),
-      authorName: (employeeData.name || "SISTEMA").toUpperCase(),
-      createdAt: serverTimestamp()
-    };
-
-    try {
-      await addDoc(collection(firestore, 'notifications'), payload);
-      toast({ title: "COMUNICADO PUBLICADO!", description: "O aviso já está disponível para os destinatários." });
-      setIsNotifyModalOpen(false);
-      resetNotifyForm();
-    } catch (err) {
-      toast({ variant: "destructive", title: "ERRO AO PUBLICAR" });
-    } finally {
-      setIsSendingNotify(false);
-    }
-  }
-
-  const resetNotifyForm = () => {
-    setNotifyPriority("NORMAL");
-    setNotifyTargetType("TODOS");
-    setNotifyTargetId("");
-    setNotifyTargetLabel("");
-    setNotifySearchTerm("");
-  };
-
-  const filteredEmployeesForSelection = React.useMemo(() => {
-    if (!employees || !notifySearchTerm) return [];
-    const term = notifySearchTerm.toLowerCase();
-    return employees.filter(emp => 
-      emp.name?.toLowerCase().includes(term) || 
-      emp.qra?.toLowerCase().includes(term)
-    ).slice(0, 5);
-  }, [employees, notifySearchTerm]);
 
   // Listas para os Modais
   const absentList = React.useMemo(() => {
@@ -589,119 +503,22 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
-        {/* CARD 6: MURAL DE AVISOS */}
-        <Dialog open={isNotifyModalOpen} onOpenChange={setIsNotifyModalOpen}>
-          <DialogTrigger asChild>
-            <Card className="card-shadow border-amber-500/20 bg-amber-50/5 transition-all cursor-pointer hover:bg-amber-50/20 group active:scale-95">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-[10px] font-bold uppercase group-hover:text-amber-700">MURAL DE AVISOS</CardTitle>
-                <BellRing className="h-4 w-4 text-amber-600" />
-              </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold text-amber-700">COMUNICAR</div>
-                  <Badge variant="outline" className="text-[7px] uppercase font-bold border-amber-200 text-amber-700">NOVA MENSAGEM</Badge>
-                </div>
-                <p className="text-[9px] text-muted-foreground uppercase mt-2">ENVIO DE COMUNICADOS PARA O EFETIVO.</p>
-              </CardContent>
-            </Card>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden">
-            <form onSubmit={handleSendNotification}>
-              <DialogHeader className="bg-amber-600 p-6 text-white">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm"><BellRing className="h-6 w-6 text-white" /></div>
-                  <div>
-                    <DialogTitle className="uppercase text-xl font-black tracking-tight leading-none">Publicar no Mural</DialogTitle>
-                    <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest mt-1">COMUNICAÇÃO OFICIAL DA UNIDADE.</p>
-                  </div>
-                </div>
-              </DialogHeader>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-700">Prioridade</Label>
-                    <Select value={notifyPriority} onValueChange={setNotifyPriority}>
-                      <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="NORMAL" className="uppercase text-[10px]">NORMAL (INFORMATIVO)</SelectItem>
-                        <SelectItem value="ALERTA" className="uppercase text-[10px] text-orange-600 font-black">ALERTA (ATENÇÃO)</SelectItem>
-                        <SelectItem value="URGENTE" className="uppercase text-[10px] text-red-600 font-black">URGENTE (IMEDIATO)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                   </div>
-                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-700">Destinatário</Label>
-                    <Select value={notifyTargetType} onValueChange={(v) => { setNotifyTargetType(v); setNotifyTargetId(""); setNotifyTargetLabel(""); }}>
-                      <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="TODOS" className="uppercase text-[10px]">TODOS OS SERVIDORES</SelectItem>
-                        <SelectItem value="CARGO" className="uppercase text-[10px]">POR GRUPO (CARGO)</SelectItem>
-                        <SelectItem value="INDIVIDUAL" className="uppercase text-[10px]">SERVIDOR INDIVIDUAL</SelectItem>
-                      </SelectContent>
-                    </Select>
-                   </div>
-                </div>
-
-                {notifyTargetType === "CARGO" && (
-                  <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
-                    <Label className="text-[10px] font-black uppercase text-slate-700">Selecionar Grupo</Label>
-                    <Select value={notifyTargetId} onValueChange={(v) => { setNotifyTargetId(v); setNotifyTargetLabel(roles?.find((r: any) => r.id === v)?.name || "GRUPO"); }}>
-                      <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue placeholder="SELECIONE O CARGO..." /></SelectTrigger>
-                      <SelectContent>
-                        {roles?.map((r: any) => <SelectItem key={r.id} value={r.id} className="uppercase text-[10px]">{r.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-
-                {notifyTargetType === "INDIVIDUAL" && (
-                  <div className="space-y-1.5 relative animate-in slide-in-from-top-2 duration-300">
-                    <Label className="text-[10px] font-black uppercase text-slate-700">Buscar Servidor</Label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input 
-                        placeholder="NOME OU QRA..." 
-                        value={notifySearchTerm} 
-                        onChange={(e) => { setNotifySearchTerm(e.target.value.toUpperCase()); setShowTargetSuggestions(true); }}
-                        onFocus={() => setShowTargetSuggestions(true)}
-                        className="pl-9 h-10 uppercase text-[10px] font-bold"
-                      />
-                      {notifyTargetId && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
-                    </div>
-                    {showTargetSuggestions && notifySearchTerm && (
-                      <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border rounded-xl shadow-2xl overflow-hidden">
-                        {filteredEmployeesForSelection.map(emp => (
-                          <button key={emp.id} type="button" onClick={() => { setNotifyTargetId(emp.uid || emp.id); setNotifyTargetLabel(`${emp.name} (${emp.qra})`); setNotifySearchTerm(`${emp.name} (${emp.qra})`); setShowTargetSuggestions(false); }} className="w-full px-4 py-3 text-left hover:bg-amber-50 flex flex-col border-b last:border-0">
-                            <span className="text-[10px] font-black uppercase">{emp.name}</span>
-                            <span className="text-[8px] font-bold text-muted-foreground uppercase">QRA: {emp.qra} • {emp.role}</span>
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="space-y-4">
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-700">Título do Aviso</Label>
-                    <Input name="title" required placeholder="EX: CONVOCAÇÃO PARA TREINAMENTO" className="h-11 uppercase font-bold text-xs" />
-                  </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase text-slate-700">Mensagem</Label>
-                    <Textarea name="message" required placeholder="DIGITE O CONTEÚDO DO COMUNICADO..." className="min-h-[120px] uppercase text-xs p-4 resize-none leading-relaxed" />
-                  </div>
-                </div>
+        {/* CARD 6: MURAL DE AVISOS (ATALHO) */}
+        <Link href="/notifications">
+          <Card className="card-shadow border-amber-500/20 bg-amber-50/5 transition-all cursor-pointer hover:bg-amber-50/20 group active:scale-95 h-full">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-[10px] font-bold uppercase group-hover:text-amber-700">MURAL DE AVISOS</CardTitle>
+              <BellRing className="h-4 w-4 text-amber-600" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between">
+                <div className="text-2xl font-bold text-amber-700">COMUNICAR</div>
+                <Badge variant="outline" className="text-[7px] uppercase font-bold border-amber-200 text-amber-700 animate-pulse">VER MURAL</Badge>
               </div>
-              <DialogFooter className="bg-slate-50 p-4 border-t gap-3">
-                <DialogClose asChild><Button variant="ghost" className="uppercase text-[10px] font-black">Cancelar</Button></DialogClose>
-                <Button type="submit" disabled={isSendingNotify} className="h-11 px-8 uppercase font-black text-xs tracking-widest bg-amber-600 hover:bg-amber-700 shadow-lg shadow-amber-100">
-                  {isSendingNotify ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} Publicar Agora
-                </Button>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
+              <p className="text-[9px] text-muted-foreground uppercase mt-2">Clique para ler ou gerenciar comunicados.</p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
@@ -750,11 +567,15 @@ export default function Dashboard() {
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Select value={summaryMonth.toString()} onValueChange={(v) => setSummaryMonth(parseInt(v))}>
                 <SelectTrigger className="h-9 w-[120px] uppercase text-[10px] font-bold bg-white"><SelectValue /></SelectTrigger>
-                <SelectContent>{MONTHS.map((m, idx) => <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">{m}</SelectItem>)}</SelectContent>
+                <SelectContent>{MONTHS.map((m, idx) => (
+                  <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">{m}</SelectItem>
+                ))}</SelectContent>
               </Select>
               <Select value={summaryYear.toString()} onValueChange={(v) => setSummaryYear(parseInt(v))}>
                 <SelectTrigger className="h-9 w-[80px] uppercase text-[10px] font-bold bg-white"><SelectValue /></SelectTrigger>
-                <SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={y.toString()} className="uppercase text-[10px] font-bold">{y}</SelectItem>)}</SelectContent>
+                <SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                  <SelectItem key={y} value={y.toString()} className="uppercase text-[10px] font-bold">{y}</SelectItem>
+                ))}</SelectContent>
               </Select>
             </div>
           </CardHeader>
