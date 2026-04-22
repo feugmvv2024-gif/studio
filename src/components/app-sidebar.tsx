@@ -40,13 +40,13 @@ import { collection, query, where } from "firebase/firestore"
 
 const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Mural de Avisos", href: "/notifications", icon: BellRing },
   { name: "Lançamentos", href: "/lancamentos", icon: FilePlus },
   { name: "Efetivo", href: "/efetivo", icon: Users },
   { name: "Frequência", href: "/frequencia", icon: CalendarCheck },
   { name: "Relatórios", href: "/relatorios", icon: BarChart3 },
   { name: "Meus Lançamentos", href: "/meus-lancamentos", icon: History },
   { name: "Minhas Solicitações", href: "/requests", icon: ClipboardList },
+  { name: "Mural de Avisos", href: "/notifications", icon: BellRing },
   { name: "Meu Perfil", href: "/profile", icon: UserCircle },
   { name: "Férias", href: "/ferias", icon: Plane },
   { name: "Dados Perfil", href: "/dados-perfil", icon: FileText },
