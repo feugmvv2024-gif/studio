@@ -222,36 +222,36 @@ export default function NotificationsPage() {
             <div className="grid gap-4">
               {filteredMyNotifications.map(n => (
                 <Card key={n.id} className={cn(
-                  "card-shadow border-none rounded-2xl overflow-hidden transition-all animate-in slide-in-from-bottom-2 duration-500",
+                  "card-shadow border-none rounded-xl overflow-hidden transition-all animate-in slide-in-from-bottom-2 duration-500",
                   n.priority === "URGENTE" ? "ring-2 ring-red-500 bg-red-50/10" : 
                   n.priority === "ALERTA" ? "ring-2 ring-amber-400 bg-amber-50/10" : "bg-white"
                 )}>
                   <div className="flex flex-col">
                     <div className={cn(
-                      "p-4 flex items-center justify-between border-b",
+                      "p-3 flex items-center justify-between border-b",
                       n.priority === "URGENTE" ? "bg-red-600 text-white" : 
                       n.priority === "ALERTA" ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
                     )}>
-                      <div className="flex items-center gap-3">
-                        {n.priority === "URGENTE" ? <AlertCircle className="h-5 w-5 animate-pulse" /> : <Info className="h-5 w-5" />}
-                        <span className="text-[11px] font-black uppercase tracking-widest">{n.priority}</span>
+                      <div className="flex items-center gap-2">
+                        {n.priority === "URGENTE" ? <AlertCircle className="h-4 w-4 animate-pulse" /> : <Info className="h-4 w-4" />}
+                        <span className="text-[10px] font-black uppercase tracking-widest">{n.priority}</span>
                       </div>
-                      <span className="text-[9px] font-mono font-bold opacity-80">
+                      <span className="text-[8px] font-mono font-bold opacity-80">
                         {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
                       </span>
                     </div>
-                    <CardContent className="p-6 space-y-4">
-                      <h3 className="text-lg font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
-                      <p className="text-sm font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
+                    <CardContent className="p-4 space-y-3">
+                      <h3 className="text-sm font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
+                      <p className="text-xs font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
                     </CardContent>
-                    <CardFooter className="bg-slate-50 p-4 border-t flex justify-between items-center">
+                    <CardFooter className="bg-slate-50 p-3 border-t flex justify-between items-center">
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[8px] font-black uppercase border-slate-200 text-slate-500 bg-white">
+                        <Badge variant="outline" className="text-[7px] font-black uppercase border-slate-200 text-slate-500 bg-white">
                           De: {n.authorName} ({n.authorQra})
                         </Badge>
                       </div>
                       {n.targetType === "INDIVIDUAL" && (
-                        <Badge className="bg-primary text-white text-[8px] font-black uppercase">Direcionado a Você</Badge>
+                        <Badge className="bg-primary text-white text-[7px] font-black uppercase">Direcionado a Você</Badge>
                       )}
                     </CardFooter>
                   </div>
