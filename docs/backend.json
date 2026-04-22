@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "Employee": {
@@ -178,6 +179,24 @@
       },
       "required": ["employeeId", "type", "status"]
     },
+    "Notification": {
+      "title": "Notification",
+      "description": "Comunicado oficial enviado pela administração no mural de avisos.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "message": { "type": "string" },
+        "priority": { "type": "string", "enum": ["NORMAL", "ALERTA", "URGENTE"] },
+        "targetType": { "type": "string", "enum": ["TODOS", "CARGO", "INDIVIDUAL"] },
+        "targetId": { "type": "string", "description": "UID do cargo ou UID do servidor." },
+        "targetLabel": { "type": "string", "description": "Nome amigável do destino." },
+        "authorQra": { "type": "string" },
+        "authorName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["title", "message", "priority", "targetType", "authorQra"]
+    },
     "Schedule": {
       "title": "Schedule",
       "description": "Definição de escalas de serviço.",
@@ -267,6 +286,10 @@
     "/requests/{requestId}": {
       "schema": "#/backend/entities/Request",
       "description": "Coleção global de solicitações operacionais."
+    },
+    "/notifications/{notificationId}": {
+      "schema": "#/backend/entities/Notification",
+      "description": "Coleção de comunicados oficiais do mural."
     },
     "/schedules/{scheduleId}": {
       "schema": "#/backend/entities/Schedule",

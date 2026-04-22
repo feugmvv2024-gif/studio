@@ -1,7 +1,8 @@
+
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { 
   Users, 
   Clock, 
@@ -21,7 +22,11 @@ import {
   ArrowRight,
   Briefcase,
   History,
-  BellRing
+  BellRing,
+  Send,
+  User,
+  Check,
+  Search
 } from "lucide-react"
 import {
   BarChart,
@@ -35,8 +40,8 @@ import {
   PieChart,
   Pie
 } from "recharts"
-import { useFirestore, useCollection } from '@/firebase'
-import { collection, query, where, updateDoc, doc } from 'firebase/firestore'
+import { useFirestore, useCollection, useAuth } from '@/firebase'
+import { collection, query, where, updateDoc, doc, addDoc, serverTimestamp, orderBy } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
@@ -44,6 +49,8 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
+  DialogClose
 } from "@/components/ui/dialog"
 import {
   Table,
@@ -62,6 +69,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 
 // Utilitários de cálculo
@@ -103,10 +113,21 @@ const MONTHS = [
 
 export default function Dashboard() {
   const firestore = useFirestore();
+  const { employeeData } = useAuth();
   const { toast } = useToast();
 
   const [isAbsentModalOpen, setIsAbsentModalOpen] = React.useState(false);
   const [isAfastadosModalOpen, setIsAfastadosModalOpen] = React.useState(false);
+  const [isNotifyModalOpen, setIsNotifyModalOpen] = React.useState(false);
+
+  // Estados para o Envio de Notificação
+  const [notifyPriority, setNotifyPriority] = React.useState("NORMAL");
+  const [notifyTargetType, setNotifyTargetType] = React.useState("TODOS");
+  const [notifyTargetId, setNotifyTargetId] = React.useState("");
+  const [notifyTargetLabel, setNotifyTargetLabel] = React.useState("");
+  const [notifySearchTerm, setNotifySearchTerm] = React.useState("");
+  const [showTargetSuggestions, setShowTargetSuggestions] = React.useState(false);
+  const [isSendingNotify, setIsSendingNotify] = React.useState(false);
 
   // Estados para o Resumo Mensal
   const [summaryMonth, setSummaryMonth] = React.useState(new Date().getMonth());
@@ -114,8 +135,8 @@ export default function Dashboard() {
 
   const employeesRef = React.useMemo(() => collection(firestore, 'employees'), [firestore]);
   const launchesRef = React.useMemo(() => collection(firestore, 'launches'), [firestore]);
+  const rolesRef = React.useMemo(() => query(collection(firestore, 'roles'), orderBy('name', 'asc')), [firestore]);
   
-  // Consulta de relatórios do dia para extrair faltas REAIS
   const todayReportsRef = React.useMemo(() => {
     const today = getSaoPauloDate();
     return query(collection(firestore, 'dailyReports'), where('date', '==', today));
@@ -124,6 +145,7 @@ export default function Dashboard() {
   const { data: employees, loading: loadingEmployees } = useCollection(employeesRef);
   const { data: launches, loading: loadingLaunches } = useCollection(launchesRef);
   const { data: todayReports, loading: loadingReports } = useCollection(todayReportsRef);
+  const { data: roles } = useCollection(rolesRef);
 
   // Automação de Reconciliação de Status
   React.useEffect(() => {
@@ -178,7 +200,7 @@ export default function Dashboard() {
     };
   }, [employees]);
 
-  // Estatísticas de Ausentes (Hoje) - Faltas vêm dos Relatórios, outros dos Lançamentos
+  // Estatísticas de Ausentes (Hoje)
   const absentStats = React.useMemo(() => {
     const today = getSaoPauloDate();
     const summary = { total: 0, folga: 0, abono: 0, falta: 0 };
@@ -188,7 +210,6 @@ export default function Dashboard() {
         const type = normalizeStr(l.type);
         const isActive = l.startDate <= today && l.endDate >= today;
         if (isActive) {
-          // Extrai apenas Folgas, TRE e Abonos (ignora FALTA do agendamento)
           if (type.includes("FOLGA") || type.includes("TRE DEBITO")) { 
             summary.folga++; 
             summary.total++; 
@@ -200,7 +221,6 @@ export default function Dashboard() {
       });
     }
 
-    // Extrai Faltas únicas dos relatórios operacionais de hoje
     if (todayReports) {
       const uniqueFaltaIds = new Set();
       todayReports.forEach(report => {
@@ -215,7 +235,7 @@ export default function Dashboard() {
     return summary;
   }, [launches, todayReports]);
 
-  // Resumo Mensal de Atividades (Categorizado)
+  // Resumo Mensal de Atividades
   const monthlySummary = React.useMemo(() => {
     if (!launches) return null;
     
@@ -238,7 +258,6 @@ export default function Dashboard() {
       const qtdEscala = Number(l.qtdEscala) || 0;
       const minutes = hhmmToMinutes(l.hours || "00:00");
 
-      // Seção 1: Dias
       if (type.includes("FOLGA") || type.includes("TRE DEBITO")) {
         summary.dias.folgaTre += days;
       } else if (type.includes("FALTA")) {
@@ -247,21 +266,11 @@ export default function Dashboard() {
         summary.dias.abono += days;
       }
 
-      // Seção 2: Lançamentos (Ocorrências)
-      if (type.includes("ATESTADO")) {
-        summary.lancamentos.atestado += 1;
-      } else if (type.includes("LICENCA")) {
-        summary.lancamentos.licenca += 1;
-      }
+      if (type.includes("ATESTADO")) summary.lancamentos.atestado += 1;
+      if (type.includes("LICENCA")) summary.lancamentos.licenca += 1;
+      if (type.includes("ESPECIAL")) summary.escalas.especial += qtdEscala;
+      if (type.includes("GSE")) summary.escalas.gse += qtdEscala;
 
-      // Seção 3: Quantidade de Escalas
-      if (type.includes("ESPECIAL")) {
-        summary.escalas.especial += qtdEscala;
-      } else if (type.includes("GSE")) {
-        summary.escalas.gse += qtdEscala;
-      }
-
-      // Seção 4: Horas
       if (type === "BANCO DE HORAS CREDITO") {
         summary.horas.credito += minutes;
       } else if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") {
@@ -272,18 +281,71 @@ export default function Dashboard() {
     return summary;
   }, [launches, summaryMonth, summaryYear]);
 
-  // Listas para os Modais (Mescla lançamentos e faltas de relatórios)
+  // Envio de Notificação
+  async function handleSendNotification(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!firestore || !employeeData) return;
+
+    if (notifyTargetType !== "TODOS" && !notifyTargetId) {
+      toast({ variant: "destructive", title: "DESTINATÁRIO AUSENTE", description: "SELECIONE O GRUPO OU SERVIDOR." });
+      return;
+    }
+
+    setIsSendingNotify(true);
+    const formData = new FormData(e.currentTarget);
+    const title = (formData.get('title') as string).toUpperCase();
+    const message = (formData.get('message') as string).toUpperCase();
+
+    const payload = {
+      title,
+      message,
+      priority: notifyPriority,
+      targetType: notifyTargetType,
+      targetId: notifyTargetId,
+      targetLabel: notifyTargetType === "TODOS" ? "TODOS OS SERVIDORES" : notifyTargetLabel,
+      authorQra: (employeeData.qra || "SISTEMA").toUpperCase(),
+      authorName: (employeeData.name || "SISTEMA").toUpperCase(),
+      createdAt: serverTimestamp()
+    };
+
+    try {
+      await addDoc(collection(firestore, 'notifications'), payload);
+      toast({ title: "COMUNICADO PUBLICADO!", description: "O aviso já está disponível para os destinatários." });
+      setIsNotifyModalOpen(false);
+      resetNotifyForm();
+    } catch (err) {
+      toast({ variant: "destructive", title: "ERRO AO PUBLICAR" });
+    } finally {
+      setIsSendingNotify(false);
+    }
+  }
+
+  const resetNotifyForm = () => {
+    setNotifyPriority("NORMAL");
+    setNotifyTargetType("TODOS");
+    setNotifyTargetId("");
+    setNotifyTargetLabel("");
+    setNotifySearchTerm("");
+  };
+
+  const filteredEmployeesForSelection = React.useMemo(() => {
+    if (!employees || !notifySearchTerm) return [];
+    const term = notifySearchTerm.toLowerCase();
+    return employees.filter(emp => 
+      emp.name?.toLowerCase().includes(term) || 
+      emp.qra?.toLowerCase().includes(term)
+    ).slice(0, 5);
+  }, [employees, notifySearchTerm]);
+
+  // Listas para os Modais
   const absentList = React.useMemo(() => {
     const today = getSaoPauloDate();
-    
-    // 1. Pega Folgas/TRE/Abonos dos Lançamentos
     const listFromLaunches = (launches || []).filter(l => {
       const type = normalizeStr(l.type);
       const isActive = l.startDate <= today && l.endDate >= today;
       return isActive && (type.includes("FOLGA") || type.includes("ABONO") || type.includes("TRE DEBITO"));
     });
 
-    // 2. Pega Faltas únicas dos Relatórios de hoje
     const uniqueFaltasMap = new Map();
     (todayReports || []).forEach(report => {
       (report.absences || []).forEach((abs: any) => {
@@ -302,9 +364,7 @@ export default function Dashboard() {
       });
     });
 
-    const listFromReports = Array.from(uniqueFaltasMap.values());
-
-    return [...listFromLaunches, ...listFromReports].sort((a, b) => 
+    return [...listFromLaunches, ...Array.from(uniqueFaltasMap.values())].sort((a, b) => 
       (a.employeeName || "").localeCompare(b.employeeName || "")
     );
   }, [launches, todayReports]);
@@ -317,7 +377,6 @@ export default function Dashboard() {
     return employees
       .filter(e => statusAfastados.includes(e.status))
       .map(e => {
-        // Encontra o lançamento ativo para este afastado
         const activeLaunch = launches.find(l => 
           l.employeeId === e.id && 
           l.startDate <= today && 
@@ -332,29 +391,17 @@ export default function Dashboard() {
   // Estatísticas de Banco de Horas e TRE
   const operationStats = React.useMemo(() => {
     if (!launches) return { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0 };
-    
     return launches.reduce((acc, l) => {
       const type = normalizeStr(l.type);
       const minutes = hhmmToMinutes(l.hours || "00:00");
       const days = Number(l.days) || 0;
-
       if (type === "BANCO DE HORAS CREDITO") acc.bhCredit += minutes;
       if (type === "BANCO DE HORAS DEBITO" || type === "FOLGA") acc.bhDebit += minutes;
       if (type === "TRE CREDITO") acc.treCredit += days;
       if (type === "TRE DEBITO") acc.treDebit += days;
-      
       return acc;
     }, { bhCredit: 0, bhDebit: 0, treCredit: 0, treDebit: 0 });
   }, [launches]);
-
-  // Cálculo de Efetivo Disponível
-  const availableStats = React.useMemo(() => {
-    const totalAfastados = stats.leave + stats.vacation + stats.medical;
-    const totalAusentes = absentStats.total;
-    const totalPendentes = stats.pending;
-    const disponivel = stats.total - totalAfastados - totalAusentes - totalPendentes;
-    return { disponivel, total: stats.total };
-  }, [stats, absentStats]);
 
   const personnelStats = React.useMemo(() => [
     { name: "Ativos", value: stats.active, color: "hsl(var(--primary))" },
@@ -365,76 +412,8 @@ export default function Dashboard() {
   ], [stats]);
 
   if (loadingEmployees || loadingLaunches || loadingReports) {
-    return (
-      <div className="flex h-full items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <div className="flex h-full items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
-
-  const renderModalTable = (data: any[], type: 'absent' | 'afastado') => (
-    <ScrollArea className="h-[550px] mt-4 rounded-xl border bg-background">
-      <Table>
-        <TableHeader className="bg-muted/30 sticky top-0 z-10">
-          <TableRow>
-            <TableHead className="font-bold uppercase text-[11px] h-12">QRA / NOME</TableHead>
-            <TableHead className="font-bold uppercase text-[11px] h-12">ESCALA / TURNO</TableHead>
-            <TableHead className="font-bold uppercase text-[11px] h-12">SETOR</TableHead>
-            <TableHead className="font-bold uppercase text-[11px] h-12">TIPO</TableHead>
-            <TableHead className="font-bold uppercase text-[11px] h-12 text-center">DATA FIM</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data.map((item) => (
-            <TableRow key={item.id} className="hover:bg-muted/10">
-              <TableCell className="py-4">
-                <div className="flex flex-col gap-0.5">
-                  <span className="font-black uppercase text-[14px] text-slate-900 leading-none">{type === 'absent' ? item.employeeQra : item.qra}</span>
-                  <span className="text-[11px] uppercase text-muted-foreground font-medium">{type === 'absent' ? item.employeeName : item.name}</span>
-                </div>
-              </TableCell>
-              <TableCell className="text-[12px] uppercase font-bold text-slate-700">
-                {item.escala} / {item.turno}
-              </TableCell>
-              <TableCell>
-                <Badge variant="secondary" className="text-[10px] uppercase font-bold whitespace-nowrap bg-slate-100 px-2 py-0.5">
-                  {type === 'absent' ? (employees?.find(e => e.id === item.employeeId)?.unit || "N/A") : item.unit}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <Badge variant="outline" className={cn(
-                  "text-[10px] uppercase font-black whitespace-nowrap border-none px-3 py-1",
-                  (normalizeStr(item.type || item.status).includes("FERIAS")) ? "bg-blue-600 text-white" :
-                  (normalizeStr(item.type || item.status).includes("LICENCA")) ? "bg-purple-600 text-white" :
-                  (normalizeStr(item.type || item.status).includes("ATESTADO")) ? "bg-red-600 text-white" :
-                  (normalizeStr(item.type || item.status).includes("FALTA")) ? "bg-red-900 text-white" :
-                  (normalizeStr(item.type || item.status).includes("TRE DEBITO") || normalizeStr(item.type || item.status).includes("FOLGA")) ? "bg-orange-50 text-white" :
-                  "bg-slate-500 text-white"
-                )}>
-                  {item.type || item.status}
-                </Badge>
-              </TableCell>
-              <TableCell className="text-center py-4">
-                <div className="flex flex-col items-center gap-1">
-                  <Calendar className="h-4 w-4 text-muted-foreground/50" />
-                  <span className="text-[12px] font-black font-mono text-slate-900">
-                    {formatDateBR(item.endDate)}
-                  </span>
-                </div>
-              </TableCell>
-            </TableRow>
-          ))}
-          {data.length === 0 && (
-            <TableRow>
-              <TableCell colSpan={5} className="text-center py-20 uppercase text-[11px] font-bold text-muted-foreground italic">
-                NENHUM SERVIDOR NESTA CONDIÇÃO HOJE.
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </ScrollArea>
-  );
 
   return (
     <div className="space-y-6 sm:space-y-8 animate-in fade-in duration-500 pb-10">
@@ -450,171 +429,226 @@ export default function Dashboard() {
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
-        <Card className="card-shadow border-primary/20 bg-primary/5 transition-all">
+        <Card className="card-shadow border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase">EFETIVO DISPONÍVEL</CardTitle>
+            <CardTitle className="text-[10px] font-bold uppercase text-primary">EFETIVO DISPONÍVEL</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-primary">{availableStats.disponivel}</div>
+            <div className="text-2xl font-black text-primary">{stats.active}</div>
             <p className="text-[9px] text-muted-foreground uppercase mt-1">TOTAL CADASTRADO: {stats.total}</p>
           </CardContent>
         </Card>
 
-        <Card className="card-shadow border-blue-500/20 bg-blue-50/10 transition-all">
+        <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">BANCO DE HORAS</CardTitle>
             <Timer className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-blue-700">
-              {minutesToHHmm(operationStats.bhCredit - operationStats.bhDebit)}H
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-blue-100">
-              <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">CRÉDITO</p>
-                <p className="text-[11px] font-bold text-green-600">{minutesToHHmm(operationStats.bhCredit)}H</p>
-              </div>
-              <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITO</p>
-                <p className="text-[11px] font-bold text-red-600">-{minutesToHHmm(operationStats.bhDebit)}H</p>
-              </div>
-            </div>
+            <div className="text-2xl font-black text-blue-700">{minutesToHHmm(operationStats.bhCredit - operationStats.bhDebit)}H</div>
+            <p className="text-[9px] text-muted-foreground uppercase mt-1">SALDO CONSOLIDADO</p>
           </CardContent>
         </Card>
 
-        <Card className="card-shadow border-purple-500/20 bg-purple-50/10 transition-all">
+        <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">TRE (SALDO)</CardTitle>
             <CalendarDays className="h-4 w-4 text-purple-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-purple-700">
-              {operationStats.treCredit - operationStats.treDebit} DIAS
-            </div>
-            <div className="grid grid-cols-2 gap-2 mt-2 pt-2 border-t border-purple-100">
-              <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">CRÉDITO</p>
-                <p className="text-[11px] font-bold text-green-600">{operationStats.treCredit}D</p>
-              </div>
-              <div>
-                <p className="text-[8px] font-bold text-muted-foreground uppercase">DÉBITO</p>
-                <p className="text-[11px] font-bold text-red-600">-{operationStats.treDebit}D</p>
-              </div>
-            </div>
+            <div className="text-2xl font-black text-purple-700">{operationStats.treCredit - operationStats.treDebit} DIAS</div>
+            <p className="text-[9px] text-muted-foreground uppercase mt-1">BANCO DE DIAS TRE</p>
           </CardContent>
         </Card>
 
-        {/* CARD AUSENTES (INTERATIVO) */}
         <Dialog open={isAbsentModalOpen} onOpenChange={setIsAbsentModalOpen}>
           <DialogTrigger asChild>
             <Card className="card-shadow border-red-500/20 bg-red-50/5 cursor-pointer hover:bg-red-50/20 transition-all active:scale-95 group">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-[10px] font-bold uppercase group-hover:text-red-700 transition-colors">AUSENTES (HOJE)</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase group-hover:text-red-700">AUSENTES (HOJE)</CardTitle>
                 <UserMinus className="h-4 w-4 text-red-600" />
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold text-red-700">{absentStats.total}</div>
-                  <Badge variant="outline" className="text-[7px] uppercase font-bold border-red-200 text-red-700">CLIQUE PARA VER</Badge>
-                </div>
-                <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-red-100">
-                  <div>
-                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FOLGA/TRE</p>
-                    <p className="text-[10px] font-black text-red-600">{absentStats.folga}</p>
-                  </div>
-                  <div>
-                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">ABONO</p>
-                    <p className="text-[10px] font-black text-orange-600">{absentStats.abono}</p>
-                  </div>
-                  <div>
-                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FALTA</p>
-                    <p className="text-[10px] font-black text-red-900">{absentStats.falta}</p>
-                  </div>
-                </div>
+                <div className="text-2xl font-bold text-red-700">{absentStats.total}</div>
+                <p className="text-[9px] text-muted-foreground uppercase mt-1">FOLGA, ABONO OU FALTA</p>
               </CardContent>
             </Card>
           </DialogTrigger>
           <DialogContent className="max-w-[95vw] sm:max-w-6xl rounded-2xl border-none shadow-2xl p-6 sm:p-8">
             <DialogHeader>
               <div className="flex items-center gap-4">
-                <div className="bg-red-50 p-3 rounded-2xl border border-red-100">
-                  <UserMinus className="h-7 w-7 text-red-600" />
-                </div>
+                <div className="bg-red-50 p-3 rounded-2xl border border-red-100"><UserMinus className="h-7 w-7 text-red-600" /></div>
                 <div>
-                  <DialogTitle className="uppercase text-xl sm:text-2xl font-black tracking-tight">DETALHAMENTO: AUSENTES HOJE</DialogTitle>
-                  <p className="text-xs uppercase font-bold text-muted-foreground tracking-widest mt-1">SERVIDORES COM LANÇAMENTO DE FOLGA, TRE, ABONO OU FALTA EM ATIVIDADE.</p>
+                  <DialogTitle className="uppercase text-xl sm:text-2xl font-black tracking-tight">AUSENTES HOJE</DialogTitle>
+                  <p className="text-xs uppercase font-bold text-muted-foreground tracking-widest mt-1">DETALHAMENTO DE SERVIDORES EM FOLGA, ABONO OU FALTA.</p>
                 </div>
               </div>
             </DialogHeader>
-            {renderModalTable(absentList, 'absent')}
+            <ScrollArea className="h-[500px] mt-4">
+               <Table>
+                <TableHeader><TableRow><TableHead className="font-bold uppercase text-[11px]">QRA / NOME</TableHead><TableHead className="font-bold uppercase text-[11px]">ESCALA / TURNO</TableHead><TableHead className="font-bold uppercase text-[11px]">TIPO</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {absentList.map((item) => (
+                    <TableRow key={item.id}><TableCell><div className="flex flex-col"><span className="font-black uppercase text-[12px]">{item.employeeQra}</span><span className="text-[10px] text-muted-foreground uppercase">{item.employeeName}</span></div></TableCell><TableCell className="text-[11px] uppercase">{item.escala} / {item.turno}</TableCell><TableCell><Badge variant="outline" className="text-[9px] uppercase font-black">{item.type}</Badge></TableCell></TableRow>
+                  ))}
+                </TableBody>
+               </Table>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
 
-        {/* CARD AFASTADOS (INTERATIVO) */}
         <Dialog open={isAfastadosModalOpen} onOpenChange={setIsAfastadosModalOpen}>
           <DialogTrigger asChild>
             <Card className="card-shadow border-accent/20 bg-slate-50/50 cursor-pointer hover:bg-slate-100/80 transition-all active:scale-95 group">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-[10px] font-bold uppercase group-hover:text-primary transition-colors">AFASTADOS</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase group-hover:text-primary">AFASTADOS</CardTitle>
                 <FileText className="h-4 w-4 text-accent" />
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="text-2xl font-bold">{stats.leave + stats.vacation + stats.medical}</div>
-                  <Badge variant="outline" className="text-[7px] uppercase font-bold border-slate-300 text-slate-700">CLIQUE PARA VER</Badge>
-                </div>
-                <div className="grid grid-cols-3 gap-1 mt-2 pt-2 border-t border-slate-100">
-                  <div>
-                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">FÉRIAS</p>
-                    <p className="text-[10px] font-black text-blue-600">{stats.vacation}</p>
-                  </div>
-                  <div>
-                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">LICENÇA</p>
-                    <p className="text-[10px] font-black text-purple-600">{stats.leave}</p>
-                  </div>
-                  <div>
-                    <p className="text-[7px] font-bold text-muted-foreground uppercase tracking-tighter">ATESTADO</p>
-                    <p className="text-[10px] font-black text-red-600">{stats.medical}</p>
-                  </div>
-                </div>
+                <div className="text-2xl font-bold">{stats.leave + stats.vacation + stats.medical}</div>
+                <p className="text-[9px] text-muted-foreground uppercase mt-1">FÉRIAS, LICENÇA OU ATESTADO</p>
               </CardContent>
             </Card>
           </DialogTrigger>
           <DialogContent className="max-w-[95vw] sm:max-w-6xl rounded-2xl border-none shadow-2xl p-6 sm:p-8">
             <DialogHeader>
               <div className="flex items-center gap-4">
-                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100">
-                  <FileText className="h-7 w-7 text-blue-600" />
-                </div>
+                <div className="bg-blue-50 p-3 rounded-2xl border border-blue-100"><Plane className="h-7 w-7 text-blue-600" /></div>
                 <div>
-                  <DialogTitle className="uppercase text-xl sm:text-2xl font-black tracking-tight">DETALHAMENTO: SERVIDORES AFASTADOS</DialogTitle>
-                  <p className="text-xs uppercase font-bold text-muted-foreground tracking-widest mt-1">SERVIDORES ATUALMENTE EM GOZO DE FÉRIAS, LICENÇA OU AFASTAMENTO MÉDICO.</p>
+                  <DialogTitle className="uppercase text-xl sm:text-2xl font-black tracking-tight">SERVIDORES AFASTADOS</DialogTitle>
+                  <p className="text-xs uppercase font-bold text-muted-foreground tracking-widest mt-1">DETALHAMENTO DE FÉRIAS, LICENÇAS E ATESTADOS MÉDICOS.</p>
                 </div>
               </div>
             </DialogHeader>
-            {renderModalTable(afastadosList, 'afastado')}
+            <ScrollArea className="h-[500px] mt-4">
+               <Table>
+                <TableHeader><TableRow><TableHead className="font-bold uppercase text-[11px]">QRA / NOME</TableHead><TableHead className="font-bold uppercase text-[11px]">SETOR / ESCALA</TableHead><TableHead className="font-bold uppercase text-[11px]">MOTIVO</TableHead><TableHead className="font-bold uppercase text-[11px]">RETORNO</TableHead></TableRow></TableHeader>
+                <TableBody>
+                  {afastadosList.map((item) => (
+                    <TableRow key={item.id}><TableCell><div className="flex flex-col"><span className="font-black uppercase text-[12px]">{item.qra}</span><span className="text-[10px] text-muted-foreground uppercase">{item.name}</span></div></TableCell><TableCell className="text-[11px] uppercase">{item.unit} • {item.escala}</TableCell><TableCell><Badge className="text-[9px] uppercase font-black bg-blue-600">{item.status}</Badge></TableCell><TableCell className="font-mono text-[11px] font-bold">{formatDateBR(item.endDate)}</TableCell></TableRow>
+                  ))}
+                </TableBody>
+               </Table>
+            </ScrollArea>
           </DialogContent>
         </Dialog>
 
-        {/* NOVO CARD: MURAL DE AVISOS (PLACEHOLDER) */}
-        <Card className="card-shadow border-amber-500/20 bg-amber-50/5 transition-all cursor-pointer hover:bg-amber-50/20 group">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-[10px] font-bold uppercase group-hover:text-amber-700 transition-colors">NOTIFICAÇÕES / MURAL</CardTitle>
-            <BellRing className="h-4 w-4 text-amber-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-between">
-              <div className="text-2xl font-bold text-amber-700">MURAL</div>
-              <Badge variant="outline" className="text-[7px] uppercase font-bold border-amber-200 text-amber-700">EM BREVE</Badge>
-            </div>
-            <p className="text-[9px] text-muted-foreground uppercase mt-2">ENVIO DE COMUNICADOS PARA O EFETIVO.</p>
-          </CardContent>
-        </Card>
+        <Dialog open={isNotifyModalOpen} onOpenChange={setIsNotifyModalOpen}>
+          <DialogTrigger asChild>
+            <Card className="card-shadow border-amber-500/20 bg-amber-50/5 transition-all cursor-pointer hover:bg-amber-50/20 group active:scale-95">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-[10px] font-bold uppercase group-hover:text-amber-700">MURAL DE AVISOS</CardTitle>
+                <BellRing className="h-4 w-4 text-amber-600" />
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-amber-700">COMUNICAR</div>
+                  <Badge variant="outline" className="text-[7px] uppercase font-bold border-amber-200 text-amber-700">NOVA MENSAGEM</Badge>
+                </div>
+                <p className="text-[9px] text-muted-foreground uppercase mt-2">ENVIO DE COMUNICADOS PARA O EFETIVO.</p>
+              </CardContent>
+            </Card>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden">
+            <form onSubmit={handleSendNotification}>
+              <DialogHeader className="bg-amber-600 p-6 text-white">
+                <div className="flex items-center gap-4">
+                  <div className="bg-white/20 p-2 rounded-xl backdrop-blur-sm"><BellRing className="h-6 w-6 text-white" /></div>
+                  <div>
+                    <DialogTitle className="uppercase text-xl font-black tracking-tight leading-none">Publicar no Mural</DialogTitle>
+                    <p className="text-[10px] font-bold uppercase opacity-80 tracking-widest mt-1">COMUNICAÇÃO OFICIAL DA UNIDADE.</p>
+                  </div>
+                </div>
+              </DialogHeader>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                   <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-700">Prioridade</Label>
+                    <Select value={notifyPriority} onValueChange={setNotifyPriority}>
+                      <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="NORMAL" className="uppercase text-[10px]">NORMAL (INFORMATIVO)</SelectItem>
+                        <SelectItem value="ALERTA" className="uppercase text-[10px] text-orange-600 font-black">ALERTA (ATENÇÃO)</SelectItem>
+                        <SelectItem value="URGENTE" className="uppercase text-[10px] text-red-600 font-black">URGENTE (IMEDIATO)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                   </div>
+                   <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-700">Destinatário</Label>
+                    <Select value={notifyTargetType} onValueChange={(v) => { setNotifyTargetType(v); setNotifyTargetId(""); setNotifyTargetLabel(""); }}>
+                      <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="TODOS" className="uppercase text-[10px]">TODOS OS SERVIDORES</SelectItem>
+                        <SelectItem value="CARGO" className="uppercase text-[10px]">POR GRUPO (CARGO)</SelectItem>
+                        <SelectItem value="INDIVIDUAL" className="uppercase text-[10px]">SERVIDOR INDIVIDUAL</SelectItem>
+                      </SelectContent>
+                    </Select>
+                   </div>
+                </div>
+
+                {notifyTargetType === "CARGO" && (
+                  <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
+                    <Label className="text-[10px] font-black uppercase text-slate-700">Selecionar Grupo</Label>
+                    <Select value={notifyTargetId} onValueChange={(v) => { setNotifyTargetId(v); setNotifyTargetLabel(roles?.find((r: any) => r.id === v)?.name || "GRUPO"); }}>
+                      <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue placeholder="SELECIONE O CARGO..." /></SelectTrigger>
+                      <SelectContent>
+                        {roles?.map((r: any) => <SelectItem key={r.id} value={r.id} className="uppercase text-[10px]">{r.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {notifyTargetType === "INDIVIDUAL" && (
+                  <div className="space-y-1.5 relative animate-in slide-in-from-top-2 duration-300">
+                    <Label className="text-[10px] font-black uppercase text-slate-700">Buscar Servidor</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input 
+                        placeholder="NOME OU QRA..." 
+                        value={notifySearchTerm} 
+                        onChange={(e) => { setNotifySearchTerm(e.target.value.toUpperCase()); setShowTargetSuggestions(true); }}
+                        onFocus={() => setShowTargetSuggestions(true)}
+                        className="pl-9 h-10 uppercase text-[10px] font-bold"
+                      />
+                      {notifyTargetId && <Check className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-green-600" />}
+                    </div>
+                    {showTargetSuggestions && notifySearchTerm && (
+                      <div className="absolute z-50 left-0 right-0 top-full mt-1 bg-white border rounded-xl shadow-2xl overflow-hidden">
+                        {filteredEmployeesForSelection.map(emp => (
+                          <button key={emp.id} type="button" onClick={() => { setNotifyTargetId(emp.uid || emp.id); setNotifyTargetLabel(`${emp.name} (${emp.qra})`); setNotifySearchTerm(`${emp.name} (${emp.qra})`); setShowTargetSuggestions(false); }} className="w-full px-4 py-3 text-left hover:bg-amber-50 flex flex-col border-b last:border-0">
+                            <span className="text-[10px] font-black uppercase">{emp.name}</span>
+                            <span className="text-[8px] font-bold text-muted-foreground uppercase">QRA: {emp.qra} • {emp.role}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-700">Título do Aviso</Label>
+                    <Input name="title" required placeholder="EX: CONVOCAÇÃO PARA TREINAMENTO" className="h-11 uppercase font-bold text-xs" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase text-slate-700">Mensagem</Label>
+                    <Textarea name="message" required placeholder="DIGITE O CONTEÚDO DO COMUNICADO..." className="min-h-[120px] uppercase text-xs p-4 resize-none leading-relaxed" />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="bg-slate-50 p-4 border-t gap-3">
+                <DialogClose asChild><Button variant="ghost" className="uppercase text-[10px] font-black">Cancelar</Button></DialogClose>
+                <Button type="submit" disabled={isSendingNotify} className="h-11 px-8 uppercase font-black text-xs tracking-widest bg-amber-600 hover:bg-amber-700 shadow-lg shadow-amber-100">
+                  {isSendingNotify ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />} Publicar Agora
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-6 grid-cols-1 lg:grid-cols-2">
-        {/* Gráfico de Pizza - Personnel Stats */}
         <Card className="card-shadow border-none rounded-2xl overflow-hidden flex flex-col h-full">
           <CardHeader>
             <CardTitle className="text-lg sm:text-xl uppercase">COMPOSIÇÃO PROPORCIONAL</CardTitle>
@@ -624,34 +658,15 @@ export default function Dashboard() {
              <div className="h-[250px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={personnelStats}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
-                    paddingAngle={5}
-                    dataKey="value"
-                  >
-                    {personnelStats.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.color} />
-                    ))}
+                  <Pie data={personnelStats} cx="50%" cy="50%" innerRadius={60} outerRadius={90} paddingAngle={5} dataKey="value">
+                    {personnelStats.map((entry, index) => <Cell key={`cell-${index}`} fill={entry.color} />)}
                   </Pie>
-                  <Tooltip 
-                    content={({ active, payload }) => {
-                      if (active && payload && payload.length) {
-                        return (
-                          <div className="rounded-lg border bg-background p-2 shadow-sm text-[10px]">
-                            <div className="flex flex-col gap-1">
-                              <span className="font-black uppercase text-slate-900">{payload[0].name}</span>
-                              <span className="font-bold text-primary">{payload[0].value} Integrantes</span>
-                            </div>
-                          </div>
-                        );
-                      }
-                      return null;
-                    }}
-                  />
+                  <Tooltip content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      return <div className="rounded-lg border bg-background p-2 shadow-sm text-[10px]"><div className="flex flex-col gap-1"><span className="font-black uppercase text-slate-900">{payload[0].name}</span><span className="font-bold text-primary">{payload[0].value} Integrantes</span></div></div>;
+                    }
+                    return null;
+                  }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
@@ -670,131 +685,62 @@ export default function Dashboard() {
           </CardContent>
         </Card>
 
-        {/* CARD: RESUMO MENSAL DE ATIVIDADES (CATEGORIZADO) */}
         <Card className="card-shadow border-none rounded-2xl overflow-hidden flex flex-col h-full">
           <CardHeader className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b bg-muted/5 p-6">
             <div className="space-y-1">
-              <CardTitle className="text-lg sm:text-xl uppercase flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                Resumo de Atividades
-              </CardTitle>
+              <CardTitle className="text-lg sm:text-xl uppercase flex items-center gap-2"><TrendingUp className="h-5 w-5 text-primary" /> Resumo de Atividades</CardTitle>
               <CardDescription className="text-xs uppercase text-[9px] font-bold">Consolidado Mensal de Operações.</CardDescription>
             </div>
-            
             <div className="flex items-center gap-2 w-full sm:w-auto">
               <Select value={summaryMonth.toString()} onValueChange={(v) => setSummaryMonth(parseInt(v))}>
-                <SelectTrigger className="h-9 w-[120px] uppercase text-[10px] font-bold bg-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MONTHS.map((m, idx) => (
-                    <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">{m}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectTrigger className="h-9 w-[120px] uppercase text-[10px] font-bold bg-white"><SelectValue /></SelectTrigger>
+                <SelectContent>{MONTHS.map((m, idx) => <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">{m}</SelectItem>)}</SelectContent>
               </Select>
-
               <Select value={summaryYear.toString()} onValueChange={(v) => setSummaryYear(parseInt(v))}>
-                <SelectTrigger className="h-9 w-[80px] uppercase text-[10px] font-bold bg-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
-                    <SelectItem key={y} value={y.toString()} className="uppercase text-[10px] font-bold">{y}</SelectItem>
-                  ))}
-                </SelectContent>
+                <SelectTrigger className="h-9 w-[80px] uppercase text-[10px] font-bold bg-white"><SelectValue /></SelectTrigger>
+                <SelectContent>{[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => <SelectItem key={y} value={y.toString()} className="uppercase text-[10px] font-bold">{y}</SelectItem>)}</SelectContent>
               </Select>
             </div>
           </CardHeader>
           <CardContent className="p-0 flex-1 overflow-hidden">
             <ScrollArea className="h-[450px]">
               <div className="p-6 space-y-8">
-                {/* SEÇÃO 1: MÉTRICA EM DIAS */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 border-b pb-2">
-                    <Calendar className="h-4 w-4 text-blue-600" />
-                    <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica em Dias</h4>
-                  </div>
+                  <div className="flex items-center gap-2 border-b pb-2"><Calendar className="h-4 w-4 text-blue-600" /><h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica em Dias</h4></div>
                   <div className="grid gap-2">
-                    <div className="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl border border-blue-100/50">
-                      <span className="text-[11px] font-bold uppercase text-slate-700">Folga & TRE Débito</span>
-                      <Badge className="bg-blue-600 text-white font-mono font-black border-none">{monthlySummary?.dias.folgaTre}</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-[11px] font-bold uppercase text-slate-700">Faltas</span>
-                      <Badge variant="secondary" className="bg-red-50 text-red-700 font-mono font-black border-none">{monthlySummary?.dias.faltas}</Badge>
-                    </div>
-                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
-                      <span className="text-[11px] font-bold uppercase text-slate-700">Abono</span>
-                      <Badge variant="secondary" className="bg-orange-50 text-orange-700 font-mono font-black border-none">{monthlySummary?.dias.abono}</Badge>
-                    </div>
+                    <div className="flex items-center justify-between p-3 bg-blue-50/50 rounded-xl border border-blue-100/50"><span className="text-[11px] font-bold uppercase text-slate-700">Folga & TRE Débito</span><Badge className="bg-blue-600 text-white font-mono font-black border-none">{monthlySummary?.dias.folgaTre}</Badge></div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100"><span className="text-[11px] font-bold uppercase text-slate-700">Faltas</span><Badge variant="secondary" className="bg-red-50 text-red-700 font-mono font-black border-none">{monthlySummary?.dias.faltas}</Badge></div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100"><span className="text-[11px] font-bold uppercase text-slate-700">Abono</span><Badge variant="secondary" className="bg-orange-50 text-orange-700 font-mono font-black border-none">{monthlySummary?.dias.abono}</Badge></div>
                   </div>
                 </div>
 
-                {/* SEÇÃO 2: MÉTRICA POR LANÇAMENTOS */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 border-b pb-2">
-                    <History className="h-4 w-4 text-purple-600" />
-                    <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica por Lançamentos</h4>
-                  </div>
+                  <div className="flex items-center gap-2 border-b pb-2"><History className="h-4 w-4 text-purple-600" /><h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica por Lançamentos</h4></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-purple-50/30 rounded-xl border border-purple-100 flex flex-col gap-1">
-                      <span className="text-[9px] font-bold uppercase text-slate-500">Atestados</span>
-                      <span className="text-xl font-black text-purple-700">{monthlySummary?.lancamentos.atestado} <small className="text-[9px] font-bold uppercase opacity-60">Reg.</small></span>
-                    </div>
-                    <div className="p-3 bg-purple-50/30 rounded-xl border border-purple-100 flex flex-col gap-1">
-                      <span className="text-[9px] font-bold uppercase text-slate-500">Licenças</span>
-                      <span className="text-xl font-black text-purple-700">{monthlySummary?.lancamentos.licenca} <small className="text-[9px] font-bold uppercase opacity-60">Reg.</small></span>
-                    </div>
+                    <div className="p-3 bg-purple-50/30 rounded-xl border border-purple-100 flex flex-col gap-1"><span className="text-[9px] font-bold uppercase text-slate-500">Atestados</span><span className="text-xl font-black text-purple-700">{monthlySummary?.lancamentos.atestado} <small className="text-[9px] font-bold uppercase opacity-60">Reg.</small></span></div>
+                    <div className="p-3 bg-purple-50/30 rounded-xl border border-purple-100 flex flex-col gap-1"><span className="text-[9px] font-bold uppercase text-slate-500">Licenças</span><span className="text-xl font-black text-purple-700">{monthlySummary?.lancamentos.licenca} <small className="text-[9px] font-bold uppercase opacity-60">Reg.</small></span></div>
                   </div>
                 </div>
 
-                {/* SEÇÃO 3: MÉTRICA POR ESCALAS */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 border-b pb-2">
-                    <Briefcase className="h-4 w-4 text-amber-600" />
-                    <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica por Quantidade de Escalas</h4>
-                  </div>
+                  <div className="flex items-center gap-2 border-b pb-2"><Briefcase className="h-4 w-4 text-amber-600" /><h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica por Quantidade de Escalas</h4></div>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100 flex flex-col gap-1">
-                      <span className="text-[9px] font-bold uppercase text-slate-500">Escala Especial</span>
-                      <span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.especial} <small className="text-[9px] font-bold uppercase opacity-60">Escala</small></span>
-                    </div>
-                    <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100 flex flex-col gap-1">
-                      <span className="text-[9px] font-bold uppercase text-slate-500">Escala GSE</span>
-                      <span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.gse} <small className="text-[9px] font-bold uppercase opacity-60">Escala</small></span>
-                    </div>
+                    <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100 flex flex-col gap-1"><span className="text-[9px] font-bold uppercase text-slate-500">Escala Especial</span><span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.especial} <small className="text-[9px] font-bold uppercase opacity-60">Escala</small></span></div>
+                    <div className="p-3 bg-amber-50/30 rounded-xl border border-amber-100 flex flex-col gap-1"><span className="text-[9px] font-bold uppercase text-slate-500">Escala GSE</span><span className="text-xl font-black text-amber-700">{monthlySummary?.escalas.gse} <small className="text-[9px] font-bold uppercase opacity-60">Escala</small></span></div>
                   </div>
                 </div>
 
-                {/* SEÇÃO 4: MÉTRICA EM HORAS */}
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 border-b pb-2">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica em Horas</h4>
-                  </div>
+                  <div className="flex items-center gap-2 border-b pb-2"><Clock className="h-4 w-4 text-primary" /><h4 className="text-[10px] font-black uppercase text-slate-900 tracking-widest">Métrica em Horas</h4></div>
                   <div className="grid gap-2">
-                    <div className="flex items-center justify-between p-3 bg-green-50/30 rounded-xl border border-green-100">
-                      <span className="text-[11px] font-bold uppercase text-slate-700">BH Crédito</span>
-                      <span className="text-sm font-black font-mono text-green-700">+{minutesToHHmm(monthlySummary?.horas.credito || 0)}H</span>
-                    </div>
-                    <div className="flex Paradox items-center justify-between p-3 bg-red-50/30 rounded-xl border border-red-100">
-                      <span className="text-[11px] font-bold uppercase text-slate-700">BH Débito</span>
-                      <span className="text-sm font-black font-mono text-red-700">-{minutesToHHmm(monthlySummary?.horas.debito || 0)}H</span>
-                    </div>
+                    <div className="flex items-center justify-between p-3 bg-green-50/30 rounded-xl border border-green-100"><span className="text-[11px] font-bold uppercase text-slate-700">BH Crédito</span><span className="text-sm font-black font-mono text-green-700">+{minutesToHHmm(monthlySummary?.horas.credito || 0)}H</span></div>
+                    <div className="flex items-center justify-between p-3 bg-red-50/30 rounded-xl border border-red-100"><span className="text-[11px] font-bold uppercase text-slate-700">BH Débito</span><span className="text-sm font-black font-mono text-red-700">-{minutesToHHmm(monthlySummary?.horas.debito || 0)}H</span></div>
                   </div>
                 </div>
               </div>
             </ScrollArea>
           </CardContent>
-          <div className="p-4 bg-muted/5 border-t mt-auto">
-            <div className="flex items-center justify-between text-[9px] font-bold uppercase text-muted-foreground">
-              <span>Referência: {MONTHS[summaryMonth]} / {summaryYear}</span>
-              <div className="flex items-center gap-1">
-                <Info className="h-3 w-3" />
-                <span>Base: Lançamentos RH</span>
-              </div>
-            </div>
-          </div>
+          <div className="p-4 bg-muted/5 border-t mt-auto"><div className="flex items-center justify-between text-[9px] font-bold uppercase text-muted-foreground"><span>Referência: {MONTHS[summaryMonth]} / {summaryYear}</span><div className="flex items-center gap-1"><Info className="h-3 w-3" /><span>Base: Lançamentos RH</span></div></div></div>
         </Card>
       </div>
     </div>
