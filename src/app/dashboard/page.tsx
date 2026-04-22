@@ -428,50 +428,88 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-6">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        {/* CARD 1: EFETIVO DISPONÍVEL */}
         <Card className="card-shadow border-primary/20 bg-primary/5">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase text-primary">EFETIVO DISPONÍVEL</CardTitle>
             <Users className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-black text-primary">{stats.active}</div>
-            <p className="text-[9px] text-muted-foreground uppercase mt-1">TOTAL CADASTRADO: {stats.total}</p>
+            <div className="text-3xl font-black text-primary">{stats.active}</div>
+            <p className="text-[9px] text-muted-foreground uppercase mt-2 font-bold">TOTAL CADASTRADO: {stats.total}</p>
           </CardContent>
         </Card>
 
+        {/* CARD 2: BANCO DE HORAS */}
         <Card className="card-shadow border-blue-500/20 bg-blue-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">BANCO DE HORAS</CardTitle>
             <Timer className="h-4 w-4 text-blue-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-black text-blue-700">{minutesToHHmm(operationStats.bhCredit - operationStats.bhDebit)}H</div>
-            <p className="text-[9px] text-muted-foreground uppercase mt-1">SALDO CONSOLIDADO</p>
+          <CardContent className="space-y-4">
+            <div className="text-3xl font-black text-blue-700">{minutesToHHmm(operationStats.bhCredit - operationStats.bhDebit)}H</div>
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-blue-100">
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase text-muted-foreground">CRÉDITO</span>
+                <span className="text-[11px] font-black text-green-600">{minutesToHHmm(operationStats.bhCredit)}H</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase text-muted-foreground">DÉBITO</span>
+                <span className="text-[11px] font-black text-red-600">-{minutesToHHmm(operationStats.bhDebit)}H</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
+        {/* CARD 3: TRE (SALDO) */}
         <Card className="card-shadow border-purple-500/20 bg-purple-50/10">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-[10px] font-bold uppercase">TRE (SALDO)</CardTitle>
             <CalendarDays className="h-4 w-4 text-purple-600" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-black text-purple-700">{operationStats.treCredit - operationStats.treDebit} DIAS</div>
-            <p className="text-[9px] text-muted-foreground uppercase mt-1">BANCO DE DIAS TRE</p>
+          <CardContent className="space-y-4">
+            <div className="text-3xl font-black text-purple-700">{operationStats.treCredit - operationStats.treDebit} DIAS</div>
+            <div className="grid grid-cols-2 gap-2 pt-2 border-t border-purple-100">
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase text-muted-foreground">CRÉDITO</span>
+                <span className="text-[11px] font-black text-green-600">{operationStats.treCredit}D</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[8px] font-black uppercase text-muted-foreground">DÉBITO</span>
+                <span className="text-[11px] font-black text-red-600">-{operationStats.treDebit}D</span>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
+        {/* CARD 4: AUSENTES (HOJE) */}
         <Dialog open={isAbsentModalOpen} onOpenChange={setIsAbsentModalOpen}>
           <DialogTrigger asChild>
-            <Card className="card-shadow border-red-500/20 bg-red-50/5 cursor-pointer hover:bg-red-50/20 transition-all active:scale-95 group">
+            <Card className="card-shadow border-red-500/20 bg-red-50/5 cursor-pointer hover:bg-red-50/20 transition-all active:scale-95 group relative overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-[10px] font-bold uppercase group-hover:text-red-700">AUSENTES (HOJE)</CardTitle>
                 <UserMinus className="h-4 w-4 text-red-600" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-red-700">{absentStats.total}</div>
-                <p className="text-[9px] text-muted-foreground uppercase mt-1">FOLGA, ABONO OU FALTA</p>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-3xl font-bold text-red-700">{absentStats.total}</div>
+                  <Badge variant="outline" className="text-[7px] font-black uppercase bg-white border-red-200 text-red-600">CLIQUE PARA VER</Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-1 pt-2 border-t border-red-100">
+                  <div className="flex flex-col">
+                    <span className="text-[7px] font-black uppercase text-muted-foreground">FOLGA/TRE</span>
+                    <span className="text-[11px] font-black text-red-600">{absentStats.folga}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[7px] font-black uppercase text-muted-foreground">ABONO</span>
+                    <span className="text-[11px] font-black text-red-600">{absentStats.abono}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[7px] font-black uppercase text-muted-foreground">FALTA</span>
+                    <span className="text-[11px] font-black text-red-600">{absentStats.falta}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </DialogTrigger>
@@ -498,16 +536,33 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
+        {/* CARD 5: AFASTADOS */}
         <Dialog open={isAfastadosModalOpen} onOpenChange={setIsAfastadosModalOpen}>
           <DialogTrigger asChild>
-            <Card className="card-shadow border-accent/20 bg-slate-50/50 cursor-pointer hover:bg-slate-100/80 transition-all active:scale-95 group">
+            <Card className="card-shadow border-accent/20 bg-slate-50/50 cursor-pointer hover:bg-slate-100/80 transition-all active:scale-95 group relative overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-[10px] font-bold uppercase group-hover:text-primary">AFASTADOS</CardTitle>
                 <FileText className="h-4 w-4 text-accent" />
               </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{stats.leave + stats.vacation + stats.medical}</div>
-                <p className="text-[9px] text-muted-foreground uppercase mt-1">FÉRIAS, LICENÇA OU ATESTADO</p>
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="text-3xl font-bold">{stats.leave + stats.vacation + stats.medical}</div>
+                  <Badge variant="outline" className="text-[7px] font-black uppercase bg-white border-slate-200 text-slate-600">CLIQUE PARA VER</Badge>
+                </div>
+                <div className="grid grid-cols-3 gap-1 pt-2 border-t border-slate-200">
+                  <div className="flex flex-col">
+                    <span className="text-[7px] font-black uppercase text-muted-foreground">FÉRIAS</span>
+                    <span className="text-[11px] font-black text-blue-600">{stats.vacation}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[7px] font-black uppercase text-muted-foreground">LICENÇA</span>
+                    <span className="text-[11px] font-black text-purple-600">{stats.leave}</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[7px] font-black uppercase text-muted-foreground">ATESTADO</span>
+                    <span className="text-[11px] font-black text-red-600">{stats.medical}</span>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </DialogTrigger>
@@ -534,6 +589,7 @@ export default function Dashboard() {
           </DialogContent>
         </Dialog>
 
+        {/* CARD 6: MURAL DE AVISOS */}
         <Dialog open={isNotifyModalOpen} onOpenChange={setIsNotifyModalOpen}>
           <DialogTrigger asChild>
             <Card className="card-shadow border-amber-500/20 bg-amber-50/5 transition-all cursor-pointer hover:bg-amber-50/20 group active:scale-95">
