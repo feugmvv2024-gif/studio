@@ -20,7 +20,9 @@ import {
   CheckCircle2,
   Eye,
   FilterX,
-  ChevronDown
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -57,6 +59,8 @@ const MONTHS = [
   "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
 ];
 
+const ITEMS_PER_PAGE = 30;
+
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
 export default function NotificationsPage() {
@@ -83,6 +87,9 @@ export default function NotificationsPage() {
   const [mgmtSearchTerm, setMgmtSearchTerm] = React.useState("");
   const [mgmtFilterMonth, setMgmtFilterMonth] = React.useState("ALL");
   const [mgmtFilterYear, setMgmtFilterYear] = React.useState("ALL");
+
+  // Estado de Paginação da Gestão
+  const [mgmtCurrentPage, setMgmtCurrentPage] = React.useState(1);
 
   // Consulta: Notificações do Servidor (Mural)
   const myNotificationsRef = React.useMemo(() => {
@@ -188,6 +195,18 @@ export default function NotificationsPage() {
       return matchesMonth && matchesYear;
     });
   }, [allNotifications, mgmtSearchTerm, mgmtFilterMonth, mgmtFilterYear]);
+
+  // Reset de página quando os filtros mudam
+  React.useEffect(() => {
+    setMgmtCurrentPage(1);
+  }, [mgmtSearchTerm, mgmtFilterMonth, mgmtFilterYear]);
+
+  const paginatedMgmtNotifications = React.useMemo(() => {
+    const startIndex = (mgmtCurrentPage - 1) * ITEMS_PER_PAGE;
+    return filteredMgmtNotifications.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredMgmtNotifications, mgmtCurrentPage]);
+
+  const totalMgmtPages = Math.ceil(filteredMgmtNotifications.length / ITEMS_PER_PAGE);
 
   // Cálculo de estatísticas de leitura para o gestor
   const notificationStats = React.useMemo(() => {
@@ -570,90 +589,146 @@ export default function NotificationsPage() {
             
             {loadingAll ? <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
               <div className="grid gap-3">
-                {filteredMgmtNotifications.length === 0 ? (
+                {paginatedMgmtNotifications.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground uppercase font-bold italic text-center py-10">Nenhum histórico encontrado para os filtros aplicados.</p>
                 ) : (
-                  filteredMgmtNotifications.map(n => {
-                    const stats = notificationStats[n.id] || { read: 0, total: 0 };
-                    const isComplete = stats.read >= stats.total && stats.total > 0;
-                    const isExpanded = expandedId === n.id;
+                  <>
+                    {paginatedMgmtNotifications.map(n => {
+                      const stats = notificationStats[n.id] || { read: 0, total: 0 };
+                      const isComplete = stats.read >= stats.total && stats.total > 0;
+                      const isExpanded = expandedId === n.id;
 
-                    return (
-                      <Card key={n.id} className={cn(
-                        "border border-slate-100 transition-all group overflow-hidden",
-                        isExpanded ? "bg-white ring-1 ring-primary/20 shadow-md" : "bg-slate-50/50 hover:bg-white"
-                      )}>
-                        <div 
-                          className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer select-none"
-                          onClick={() => setExpandedId(isExpanded ? null : n.id)}
-                        >
-                          <div className="flex items-center gap-4 flex-1 min-w-0">
-                            <div className={cn(
-                              "w-1.5 h-10 rounded-full shrink-0",
-                              n.priority === "URGENTE" ? "bg-red-500" : n.priority === "ALERTA" ? "bg-amber-500" : "bg-blue-500"
-                            )} />
-                            <div className="min-w-0 flex-1">
-                              <p className="text-[11px] font-black uppercase text-slate-900 leading-tight truncate">{n.title}</p>
-                              <div className="flex flex-col gap-1 mt-1">
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 shrink-0">{n.targetType}: {n.targetLabel}</Badge>
-                                  <span className="text-[8px] font-mono text-muted-foreground uppercase truncate">
-                                    Postado: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
-                                  </span>
+                      return (
+                        <Card key={n.id} className={cn(
+                          "border border-slate-100 transition-all group overflow-hidden",
+                          isExpanded ? "bg-white ring-1 ring-primary/20 shadow-md" : "bg-slate-50/50 hover:bg-white"
+                        )}>
+                          <div 
+                            className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer select-none"
+                            onClick={() => setExpandedId(isExpanded ? null : n.id)}
+                          >
+                            <div className="flex items-center gap-4 flex-1 min-w-0">
+                              <div className={cn(
+                                "w-1.5 h-10 rounded-full shrink-0",
+                                n.priority === "URGENTE" ? "bg-red-500" : n.priority === "ALERTA" ? "bg-amber-500" : "bg-blue-500"
+                              )} />
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[11px] font-black uppercase text-slate-900 leading-tight truncate">{n.title}</p>
+                                <div className="flex flex-col gap-1 mt-1">
+                                  <div className="flex items-center gap-2">
+                                    <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 shrink-0">{n.targetType}: {n.targetLabel}</Badge>
+                                    <span className="text-[8px] font-mono text-muted-foreground uppercase truncate">
+                                      Postado: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
+                                    </span>
+                                  </div>
+                                  <p className="text-[7px] font-bold text-primary uppercase tracking-widest leading-none">
+                                    ENVIADO POR: {n.authorQra}
+                                  </p>
                                 </div>
-                                <p className="text-[7px] font-bold text-primary uppercase tracking-widest leading-none">
-                                  ENVIADO POR: {n.authorQra}
+                              </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-4 shrink-0">
+                              <div className={cn(
+                                "flex items-center gap-3 px-3 py-1.5 rounded-lg border",
+                                isComplete ? "bg-green-50 border-green-200" : "bg-blue-50 border-blue-100"
+                              )}>
+                                <div className="flex items-center gap-1.5">
+                                  <Eye className={cn("h-3.5 w-3.5", isComplete ? "text-green-600" : "text-blue-600")} />
+                                  <span className={cn("text-[11px] font-black", isComplete ? "text-green-700" : "text-blue-700")}>{stats.read}</span>
+                                </div>
+                                <Separator orientation="vertical" className="h-3" />
+                                <div className="flex items-center gap-1.5">
+                                  <Users className="h-3.5 w-3.5 text-slate-400" />
+                                  <span className="text-[11px] font-black text-slate-600">{stats.total}</span>
+                                </div>
+                                {isComplete && <CheckCircle2 className="h-3 w-3 text-green-600 ml-1" />}
+                              </div>
+
+                              <ChevronDown className={cn(
+                                "h-4 w-4 text-slate-400 transition-transform duration-300",
+                                isExpanded && "rotate-180 text-primary"
+                              )} />
+                            </div>
+                          </div>
+
+                          {isExpanded && (
+                            <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-300">
+                              <div className="p-4 bg-slate-50 rounded-xl border border-slate-100/50 mb-4">
+                                <p className="text-[11px] font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                  {n.message}
                                 </p>
                               </div>
+                              <div className="flex justify-end pt-2 border-t border-slate-100/50">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }}
+                                  className="h-8 px-4 text-red-600 hover:bg-red-50 uppercase text-[10px] font-black gap-2"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" /> Excluir Comunicado
+                                </Button>
+                              </div>
                             </div>
-                          </div>
+                          )}
+                        </Card>
+                      );
+                    })}
+
+                    {totalMgmtPages > 1 && (
+                      <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/5 rounded-xl border border-dashed border-slate-200">
+                        <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                          Exibindo {paginatedMgmtNotifications.length} de {filteredMgmtNotifications.length} comunicados
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={mgmtCurrentPage === 1}
+                            onClick={() => setMgmtCurrentPage(prev => Math.max(prev - 1, 1))}
+                            className="h-8 px-3 text-[10px] font-black uppercase gap-1.5"
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                          </Button>
                           
-                          <div className="flex items-center gap-4 shrink-0">
-                            <div className={cn(
-                              "flex items-center gap-3 px-3 py-1.5 rounded-lg border",
-                              isComplete ? "bg-green-50 border-green-200" : "bg-blue-50 border-blue-100"
-                            )}>
-                              <div className="flex items-center gap-1.5">
-                                <Eye className={cn("h-3.5 w-3.5", isComplete ? "text-green-600" : "text-blue-600")} />
-                                <span className={cn("text-[11px] font-black", isComplete ? "text-green-700" : "text-blue-700")}>{stats.read}</span>
-                              </div>
-                              <Separator orientation="vertical" className="h-3" />
-                              <div className="flex items-center gap-1.5">
-                                <Users className="h-3.5 w-3.5 text-slate-400" />
-                                <span className="text-[11px] font-black text-slate-600">{stats.total}</span>
-                              </div>
-                              {isComplete && <CheckCircle2 className="h-3 w-3 text-green-600 ml-1" />}
-                            </div>
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(totalMgmtPages, 5) }, (_, i) => {
+                              let pageNum = i + 1;
+                              if (totalMgmtPages > 5 && mgmtCurrentPage > 3) {
+                                pageNum = Math.min(mgmtCurrentPage - 2 + i, totalMgmtPages - 4 + i);
+                              }
+                              if (pageNum > totalMgmtPages || pageNum <= 0) return null;
 
-                            <ChevronDown className={cn(
-                              "h-4 w-4 text-slate-400 transition-transform duration-300",
-                              isExpanded && "rotate-180 text-primary"
-                            )} />
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={mgmtCurrentPage === pageNum ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setMgmtCurrentPage(pageNum)}
+                                  className={cn(
+                                    "h-8 w-8 p-0 text-[10px] font-bold",
+                                    mgmtCurrentPage === pageNum ? "bg-primary text-white" : ""
+                                  )}
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
                           </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={mgmtCurrentPage === totalMgmtPages}
+                            onClick={() => setMgmtCurrentPage(prev => Math.min(prev + 1, totalMgmtPages))}
+                            className="h-8 px-3 text-[10px] font-black uppercase gap-1.5"
+                          >
+                            Próximo <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
-
-                        {isExpanded && (
-                          <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-300">
-                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100/50 mb-4">
-                              <p className="text-[11px] font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">
-                                {n.message}
-                              </p>
-                            </div>
-                            <div className="flex justify-end pt-2 border-t border-slate-100/50">
-                              <Button 
-                                variant="ghost" 
-                                size="sm" 
-                                onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }}
-                                className="h-8 px-4 text-red-600 hover:bg-red-50 uppercase text-[10px] font-black gap-2"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" /> Excluir Comunicado
-                              </Button>
-                            </div>
-                          </div>
-                        )}
-                      </Card>
-                    );
-                  })
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             )}
