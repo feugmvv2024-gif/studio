@@ -27,7 +27,9 @@ import {
   AlertCircle,
   FilterX,
   Edit2,
-  Trash2
+  Trash2,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -70,6 +72,8 @@ const MONTHS = [
   "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
   "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
 ];
+
+const ITEMS_PER_PAGE = 30;
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -115,6 +119,9 @@ export default function FeriasPage() {
   const [searchTermApproved, setSearchTermApproved] = React.useState("");
   const [cronogramaFilterMonth, setCronogramaFilterMonth] = React.useState("ALL");
   const [cronogramaFilterYear, setCronogramaFilterYear] = React.useState("ALL");
+
+  // Estado de Paginação
+  const [currentPage, setCurrentPage] = React.useState(1);
 
   const [isDenyModalOpen, setIsDenyModalOpen] = React.useState(false);
   const [planToDenyId, setPlanToDenyId] = React.useState<string | null>(null);
@@ -167,6 +174,19 @@ export default function FeriasPage() {
   const isSolicitationOpen = React.useMemo(() => {
     return vacationSettings?.isOpen ?? true;
   }, [vacationSettings]);
+
+  const handleToggleSystem = async (checked: boolean) => {
+    if (!firestore) return;
+    try {
+      await setDoc(doc(firestore, 'settings', 'vacation'), { isOpen: checked }, { merge: true });
+      toast({ 
+        title: checked ? "SISTEMA ATIVADO" : "SISTEMA BLOQUEADO", 
+        description: checked ? "Os servidores agora podem enviar intenções." : "Novos envios foram desabilitados." 
+      });
+    } catch (e) {
+      toast({ variant: "destructive", title: "ERRO AO ALTERAR STATUS" });
+    }
+  };
 
   const totalApprovedDays = React.useMemo(() => {
     if (!myRequests) return 0;
@@ -260,14 +280,25 @@ export default function FeriasPage() {
     });
   }, [approvedPlans, searchTermApproved, cronogramaFilterMonth, cronogramaFilterYear]);
 
-  // LÓGICA DE IMPRESSÃO SELETIVA (Baseada na lista filtrada)
+  // Reset pagination when filters change
+  React.useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTermApproved, cronogramaFilterMonth, cronogramaFilterYear]);
+
+  const paginatedApprovedPlans = React.useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredApprovedPlans.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredApprovedPlans, currentPage]);
+
+  const totalPages = Math.ceil(filteredApprovedPlans.length / ITEMS_PER_PAGE);
+
+  // LÓGICA DE IMPRESSÃO SELETIVA (Baseada na lista filtrada integral, sem paginação)
   const groupedPrintData = React.useMemo(() => {
     if (!filteredApprovedPlans) return [];
     
     const entries: any[] = [];
     filteredApprovedPlans.forEach(plan => {
       (plan.selectedOptions || []).forEach(opt => {
-        // Garante que apenas os períodos que batem com o filtro entrem na impressão seletiva
         const matchesMonth = cronogramaFilterMonth === "ALL" || opt.month === cronogramaFilterMonth;
         const matchesYear = cronogramaFilterYear === "ALL" || opt.year === cronogramaFilterYear;
 
@@ -310,19 +341,6 @@ export default function FeriasPage() {
     const currentYear = new Date().getFullYear();
     return [currentYear, currentYear + 1, currentYear + 2];
   }, []);
-
-  const handleToggleSystem = async (checked: boolean) => {
-    if (!firestore) return;
-    try {
-      await setDoc(doc(firestore, 'settings', 'vacation'), { isOpen: checked }, { merge: true });
-      toast({ 
-        title: checked ? "SISTEMA ATIVADO" : "SISTEMA BLOQUEADO", 
-        description: checked ? "Os servidores agora podem enviar intenções." : "Novos envios foram desabilitados." 
-      });
-    } catch (e) {
-      toast({ variant: "destructive", title: "ERRO AO ALTERAR STATUS" });
-    }
-  };
 
   const handleSave = async () => {
     if (!user || !employeeData) return;
@@ -575,7 +593,7 @@ export default function FeriasPage() {
         @media print {
           @page { size: A4 portrait; margin: 1.5cm; }
           html, body, main, [data-sidebar="inset"], .flex-1 { overflow: visible !important; height: auto !important; display: block !important; background: white !important; }
-          .print-hidden, header, nav, footer, aside, .tabs-list { display: none !important; }
+          .print-hidden, header, nav, footer, aside, .tabs-list, .pagination-controls { display: none !important; }
           .printable-content { display: block !important; width: 100% !important; color: black !important; }
           .report-header { margin-bottom: 1.5rem; border-bottom: 2px solid black; padding-bottom: 0.5rem; display: flex; justify-content: space-between; align-items: flex-end; }
           .report-header h1 { font-size: 14pt !important; }
@@ -1159,7 +1177,7 @@ export default function FeriasPage() {
                   <p className="text-[11px] font-black uppercase text-blue-800 tracking-tight">FILA DE HOMOLOGAÇÃO: ANALISE AS INTENÇÕES DO EFETIVO.</p>
                 </div>
                 
-                {loadingAllPlans ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
+                {loadingAllPlans ? <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
                   <div className="grid gap-4">
                     {allPlans.length === 0 ? (
                       <div className="text-center py-20 border-2 border-dashed rounded-3xl uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">NENHUMA SOLICITAÇÃO PENDENTE.</div>
@@ -1373,101 +1391,156 @@ export default function FeriasPage() {
                   {loadingApprovedPlans ? (
                     <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                   ) : (
-                    <div className="overflow-x-auto">
-                      <Table>
-                        <TableHeader className="bg-muted/20">
-                          <TableRow>
-                            <TableHead className="font-bold uppercase text-[10px] h-12">Servidor / QRA</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] h-12">Operacional</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] h-12">Período(s) Aprovado(s)</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] h-12">Prioridades</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] h-12">Auditor RH</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] h-12 text-center">Ações</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {filteredApprovedPlans.length === 0 ? (
+                    <>
+                      <div className="overflow-x-auto">
+                        <Table>
+                          <TableHeader className="bg-muted/20">
                             <TableRow>
-                              <TableCell colSpan={6} className="h-40 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
-                                NENHUM REGISTRO ENCONTRADO PARA OS FILTROS APLICADOS.
-                              </TableCell>
+                              <TableHead className="font-bold uppercase text-[10px] h-12">Servidor / QRA</TableHead>
+                              <TableHead className="font-bold uppercase text-[10px] h-12">Operacional</TableHead>
+                              <TableHead className="font-bold uppercase text-[10px] h-12">Período(s) Aprovado(s)</TableHead>
+                              <TableHead className="font-bold uppercase text-[10px] h-12">Prioridades</TableHead>
+                              <TableHead className="font-bold uppercase text-[10px] h-12">Auditor RH</TableHead>
+                              <TableHead className="font-bold uppercase text-[10px] h-12 text-center">Ações</TableHead>
                             </TableRow>
-                          ) : (
-                            filteredApprovedPlans.map((plan) => (
-                              <TableRow key={plan.id} className="hover:bg-slate-50 transition-colors border-b last:border-0 group">
-                                <TableCell className="py-4">
-                                  <div className="flex flex-col gap-0.5">
-                                    <span className="font-black uppercase text-[13px] text-slate-900 leading-tight">{plan.employeeName}</span>
-                                    <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">QRA: {plan.employeeQra}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-col">
-                                    <span className="text-[11px] font-black uppercase text-slate-700">{plan.employeeEscala}</span>
-                                    <span className="text-[9px] font-bold text-muted-foreground uppercase">{plan.employeeTurno}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-wrap gap-2">
-                                    {(plan.selectedOptions || []).map((opt: any, idx: number) => {
-                                      // Realça o badge se bater com o filtro de mês/ano
-                                      const isMatch = (cronogramaFilterMonth === "ALL" || opt.month === cronogramaFilterMonth) && 
-                                                      (cronogramaFilterYear === "ALL" || opt.year === cronogramaFilterYear);
-                                      
-                                      return (
-                                        <Badge 
-                                          key={idx} 
-                                          className={cn(
-                                            "font-black text-[9px] uppercase px-3",
-                                            isMatch ? "bg-green-600 text-white" : "bg-slate-200 text-slate-500 opacity-50"
-                                          )}
-                                        >
-                                          {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year} - {plan.splitVacation ? "15" : "30"} DIAS
-                                        </Badge>
-                                      );
-                                    })}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex flex-wrap gap-1">
-                                    {plan.hasMinorChildren && (
-                                      <Badge variant="outline" className="text-[8px] font-black uppercase border-blue-200 text-blue-600 bg-blue-50">ESCOLAR</Badge>
-                                    )}
-                                    {plan.spouseIsTeacher && (
-                                      <Badge variant="outline" className="text-[8px] font-black uppercase border-purple-200 text-purple-600 bg-purple-50">PROFESSOR</Badge>
-                                    )}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex items-center gap-1.5">
-                                    <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
-                                    <span className="text-[10px] font-black uppercase text-slate-600">{plan.processedByQra || "SISTEMA"}</span>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="text-center">
-                                  <div className="flex items-center justify-center gap-2">
-                                    <div className="flex items-center gap-2 mr-2 border-r pr-2 border-slate-200">
-                                      <Coins className={cn("h-3.5 w-3.5", plan.advance13th ? "text-amber-500" : "text-slate-300")} title="13º Antecipado" />
-                                      <Scissors className={cn("h-3.5 w-3.5", plan.splitVacation ? "text-blue-500" : "text-slate-300")} title="Dividido em 15 dias" />
-                                    </div>
-                                    {isHighCommand && (
-                                      <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={() => handleOpenEditModal(plan)}
-                                        className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-lg"
-                                      >
-                                        <Edit2 className="h-3.5 w-3.5" />
-                                      </Button>
-                                    )}
-                                  </div>
+                          </TableHeader>
+                          <TableBody>
+                            {paginatedApprovedPlans.length === 0 ? (
+                              <TableRow>
+                                <TableCell colSpan={6} className="h-40 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                                  NENHUM REGISTRO ENCONTRADO PARA OS FILTROS APLICADOS.
                                 </TableCell>
                               </TableRow>
-                            ))
-                          )}
-                        </TableBody>
-                      </Table>
-                    </div>
+                            ) : (
+                              paginatedApprovedPlans.map((plan) => (
+                                <TableRow key={plan.id} className="hover:bg-slate-50 transition-colors border-b last:border-0 group">
+                                  <TableCell className="py-4">
+                                    <div className="flex flex-col gap-0.5">
+                                      <span className="font-black uppercase text-[13px] text-slate-900 leading-tight">{plan.employeeName}</span>
+                                      <span className="text-[10px] font-bold text-primary uppercase tracking-tighter">QRA: {plan.employeeQra}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-col">
+                                      <span className="text-[11px] font-black uppercase text-slate-700">{plan.employeeEscala}</span>
+                                      <span className="text-[9px] font-bold text-muted-foreground uppercase">{plan.employeeTurno}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-wrap gap-2">
+                                      {(plan.selectedOptions || []).map((opt: any, idx: number) => {
+                                        const isMatch = (cronogramaFilterMonth === "ALL" || opt.month === cronogramaFilterMonth) && 
+                                                        (cronogramaFilterYear === "ALL" || opt.year === cronogramaFilterYear);
+                                        
+                                        return (
+                                          <Badge 
+                                            key={idx} 
+                                            className={cn(
+                                              "font-black text-[9px] uppercase px-3",
+                                              isMatch ? "bg-green-600 text-white" : "bg-slate-200 text-slate-500 opacity-50"
+                                            )}
+                                          >
+                                            {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year} - {plan.splitVacation ? "15" : "30"} DIAS
+                                          </Badge>
+                                        );
+                                      })}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex flex-wrap gap-1">
+                                      {plan.hasMinorChildren && (
+                                        <Badge variant="outline" className="text-[8px] font-black uppercase border-blue-200 text-blue-600 bg-blue-50">ESCOLAR</Badge>
+                                      )}
+                                      {plan.spouseIsTeacher && (
+                                        <Badge variant="outline" className="text-[8px] font-black uppercase border-purple-200 text-purple-600 bg-purple-50">PROFESSOR</Badge>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <div className="flex items-center gap-1.5">
+                                      <ShieldCheck className="h-3.5 w-3.5 text-blue-600" />
+                                      <span className="text-[10px] font-black uppercase text-slate-600">{plan.processedByQra || "SISTEMA"}</span>
+                                    </div>
+                                  </TableCell>
+                                  <TableCell className="text-center">
+                                    <div className="flex items-center justify-center gap-2">
+                                      <div className="flex items-center gap-2 mr-2 border-r pr-2 border-slate-200">
+                                        <Coins className={cn("h-3.5 w-3.5", plan.advance13th ? "text-amber-500" : "text-slate-300")} title="13º Antecipado" />
+                                        <Scissors className={cn("h-3.5 w-3.5", plan.splitVacation ? "text-blue-500" : "text-slate-300")} title="Dividido em 15 dias" />
+                                      </div>
+                                      {isHighCommand && (
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={() => handleOpenEditModal(plan)}
+                                          className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                        >
+                                          <Edit2 className="h-3.5 w-3.5" />
+                                        </Button>
+                                      )}
+                                    </div>
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
+                      
+                      {totalPages > 1 && (
+                        <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5 pagination-controls">
+                          <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                            Exibindo {paginatedApprovedPlans.length} de {filteredApprovedPlans.length} registros (Página {currentPage} de {totalPages})
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={currentPage === 1}
+                              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                              className="h-8 px-3 text-[10px] font-black uppercase gap-1.5"
+                            >
+                              <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                            </Button>
+                            
+                            <div className="flex items-center gap-1">
+                              {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                let pageNum = i + 1;
+                                if (totalPages > 5 && currentPage > 3) {
+                                  pageNum = Math.min(currentPage - 2 + i, totalPages - 4 + i);
+                                }
+                                if (pageNum > totalPages || pageNum <= 0) return null;
+
+                                return (
+                                  <Button
+                                    key={pageNum}
+                                    variant={currentPage === pageNum ? "default" : "outline"}
+                                    size="sm"
+                                    onClick={() => setCurrentPage(pageNum)}
+                                    className={cn(
+                                      "h-8 w-8 p-0 text-[10px] font-bold",
+                                      currentPage === pageNum ? "bg-primary text-white" : ""
+                                    )}
+                                  >
+                                    {pageNum}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              disabled={currentPage === totalPages}
+                              onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                              className="h-8 px-3 text-[10px] font-black uppercase gap-1.5"
+                            >
+                              Próximo <ChevronRight className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+                    </>
                   )}
                 </CardContent>
               </Card>
