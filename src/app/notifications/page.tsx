@@ -20,7 +20,8 @@ import {
   Info,
   CalendarDays,
   Clock,
-  CheckCircle2
+  CheckCircle2,
+  Eye
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -97,7 +98,7 @@ export default function NotificationsPage() {
     });
   }, [myNotifications, user, employeeData, roles]);
 
-  // Gatilho de Ciência Individual: Garante que cada card tenha sua própria data de ciência persistente
+  // Gatilho de Ciência Individual
   React.useEffect(() => {
     if (activeTab === "mural" && employeeData?.id && firestore && filteredMyNotifications.length > 0) {
       const markAsRead = async () => {
@@ -106,14 +107,12 @@ export default function NotificationsPage() {
         let hasChanges = false;
         
         filteredMyNotifications.forEach(n => {
-          // Se esta notificação ainda não tem recibo de leitura individual, cria um
           if (!receipts[n.id]) {
             updates[`readReceipts.${n.id}`] = serverTimestamp();
             hasChanges = true;
           }
         });
 
-        // Identifica se há notificações novas para atualizar o marcador global de visita (limpar badge do menu)
         const newestNotifDate = filteredMyNotifications.reduce((acc, n) => {
           const d = n.createdAt?.toDate?.() || new Date(0);
           return d > acc ? d : acc;
@@ -131,7 +130,6 @@ export default function NotificationsPage() {
         }
       };
       
-      // Delay pequeno para garantir estabilidade da renderização antes da gravação
       const timer = setTimeout(markAsRead, 1000);
       return () => clearTimeout(timer);
     }
@@ -153,6 +151,33 @@ export default function NotificationsPage() {
   const { data: allNotifications, loading: loadingAll } = useCollection(allNotificationsRef);
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const { data: employees } = useCollection(employeesRef);
+
+  // Cálculo de estatísticas de leitura para o gestor
+  const notificationStats = React.useMemo(() => {
+    if (!employees || !allNotifications) return {};
+    
+    const results: Record<string, { read: number; total: number }> = {};
+    
+    allNotifications.forEach(n => {
+      let totalCount = 0;
+      let readCount = 0;
+
+      if (n.targetType === "TODOS") {
+        totalCount = employees.length;
+      } else if (n.targetType === "CARGO") {
+        const roleName = roles?.find(r => r.id === n.targetId)?.name || "";
+        const normRole = normalizeStr(roleName);
+        totalCount = employees.filter(e => normalizeStr(e.role) === normRole).length;
+      } else if (n.targetType === "INDIVIDUAL") {
+        totalCount = 1;
+      }
+
+      readCount = employees.filter(e => e.readReceipts && e.readReceipts[n.id]).length;
+      results[n.id] = { read: readCount, total: totalCount };
+    });
+
+    return results;
+  }, [employees, allNotifications, roles]);
 
   const resetNotifyForm = () => {
     setNotifyPriority("NORMAL");
@@ -263,7 +288,6 @@ export default function NotificationsPage() {
           ) : (
             <div className="grid gap-4">
               {filteredMyNotifications.map(n => {
-                // Recupera a data de ciência específica desta notificação no mapa do servidor
                 const readAtTimestamp = employeeData?.readReceipts?.[n.id];
                 const readAt = readAtTimestamp?.toDate?.() || null;
                 const isNew = !readAt;
@@ -433,40 +457,64 @@ export default function NotificationsPage() {
               <h4 className="text-xs font-black uppercase text-slate-700 tracking-widest">Histórico de Publicações</h4>
             </div>
             
-            {loadingAll ? <Loader2 className="h-8 w-8 animate-spin mx-auto text-primary" /> : (
+            {loadingAll ? <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
               <div className="grid gap-3">
                 {allNotifications?.length === 0 ? (
                   <p className="text-[10px] text-muted-foreground uppercase font-bold italic text-center py-10">Nenhum histórico disponível.</p>
                 ) : (
-                  allNotifications?.map(n => (
-                    <Card key={n.id} className="border border-slate-100 bg-slate-50/50 hover:bg-white transition-colors group">
-                      <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                        <div className="flex items-center gap-4">
-                          <div className={cn(
-                            "w-2 h-10 rounded-full",
-                            n.priority === "URGENTE" ? "bg-red-500" : n.priority === "ALERTA" ? "bg-amber-500" : "bg-blue-500"
-                          )} />
-                          <div>
-                            <p className="text-[11px] font-black uppercase text-slate-900 leading-tight">{n.title}</p>
-                            <div className="flex items-center gap-2 mt-1">
-                              <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5">{n.targetType}: {n.targetLabel}</Badge>
-                              <span className="text-[8px] font-mono text-muted-foreground uppercase">
-                                Em: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
-                              </span>
+                  allNotifications?.map(n => {
+                    const stats = notificationStats[n.id] || { read: 0, total: 0 };
+                    const isComplete = stats.read >= stats.total && stats.total > 0;
+
+                    return (
+                      <Card key={n.id} className="border border-slate-100 bg-slate-50/50 hover:bg-white transition-colors group">
+                        <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+                          <div className="flex items-center gap-4 flex-1">
+                            <div className={cn(
+                              "w-1.5 h-10 rounded-full shrink-0",
+                              n.priority === "URGENTE" ? "bg-red-500" : n.priority === "ALERTA" ? "bg-amber-500" : "bg-blue-500"
+                            )} />
+                            <div className="min-w-0">
+                              <p className="text-[11px] font-black uppercase text-slate-900 leading-tight truncate">{n.title}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 shrink-0">{n.targetType}: {n.targetLabel}</Badge>
+                                <span className="text-[8px] font-mono text-muted-foreground uppercase truncate">
+                                  Postado: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
-                          onClick={() => handleDeleteNotification(n.id)}
-                          className="h-9 px-4 text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity uppercase text-[10px] font-black gap-2"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" /> Excluir Aviso
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  ))
+                          
+                          <div className="flex items-center gap-4 shrink-0">
+                            <div className={cn(
+                              "flex items-center gap-3 px-3 py-1.5 rounded-lg border",
+                              isComplete ? "bg-green-50 border-green-200" : "bg-blue-50 border-blue-100"
+                            )}>
+                              <div className="flex items-center gap-1.5">
+                                <Eye className={cn("h-3.5 w-3.5", isComplete ? "text-green-600" : "text-blue-600")} />
+                                <span className={cn("text-[11px] font-black", isComplete ? "text-green-700" : "text-blue-700")}>{stats.read}</span>
+                              </div>
+                              <Separator orientation="vertical" className="h-3" />
+                              <div className="flex items-center gap-1.5">
+                                <Users className="h-3.5 w-3.5 text-slate-400" />
+                                <span className="text-[11px] font-black text-slate-600">{stats.total}</span>
+                              </div>
+                              {isComplete && <CheckCircle2 className="h-3 w-3 text-green-600 ml-1" />}
+                            </div>
+
+                            <Button 
+                              variant="ghost" 
+                              size="sm" 
+                              onClick={() => handleDeleteNotification(n.id)}
+                              className="h-9 px-4 text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity uppercase text-[10px] font-black gap-2"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" /> Excluir
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 )}
               </div>
             )}
