@@ -35,7 +35,10 @@ import {
   Stethoscope,
   Info,
   TrendingUp,
-  Printer
+  Printer,
+  Search,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -157,6 +160,8 @@ const calculateTimeDuration = (start: string, end: string) => {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 };
 
+const ITEMS_PER_PAGE = 30;
+
 export default function RelatoriosPage() {
   const { toast } = useToast()
   const firestore = useFirestore()
@@ -185,6 +190,9 @@ export default function RelatoriosPage() {
 
   const [isDraftDialogOpen, setIsDraftDialogOpen] = React.useState(false)
   const [tempDraft, setTempDraft] = React.useState<any>(null)
+
+  const [archiveSearch, setArchiveSearch] = React.useState("");
+  const [archiveCurrentPage, setArchiveCurrentPage] = React.useState(1);
 
   // Estados para exclusão segura no formulário
   const [isFormItemDeleteDialogOpen, setIsFormItemDeleteDialogOpen] = React.useState(false)
@@ -442,6 +450,28 @@ export default function RelatoriosPage() {
     if (!emp) return "";
     return ` [${emp.escala} / ${emp.turno}]`;
   };
+
+  const filteredArchivedReports = React.useMemo(() => {
+    if (!archivedReports) return [];
+    const term = archiveSearch.toLowerCase();
+    return archivedReports.filter(report => 
+      report.inspector?.name?.toLowerCase().includes(term) ||
+      report.inspector?.qra?.toLowerCase().includes(term) ||
+      report.escalaName?.toLowerCase().includes(term) ||
+      report.date?.includes(term)
+    );
+  }, [archivedReports, archiveSearch]);
+
+  const paginatedArchivedReports = React.useMemo(() => {
+    const startIndex = (archiveCurrentPage - 1) * ITEMS_PER_PAGE;
+    return filteredArchivedReports.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredArchivedReports, archiveCurrentPage]);
+
+  const totalArchivePages = Math.ceil(filteredArchivedReports.length / ITEMS_PER_PAGE);
+
+  React.useEffect(() => {
+    setArchiveCurrentPage(1);
+  }, [archiveSearch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1649,8 +1679,84 @@ export default function RelatoriosPage() {
           {renderReportList(pendingReports || [], "Nenhum relatório aguardando auditoria no momento.", canManageAudit)}
         </TabsContent>
 
-        <TabsContent value="archived" className="mt-6">
-          {renderReportList(archivedReports || [], "Arquivo histórico vazio.", false, canDeleteArchived)}
+        <TabsContent value="archived" className="mt-6 space-y-6">
+          <Card className="card-shadow border-none rounded-2xl overflow-hidden bg-slate-50/50">
+            <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="BUSCAR NO ARQUIVO (INSPETOR, QRA OU DATA)..." 
+                  className="pl-9 h-10 uppercase text-[10px] font-bold bg-white" 
+                  value={archiveSearch}
+                  onChange={(e) => setArchiveSearch(e.target.value.toUpperCase())}
+                />
+                {archiveSearch && (
+                  <button onClick={() => setArchiveSearch("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-slate-900 transition-colors">
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Badge variant="outline" className="h-10 px-4 bg-white font-black text-[10px] uppercase border-slate-200">
+                {filteredArchivedReports.length} RELATÓRIOS
+              </Badge>
+            </CardContent>
+          </Card>
+
+          {renderReportList(paginatedArchivedReports, "Arquivo histórico vazio.", false, canDeleteArchived)}
+
+          {totalArchivePages > 1 && (
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 bg-muted/5 rounded-xl border border-dashed border-slate-200">
+              <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                Exibindo {paginatedArchivedReports.length} de {filteredArchivedReports.length} relatórios (Página {archiveCurrentPage} de {totalArchivePages})
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={archiveCurrentPage === 1}
+                  onClick={() => setArchiveCurrentPage(prev => Math.max(prev - 1, 1))}
+                  className="h-8 px-3 text-[10px] font-black uppercase gap-1.5"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                </Button>
+                
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(totalArchivePages, 5) }, (_, i) => {
+                    let pageNum = i + 1;
+                    if (totalArchivePages > 5 && archiveCurrentPage > 3) {
+                      pageNum = Math.min(archiveCurrentPage - 2 + i, totalArchivePages - 4 + i);
+                    }
+                    if (pageNum > totalArchivePages || pageNum <= 0) return null;
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={archiveCurrentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setArchiveCurrentPage(pageNum)}
+                        className={cn(
+                          "h-8 w-8 p-0 text-[10px] font-bold",
+                          archiveCurrentPage === pageNum ? "bg-primary text-white" : ""
+                        )}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={archiveCurrentPage === totalArchivePages}
+                  onClick={() => setArchiveCurrentPage(prev => Math.min(prev + 1, totalArchivePages))}
+                  className="h-8 px-3 text-[10px] font-black uppercase gap-1.5"
+                >
+                  Próximo <ChevronRight className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </div>
+          )}
         </TabsContent>
       </Tabs>
     </div>
