@@ -372,7 +372,7 @@ export default function RequestsPage() {
     }
 
     if (hasInvalidPermutaMonth) {
-      toast({ variant: "destructive", title: "ERRO DE DATA", description: "A PERMUTA DEVE SER NO MESMO MÊS." });
+      toast({ variant: "destructive", title: "ATENÇÃO", description: "A PERMUTA DEVE SER NO MESMO MÊS." });
       return;
     }
 
@@ -565,13 +565,13 @@ export default function RequestsPage() {
                   {requestType === "FOLGA" && (
                     <div className="grid gap-1.5 animate-in fade-in duration-300">
                       <Label className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Saldo Banco de Horas</Label>
-                      <div className={cn("h-10 flex items-center px-4 rounded-lg border font-black text-[10px] uppercase", hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>{minutesToHHmm(simulatedRemainingMinutes)}H DISPONÍVEIS</div>
+                      <div className={cn("h-10 flex items-center px-4 rounded-lg border font-black text-[10px] uppercase", hasInsufficientBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>{minutesToHHmm(myBalanceMinutes)}H DISPONÍVEIS</div>
                     </div>
                   )}
                   {requestType === "ABONO TRE" && (
                     <div className="grid gap-1.5 animate-in fade-in duration-300">
                       <Label className="text-[9px] font-bold uppercase text-muted-foreground tracking-tight">Saldo TRE</Label>
-                      <div className={cn("h-10 flex items-center px-4 rounded-lg border font-black text-[10px] uppercase", hasInsufficientTreBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>{simulatedRemainingTreDays} DIAS DISPONÍVEIS</div>
+                      <div className={cn("h-10 flex items-center px-4 rounded-lg border font-black text-[10px] uppercase", hasInsufficientTreBalance ? "bg-red-50 border-red-200 text-red-700" : "bg-green-50 border-green-200 text-green-700")}>{myBalanceTreDays} DIAS DISPONÍVEIS</div>
                     </div>
                   )}
                 </div>
@@ -632,14 +632,14 @@ export default function RequestsPage() {
 
                 return (
                   <Card key={req.id} className="card-shadow border-none rounded-xl overflow-hidden hover:shadow-md transition-all group">
-                    <div className="flex flex-col sm:flex-row min-h-[120px]">
-                      <div className={cn("w-full sm:w-32 flex flex-col items-center justify-center p-4 shrink-0 text-white", isApproved ? 'bg-green-600' : isDenied ? 'bg-red-600' : isAwaitingRH ? 'bg-blue-600' : isAwaitingPartner ? 'bg-indigo-500' : 'bg-orange-500')}><span className="font-black uppercase text-base tracking-tight text-center leading-tight mb-2">{req.status}</span>{isApproved ? <CheckCircle2 className="h-7 w-7" /> : <Clock className="h-7 w-7" />}</div>
-                      <CardContent className="flex-1 p-5 space-y-3">
+                    <div className="flex flex-col sm:flex-row min-h-[100px]">
+                      <div className={cn("w-full sm:w-28 flex flex-col items-center justify-center p-4 shrink-0 text-white", isApproved ? 'bg-green-600' : isDenied ? 'bg-red-600' : isAwaitingRH ? 'bg-blue-600' : isAwaitingPartner ? 'bg-indigo-500' : 'bg-orange-500')}><span className="font-black uppercase text-base tracking-tight text-center leading-tight mb-2">{req.status}</span>{isApproved ? <CheckCircle2 className="h-7 w-7" /> : <Clock className="h-7 w-7" />}</div>
+                      <CardContent className="flex-1 p-4 space-y-2.5">
                         <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                           <div className="space-y-1 w-full"><div className="flex flex-col sm:flex-row sm:items-center gap-2 flex-wrap"><div className="flex items-center gap-2 h-6"><h4 className="font-black uppercase text-base text-slate-900 leading-none">{req.type}</h4><span className="text-slate-400 font-bold">-</span></div>{isSpecialType ? <div className="flex flex-col gap-1.5 w-full sm:w-auto pt-0.5">{req.date.split('|').map((part: string, i: number) => (<div key={i} className="bg-blue-50 px-2 py-1 rounded border border-blue-100 w-fit"><span className="text-[10px] font-black text-blue-700 uppercase">- {part.trim()}</span></div>))}</div> : <div className="bg-blue-50 px-2 py-0.5 rounded border border-blue-100 h-fit self-center"><span className="text-[10px] font-black text-blue-700 uppercase">{req.date}</span></div>}</div><div className="flex items-center gap-2 mt-1"><ShieldCheck className="h-3 w-3 text-muted-foreground" /><p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{req.escala || "---"} / {req.turno || "---"}</p>{(isFolga || isTre) && <><span className="text-slate-300">•</span><p className="text-[10px] font-black text-red-600 uppercase tracking-widest">DÉBITO: {isFolga ? `${minutesToHHmm(dateCount * requiredMinutesForFolga)}H` : `${dateCount} DIAS`}</p></>}</div></div>
                         </div>
-                        <div className="bg-slate-50/50 p-3 rounded-lg border border-slate-100"><Label className="text-[8px] font-black uppercase text-muted-foreground mb-1 block">Justificativa Enviada:</Label><p className="text-[11px] text-slate-600 uppercase leading-relaxed italic">"{req.description}"</p></div>
-                        {req.adminResponse && <div className="bg-blue-50/30 p-3 rounded-lg border-l-4 border-primary animate-in slide-in-from-left-1"><p className="text-[9px] font-black uppercase text-primary mb-1">Histórico de Respostas:</p><div className="space-y-1.5">{req.adminResponse.split('|').map((resp: string, i: number) => (<p key={i} className="text-[11px] uppercase font-bold text-slate-800 leading-snug border-b border-blue-100/50 last:border-0 pb-1 last:pb-0">{resp.trim()}</p>))}</div></div>}
+                        <div className="bg-slate-50/50 p-2.5 rounded-lg border border-slate-100"><Label className="text-[8px] font-black uppercase text-muted-foreground mb-1 block">Justificativa Enviada:</Label><p className="text-[11px] text-slate-600 uppercase leading-relaxed italic">"{req.description}"</p></div>
+                        {req.adminResponse && <div className="bg-blue-50/30 p-2.5 rounded-lg border-l-4 border-primary animate-in slide-in-from-left-1"><p className="text-[9px] font-black uppercase text-primary mb-1">Histórico de Respostas:</p><div className="space-y-1.5">{req.adminResponse.split('|').map((resp: string, i: number) => (<p key={i} className="text-[11px] uppercase font-bold text-slate-800 leading-snug border-b border-blue-100/50 last:border-0 pb-1 last:pb-0">{resp.trim()}</p>))}</div></div>}
                       </CardContent>
                     </div>
                   </Card>
