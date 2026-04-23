@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -69,48 +70,16 @@ export default function NotificationsPage() {
   const [notifySearchTerm, setNotifySearchTerm] = React.useState("");
   const [showTargetSuggestions, setShowTargetSuggestions] = React.useState(false);
 
-  // Gatilho de Leitura: Marca como visualizado ao entrar na aba Mural
-  React.useEffect(() => {
-    if (activeTab === "mural" && employeeData?.id && firestore) {
-      const updateVisit = async () => {
-        try {
-          await updateDoc(doc(firestore, 'employees', employeeData.id), {
-            lastMuralVisit: serverTimestamp()
-          });
-        } catch (e) {
-          console.error("Erro ao registrar visualização do mural:", e);
-        }
-      };
-      updateVisit();
-    }
-  }, [activeTab, employeeData?.id, firestore]);
-
-  // Lógica de Permissão de Gestão
-  const canManageMural = React.useMemo(() => {
-    if (!employeeData) return false;
-    const role = normalizeStr(employeeData.role || "");
-    return ["COMANDANTE", "INSPETOR GERAL", "GESTOR DE RH"].some(r => role.includes(r));
-  }, [employeeData]);
-
-  // Consulta: Todas as notificações (para gestão)
-  const allNotificationsRef = React.useMemo(() => {
-    if (!firestore || !canManageMural) return null;
-    return query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'));
-  }, [firestore, canManageMural]);
-
   // Consulta: Notificações do Servidor (Mural)
   const myNotificationsRef = React.useMemo(() => {
     if (!firestore || !user || !employeeData) return null;
     return query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'));
   }, [firestore, user, employeeData]);
 
-  const { data: allNotifications, loading: loadingAll } = useCollection(allNotificationsRef);
   const { data: myNotifications, loading: loadingMy } = useCollection(myNotificationsRef);
   
-  const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
-  const rolesRef = React.useMemo(() => firestore ? query(collection(firestore, 'roles'), orderBy('name', 'asc')) : null, [firestore]);
-  const { data: employees } = useCollection(employeesRef);
-  const { data: roles } = useCollection(rolesRef);
+  const rolesQuery = React.useMemo(() => firestore ? collection(firestore, 'roles') : null, [firestore]);
+  const { data: roles } = useCollection(rolesQuery);
 
   // Filtragem das notificações para o Mural do Servidor
   const filteredMyNotifications = React.useMemo(() => {
@@ -127,6 +96,63 @@ export default function NotificationsPage() {
       return false;
     });
   }, [myNotifications, user, employeeData, roles]);
+
+  // Gatilho de Ciência Individual: Garante que cada card tenha sua própria data de ciência persistente
+  React.useEffect(() => {
+    if (activeTab === "mural" && employeeData?.id && firestore && filteredMyNotifications.length > 0) {
+      const markAsRead = async () => {
+        const receipts = employeeData.readReceipts || {};
+        const updates: any = {};
+        let hasChanges = false;
+        
+        filteredMyNotifications.forEach(n => {
+          // Se esta notificação ainda não tem recibo de leitura individual, cria um
+          if (!receipts[n.id]) {
+            updates[`readReceipts.${n.id}`] = serverTimestamp();
+            hasChanges = true;
+          }
+        });
+
+        // Identifica se há notificações novas para atualizar o marcador global de visita (limpar badge do menu)
+        const newestNotifDate = filteredMyNotifications.reduce((acc, n) => {
+          const d = n.createdAt?.toDate?.() || new Date(0);
+          return d > acc ? d : acc;
+        }, new Date(0));
+        
+        const lastVisitDate = employeeData.lastMuralVisit?.toDate?.() || new Date(0);
+        
+        if (hasChanges || newestNotifDate > lastVisitDate) {
+          updates.lastMuralVisit = serverTimestamp();
+          try {
+            await updateDoc(doc(firestore, 'employees', employeeData.id), updates);
+          } catch (e) {
+            console.error("Erro ao gravar recibos de leitura:", e);
+          }
+        }
+      };
+      
+      // Delay pequeno para garantir estabilidade da renderização antes da gravação
+      const timer = setTimeout(markAsRead, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [activeTab, employeeData?.id, firestore, filteredMyNotifications]);
+
+  // Lógica de Permissão de Gestão
+  const canManageMural = React.useMemo(() => {
+    if (!employeeData) return false;
+    const role = normalizeStr(employeeData.role || "");
+    return ["COMANDANTE", "INSPETOR GERAL", "GESTOR DE RH"].some(r => role.includes(r));
+  }, [employeeData]);
+
+  // Consulta: Todas as notificações (para gestão)
+  const allNotificationsRef = React.useMemo(() => {
+    if (!firestore || !canManageMural) return null;
+    return query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'));
+  }, [firestore, canManageMural]);
+
+  const { data: allNotifications, loading: loadingAll } = useCollection(allNotificationsRef);
+  const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
+  const { data: employees } = useCollection(employeesRef);
 
   const resetNotifyForm = () => {
     setNotifyPriority("NORMAL");
@@ -237,10 +263,11 @@ export default function NotificationsPage() {
           ) : (
             <div className="grid gap-4">
               {filteredMyNotifications.map(n => {
-                const createdAt = n.createdAt?.toDate?.() || new Date(0);
-                const lastVisit = employeeData?.lastMuralVisit?.toDate?.() || new Date(0);
-                const isNew = createdAt > lastVisit;
-                const viewTimeStr = lastVisit.toLocaleString('pt-BR');
+                // Recupera a data de ciência específica desta notificação no mapa do servidor
+                const readAtTimestamp = employeeData?.readReceipts?.[n.id];
+                const readAt = readAtTimestamp?.toDate?.() || null;
+                const isNew = !readAt;
+                const viewTimeStr = readAt ? readAt.toLocaleString('pt-BR') : '---';
 
                 return (
                   <Card key={n.id} className={cn(
@@ -251,31 +278,31 @@ export default function NotificationsPage() {
                   )}>
                     <div className="flex flex-col">
                       <div className={cn(
-                        "p-2 flex items-center justify-between border-b",
+                        "p-1.5 flex items-center justify-between border-b",
                         n.priority === "URGENTE" ? "bg-red-600 text-white" : 
                         n.priority === "ALERTA" ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
                       )}>
                         <div className="flex items-center gap-2">
-                          {n.priority === "URGENTE" ? <AlertCircle className="h-3.5 w-3.5 animate-pulse" /> : <Info className="h-3.5 w-3.5" />}
-                          <span className="text-[9px] font-black uppercase tracking-widest">{n.priority}</span>
+                          {n.priority === "URGENTE" ? <AlertCircle className="h-3 w-3 animate-pulse" /> : <Info className="h-3 w-3" />}
+                          <span className="text-[8px] font-black uppercase tracking-widest">{n.priority}</span>
                         </div>
                         <span className="text-[8px] font-mono font-bold opacity-80">
-                          {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
+                          POSTADO: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
                         </span>
                       </div>
-                      <CardContent className="p-3 space-y-2">
+                      <CardContent className="p-3 space-y-1.5">
                         <h3 className="text-sm font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
                         <p className="text-xs font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
                       </CardContent>
-                      <CardFooter className="bg-slate-50 p-2 border-t flex justify-between items-center">
+                      <CardFooter className="bg-slate-50 p-1.5 border-t flex justify-between items-center">
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[7px] font-black uppercase border-slate-200 text-slate-500 bg-white">
-                            De: {n.authorName} ({n.authorQra})
+                          <Badge variant="outline" className="text-[7px] font-black uppercase border-slate-200 text-slate-500 bg-white h-5">
+                            DE: {n.authorQra}
                           </Badge>
                         </div>
                         <div className="flex items-center gap-2">
                           {isNew ? (
-                            <Badge className="bg-blue-600 text-white text-[7px] font-black uppercase animate-pulse">NOVO</Badge>
+                            <Badge className="bg-blue-600 text-white text-[7px] font-black uppercase animate-pulse h-5">NOVO</Badge>
                           ) : (
                             <div className="flex items-center gap-1 opacity-60">
                               <CheckCircle2 className="h-3 w-3 text-green-600" />

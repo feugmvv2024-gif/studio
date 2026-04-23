@@ -50,7 +50,12 @@
         "cnhCategory": { "type": "string" },
         "cnhExpiration": { "type": "string", "format": "date" },
         "accessLevel": { "type": "number", "description": "Nível de acesso calculado pelo cargo." },
-        "lastMuralVisit": { "type": "string", "format": "date-time", "description": "Data/hora da última visualização do mural." }
+        "lastMuralVisit": { "type": "string", "format": "date-time", "description": "Data/hora da última visualização do mural." },
+        "readReceipts": { 
+          "type": "object", 
+          "description": "Mapa de IDs de notificações e data/hora da primeira leitura.",
+          "additionalProperties": { "type": "object" } 
+        }
       },
       "required": ["name", "qra", "role", "status", "matricula", "escala", "turno", "unit"]
     },
