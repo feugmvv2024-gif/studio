@@ -19,7 +19,8 @@ import {
   Info,
   CheckCircle2,
   Eye,
-  FilterX
+  FilterX,
+  ChevronDown
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -66,6 +67,7 @@ export default function NotificationsPage() {
   const [activeTab, setActiveTab] = React.useState("mural");
   const [isNotifyModalOpen, setIsNotifyModalOpen] = React.useState(false);
   const [isSendingNotify, setIsSendingNotify] = React.useState(false);
+  const [expandedId, setExpandedId] = React.useState<string | null>(null);
 
   // Estados do Formulário de Envio
   const [notifyPriority, setNotifyPriority] = React.useState("NORMAL");
@@ -574,16 +576,23 @@ export default function NotificationsPage() {
                   filteredMgmtNotifications.map(n => {
                     const stats = notificationStats[n.id] || { read: 0, total: 0 };
                     const isComplete = stats.read >= stats.total && stats.total > 0;
+                    const isExpanded = expandedId === n.id;
 
                     return (
-                      <Card key={n.id} className="border border-slate-100 bg-slate-50/50 hover:bg-white transition-colors group">
-                        <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
-                          <div className="flex items-center gap-4 flex-1">
+                      <Card key={n.id} className={cn(
+                        "border border-slate-100 transition-all group overflow-hidden",
+                        isExpanded ? "bg-white ring-1 ring-primary/20 shadow-md" : "bg-slate-50/50 hover:bg-white"
+                      )}>
+                        <div 
+                          className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4 cursor-pointer select-none"
+                          onClick={() => setExpandedId(isExpanded ? null : n.id)}
+                        >
+                          <div className="flex items-center gap-4 flex-1 min-w-0">
                             <div className={cn(
                               "w-1.5 h-10 rounded-full shrink-0",
                               n.priority === "URGENTE" ? "bg-red-500" : n.priority === "ALERTA" ? "bg-amber-500" : "bg-blue-500"
                             )} />
-                            <div className="min-w-0">
+                            <div className="min-w-0 flex-1">
                               <p className="text-[11px] font-black uppercase text-slate-900 leading-tight truncate">{n.title}</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 shrink-0">{n.targetType}: {n.targetLabel}</Badge>
@@ -611,16 +620,32 @@ export default function NotificationsPage() {
                               {isComplete && <CheckCircle2 className="h-3 w-3 text-green-600 ml-1" />}
                             </div>
 
-                            <Button 
-                              variant="ghost" 
-                              size="sm" 
-                              onClick={() => handleDeleteNotification(n.id)}
-                              className="h-9 px-4 text-red-600 hover:bg-red-50 opacity-0 group-hover:opacity-100 transition-opacity uppercase text-[10px] font-black gap-2"
-                            >
-                              <Trash2 className="h-3.5 w-3.5" /> Excluir
-                            </Button>
+                            <ChevronDown className={cn(
+                              "h-4 w-4 text-slate-400 transition-transform duration-300",
+                              isExpanded && "rotate-180 text-primary"
+                            )} />
                           </div>
-                        </CardContent>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="px-4 pb-4 animate-in slide-in-from-top-2 duration-300">
+                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100/50 mb-4">
+                              <p className="text-[11px] font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">
+                                {n.message}
+                              </p>
+                            </div>
+                            <div className="flex justify-end pt-2 border-t border-slate-100/50">
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }}
+                                className="h-8 px-4 text-red-600 hover:bg-red-50 uppercase text-[10px] font-black gap-2"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" /> Excluir Comunicado
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </Card>
                     );
                   })
