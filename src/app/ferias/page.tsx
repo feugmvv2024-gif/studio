@@ -1004,17 +1004,17 @@ export default function FeriasPage() {
                     <Card key={plan.id} className="card-shadow border-none rounded-xl overflow-hidden group">
                       <div className="flex flex-col sm:flex-row items-stretch">
                         <div className={cn(
-                          "w-full sm:w-24 flex flex-col items-center justify-center p-4 text-white",
+                          "w-full sm:w-20 flex flex-col items-center justify-center p-4 text-white",
                           plan.status === 'APROVADO' ? 'bg-green-600' : plan.status === 'NEGADO' ? 'bg-red-600' : 'bg-amber-500'
                         )}>
-                          <span className="text-[10px] font-black uppercase text-center leading-tight mb-2">{plan.status}</span>
+                          <span className="text-[10px] font-black uppercase text-center leading-tight mb-1.5">{plan.status}</span>
                           {plan.status === 'APROVADO' ? <CheckCircle2 className="h-6 w-6" /> : plan.status === 'NEGADO' ? <XCircle className="h-6 w-6" /> : <Loader2 className="h-6 w-6 animate-spin" />}
                         </div>
-                        <div className="flex-1 p-5 space-y-4">
+                        <div className="flex-1 p-4 space-y-3">
                           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                             <div className="flex-1">
                               {plan.status === 'APROVADO' ? (
-                                <div className="space-y-3">
+                                <div className="space-y-2.5">
                                   <div className="flex items-center gap-2">
                                     <Star className="h-5 w-5 text-green-600 fill-green-600" />
                                     <p className="text-[10px] font-black uppercase text-green-800 tracking-widest">
@@ -1023,7 +1023,7 @@ export default function FeriasPage() {
                                   </div>
                                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     {(plan.selectedOptions || []).map((opt: any, i: number) => (
-                                      <div key={i} className="bg-green-50 p-3 rounded-xl border border-green-100">
+                                      <div key={i} className="bg-green-50 p-2.5 rounded-xl border border-green-100">
                                         <p className="text-xl font-black uppercase text-green-900 leading-none">
                                           {opt.startDay ? `${opt.startDay} ` : ""}{opt.month} / {opt.year} - {plan.splitVacation ? "15" : "30"} DIAS
                                         </p>
@@ -1044,34 +1044,34 @@ export default function FeriasPage() {
                             </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-4 pt-2 border-t border-slate-100">
-                            <div className="flex items-center gap-2">
+                          <div className="flex flex-wrap gap-3 pt-2 border-t border-slate-100">
+                            <div className="flex items-center gap-1.5">
                               <Coins className="h-3 w-3 text-amber-500" />
-                              <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
-                              <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.advance13th ? "SIM" : "NÃO"}</Badge>
+                              <span className="text-[8px] font-black uppercase text-slate-500">13º:</span>
+                              <Badge variant="outline" className="text-[7px] font-black uppercase px-1.5 h-4.5">{plan.advance13th ? "SIM" : "NÃO"}</Badge>
                             </div>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5">
                               <Scissors className="h-3 w-3 text-blue-500" />
-                              <span className="text-[8px] font-black uppercase text-slate-500">Dividir Férias:</span>
-                              <Badge variant="outline" className="text-[7px] font-black uppercase">{plan.splitVacation ? "SIM" : "NÃO"}</Badge>
+                              <span className="text-[8px] font-black uppercase text-slate-500">Dividir:</span>
+                              <Badge variant="outline" className="text-[7px] font-black uppercase px-1.5 h-4.5">{plan.splitVacation ? "SIM" : "NÃO"}</Badge>
                             </div>
                             {plan.hasMinorChildren && (
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5">
                                 <Baby className="h-3 w-3 text-blue-600" />
-                                <span className="text-[8px] font-black uppercase text-slate-500">Filhos Escolares:</span>
-                                <Badge className="text-[7px] font-black uppercase bg-blue-600 text-white border-none">SIM</Badge>
+                                <span className="text-[8px] font-black uppercase text-slate-500">Filhos:</span>
+                                <Badge className="text-[7px] font-black uppercase bg-blue-600 text-white border-none px-1.5 h-4.5">SIM</Badge>
                               </div>
                             )}
                             {plan.spouseIsTeacher && (
-                              <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1.5">
                                 <GraduationCap className="h-3 w-3 text-purple-600" />
-                                <span className="text-[8px] font-black uppercase text-slate-500">Cônjuge Professor:</span>
-                                <Badge className="text-[7px] font-black uppercase bg-purple-600 text-white border-none">SIM</Badge>
+                                <span className="text-[8px] font-black uppercase text-slate-500">Cônjuge:</span>
+                                <Badge className="text-[7px] font-black uppercase bg-purple-600 text-white border-none px-1.5 h-4.5">SIM</Badge>
                               </div>
                             )}
                           </div>
 
-                          <div className="flex flex-wrap gap-x-6 gap-y-2 pt-2 border-t border-slate-100/50">
+                          <div className="flex flex-wrap gap-x-6 gap-y-2 pt-1.5 border-t border-slate-100/50">
                             <div className="flex items-center gap-1.5 text-muted-foreground">
                               <Clock className="h-3 w-3" />
                               <span className="text-[8px] font-black uppercase tracking-widest">Enviado em:</span>
@@ -1080,26 +1080,26 @@ export default function FeriasPage() {
                             {(plan.status === 'APROVADO' || plan.status === 'NEGADO') && (
                               <div className="flex items-center gap-1.5 text-blue-600">
                                 <CheckCircle2 className="h-3 w-3" />
-                                <span className="text-[8px] font-black uppercase tracking-widest">Processado em:</span>
+                                <span className="text-[8px] font-black uppercase tracking-widest">Processado:</span>
                                 <span className="text-[9px] font-mono font-bold">{plan.updatedAt?.toDate ? plan.updatedAt.toDate().toLocaleString('pt-BR') : '---'}</span>
                               </div>
                             )}
                           </div>
 
                           {plan.status === 'NEGADO' && (
-                            <div className="space-y-3 mt-2 animate-in slide-in-from-top-1 duration-500">
-                              <div className="flex items-start gap-3 bg-red-50 p-4 rounded-xl border border-red-100">
-                                <Lock className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
-                                <div className="space-y-2 flex-1">
-                                  <div className="space-y-1">
+                            <div className="space-y-2 mt-1 animate-in slide-in-from-top-1 duration-500">
+                              <div className="flex items-start gap-3 bg-red-50 p-3 rounded-xl border border-red-100">
+                                <Lock className="h-4 w-4 text-red-600 shrink-0 mt-0.5" />
+                                <div className="space-y-1.5 flex-1">
+                                  <div className="space-y-0.5">
                                     <p className="text-[10px] text-red-800 font-black uppercase tracking-tight">DATAS BLOQUEADAS PELA ADMINISTRAÇÃO</p>
                                     <p className="text-[9px] text-red-700 font-medium uppercase leading-relaxed">
-                                      ESTAS OPÇÕES NÃO PODEM SE SELECIONADAS NOVAMENTE. POR FAVOR, ENVIE UM NOVO PEDIDO COM DIFERENTES MESES.
+                                      ESTAS OPÇÕES NÃO PODEM SER SELECIONADAS NOVAMENTE. ENVIE UM NOVO PEDIDO.
                                     </p>
                                   </div>
                                   
                                   {plan.adminResponse && (
-                                    <div className="pt-2 border-t border-red-200/50">
+                                    <div className="pt-1.5 border-t border-red-200/50">
                                       <p className="text-[8px] font-black uppercase text-red-500 mb-0.5">Parecer do RH:</p>
                                       <p className="text-[10px] font-black text-red-900 uppercase leading-relaxed italic">
                                         "{plan.adminResponse}"
