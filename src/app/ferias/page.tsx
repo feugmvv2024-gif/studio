@@ -311,6 +311,19 @@ export default function FeriasPage() {
     return [currentYear, currentYear + 1, currentYear + 2];
   }, []);
 
+  const handleToggleSystem = async (checked: boolean) => {
+    if (!firestore) return;
+    try {
+      await setDoc(doc(firestore, 'settings', 'vacation'), { isOpen: checked }, { merge: true });
+      toast({ 
+        title: checked ? "SISTEMA ATIVADO" : "SISTEMA BLOQUEADO", 
+        description: checked ? "Os servidores agora podem enviar intenções." : "Novos envios foram desabilitados." 
+      });
+    } catch (e) {
+      toast({ variant: "destructive", title: "ERRO AO ALTERAR STATUS" });
+    }
+  };
+
   const handleSave = async () => {
     if (!user || !employeeData) return;
     setIsSubmitting(true);
@@ -1199,7 +1212,7 @@ export default function FeriasPage() {
                                   <div className="flex items-center gap-2">
                                     <Coins className="h-3 w-3 text-amber-500" />
                                     <span className="text-[8px] font-black uppercase text-slate-500">13º Antecipado:</span>
-                                    <Badge variant={plan.advance13th ? "default" : "outline"} className={cn("text-[7px] font-black", plan.advance13th ? "bg-amber-500" : "")}>
+                                    <Badge variant={plan.advance13th ? "default" : "outline"} className={cn("text-[7px] font-black", plan.advance13th ? "bg-amber-50" : "")}>
                                       {plan.advance13th ? "SIM" : "NÃO"}
                                     </Badge>
                                   </div>
