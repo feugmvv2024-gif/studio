@@ -67,6 +67,8 @@ export default function NotificationsPage() {
   const [notifyTargetId, setNotifyTargetId] = React.useState("");
   const [notifyTargetLabel, setNotifyTargetLabel] = React.useState("");
   const [notifySearchTerm, setNotifySearchTerm] = React.useState("");
+  const [notifyTitle, setNotifyTitle] = React.useState("");
+  const [notifyMessage, setNotifyMessage] = React.useState("");
   const [showTargetSuggestions, setShowTargetSuggestions] = React.useState(false);
 
   // Consulta: Notificações do Servidor (Mural)
@@ -177,12 +179,16 @@ export default function NotificationsPage() {
     return results;
   }, [employees, allNotifications, roles]);
 
-  const resetNotifyForm = () => {
-    setNotifyPriority("NORMAL");
-    setNotifyTargetType("TODOS");
+  const resetNotifyForm = (clearAll = true) => {
     setNotifyTargetId("");
     setNotifyTargetLabel("");
     setNotifySearchTerm("");
+    if (clearAll) {
+      setNotifyPriority("NORMAL");
+      setNotifyTargetType("TODOS");
+      setNotifyTitle("");
+      setNotifyMessage("");
+    }
   };
 
   async function handleSendNotification(e: React.FormEvent<HTMLFormElement>) {
@@ -194,14 +200,16 @@ export default function NotificationsPage() {
       return;
     }
 
+    if (!notifyTitle.trim() || !notifyMessage.trim()) {
+      toast({ variant: "destructive", title: "CAMPOS VAZIOS", description: "PREENCHA TÍTULO E MENSAGEM." });
+      return;
+    }
+
     setIsSendingNotify(true);
-    const formData = new FormData(e.currentTarget);
-    const title = (formData.get('title') as string).toUpperCase();
-    const message = (formData.get('message') as string).toUpperCase();
 
     const payload = {
-      title,
-      message,
+      title: notifyTitle.toUpperCase().trim(),
+      message: notifyMessage.toUpperCase().trim(),
       priority: notifyPriority,
       targetType: notifyTargetType,
       targetId: notifyTargetId,
@@ -214,8 +222,14 @@ export default function NotificationsPage() {
     try {
       await addDoc(collection(firestore, 'notifications'), payload);
       toast({ title: "COMUNICADO PUBLICADO!", description: "O aviso já está disponível para os destinatários." });
-      setIsNotifyModalOpen(false);
-      resetNotifyForm();
+      
+      // Se for individual, mantém o formulário aberto para permitir reuso da mensagem para outro servidor
+      if (notifyTargetType === "INDIVIDUAL") {
+        resetNotifyForm(false);
+      } else {
+        setIsNotifyModalOpen(false);
+        resetNotifyForm(true);
+      }
     } catch (err) {
       toast({ variant: "destructive", title: "ERRO AO PUBLICAR" });
     } finally {
@@ -313,8 +327,8 @@ export default function NotificationsPage() {
                         </span>
                       </div>
                       <CardContent className="p-3 space-y-1">
-                        <h3 className="text-sm font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
-                        <p className="text-xs font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
+                        <h3 className="text-[12px] font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
+                        <p className="text-[11px] font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
                       </CardContent>
                       <CardFooter className="bg-slate-50 p-1 border-t flex justify-between items-center">
                         <div className="flex items-center gap-2">
@@ -345,7 +359,7 @@ export default function NotificationsPage() {
 
         <TabsContent value="gestao" className="mt-6 space-y-6">
           <div className="flex justify-end">
-            <Dialog open={isNotifyModalOpen} onOpenChange={setIsNotifyModalOpen}>
+            <Dialog open={isNotifyModalOpen} onOpenChange={(open) => { setIsNotifyModalOpen(open); if (!open) resetNotifyForm(true); }}>
               <DialogTrigger asChild>
                 <Button size="lg" className="h-12 px-8 uppercase font-black text-xs tracking-widest shadow-xl bg-primary hover:bg-primary/90">
                   <Plus className="h-4 w-4 mr-2" /> Publicar Novo Aviso
@@ -430,11 +444,23 @@ export default function NotificationsPage() {
                     <div className="space-y-4">
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-700">Título do Aviso</Label>
-                        <Input name="title" required placeholder="EX: CONVOCAÇÃO PARA TREINAMENTO" className="h-11 uppercase font-bold text-xs" />
+                        <Input 
+                          value={notifyTitle}
+                          onChange={(e) => setNotifyTitle(e.target.value.toUpperCase())}
+                          required 
+                          placeholder="EX: CONVOCAÇÃO PARA TREINAMENTO" 
+                          className="h-11 uppercase font-bold text-xs" 
+                        />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-black uppercase text-slate-700">Mensagem</Label>
-                        <Textarea name="message" required placeholder="DIGITE O CONTEÚDO DO COMUNICADO..." className="min-h-[120px] uppercase text-xs p-4 resize-none leading-relaxed" />
+                        <Textarea 
+                          value={notifyMessage}
+                          onChange={(e) => setNotifyMessage(e.target.value.toUpperCase())}
+                          required 
+                          placeholder="DIGITE O CONTEÚDO DO COMUNICADO..." 
+                          className="min-h-[120px] uppercase text-xs p-4 resize-none leading-relaxed" 
+                        />
                       </div>
                     </div>
                   </div>
