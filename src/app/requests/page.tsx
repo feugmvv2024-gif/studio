@@ -20,7 +20,8 @@ import {
   Archive,
   Search,
   X,
-  Fingerprint
+  Fingerprint,
+  ChevronLeft
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -61,6 +62,8 @@ import { collection, addDoc, query, orderBy, where, serverTimestamp, updateDoc, 
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils"
 
+const ITEMS_PER_PAGE = 30;
+
 const hhmmToMinutes = (hhmm: string) => {
   if (!hhmm || !hhmm.includes(':')) return 0;
   const [h, m] = hhmm.split(':').map(Number);
@@ -85,6 +88,7 @@ export default function RequestsPage() {
   const [loading, setLoading] = React.useState(false);
   const [activeTab, setActiveTab] = React.useState("new");
   const [archiveSearch, setArchiveSearch] = React.useState("");
+  const [archiveCurrentPage, setArchiveCurrentPage] = React.useState(1);
   
   // Estados do formulário
   const [requestType, setRequestType] = React.useState<string>("");
@@ -188,6 +192,18 @@ export default function RequestsPage() {
       req.type?.toLowerCase().includes(term)
     );
   }, [archiveRequests, archiveSearch]);
+
+  // Reset de página quando a busca muda
+  React.useEffect(() => {
+    setArchiveCurrentPage(1);
+  }, [archiveSearch]);
+
+  const paginatedArchiveRequests = React.useMemo(() => {
+    const startIndex = (archiveCurrentPage - 1) * ITEMS_PER_PAGE;
+    return filteredArchiveRequests.slice(startIndex, startIndex + ITEMS_PER_PAGE);
+  }, [filteredArchiveRequests, archiveCurrentPage]);
+
+  const totalArchivePages = Math.ceil(filteredArchiveRequests.length / ITEMS_PER_PAGE);
 
   const myShiftPeriod = React.useMemo(() => (employeeData?.escala && shiftPeriods) ? shiftPeriods.find(p => p.escalaName === employeeData.escala) : null, [employeeData?.escala, shiftPeriods]);
   const requiredMinutesForFolga = React.useMemo(() => myShiftPeriod?.duration ? hhmmToMinutes(myShiftPeriod.duration) : 0, [myShiftPeriod]);
@@ -698,79 +714,135 @@ export default function RequestsPage() {
                 {loadingArchive ? (
                   <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                 ) : (
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader className="bg-muted/20">
-                        <TableRow>
-                          <TableHead className="font-bold uppercase text-[9px] px-6">Servidor / QRA</TableHead>
-                          <TableHead className="font-bold uppercase text-[9px]">Solicitação</TableHead>
-                          <TableHead className="font-bold uppercase text-[9px]">Matrícula / Escala</TableHead>
-                          <TableHead className="font-bold uppercase text-[9px]">Status / Despacho</TableHead>
-                          <TableHead className="font-bold uppercase text-[9px] text-right px-6">Data Decisão</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredArchiveRequests.length === 0 ? (
+                  <>
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader className="bg-muted/20">
                           <TableRow>
-                            <TableCell colSpan={5} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
-                              NENHUM REGISTRO ENCONTRADO NO ARQUIVO.
-                            </TableCell>
+                            <TableHead className="font-bold uppercase text-[9px] px-6">Servidor / QRA</TableHead>
+                            <TableHead className="font-bold uppercase text-[9px]">Solicitação</TableHead>
+                            <TableHead className="font-bold uppercase text-[9px]">Matrícula / Escala</TableHead>
+                            <TableHead className="font-bold uppercase text-[9px]">Status / Despacho</TableHead>
+                            <TableHead className="font-bold uppercase text-[9px] text-right px-6">Data Decisão</TableHead>
                           </TableRow>
-                        ) : (
-                          filteredArchiveRequests.map((req) => (
-                            <TableRow key={req.id} className="hover:bg-slate-50 transition-colors border-b last:border-0 group">
-                              <TableCell className="px-6 py-4">
-                                <div className="flex flex-col gap-0.5">
-                                  <span className="font-black uppercase text-[12px] text-slate-900 leading-tight">{req.employeeName}</span>
-                                  <div className="flex items-center gap-1.5 mt-0.5">
-                                    <Badge className="bg-primary h-4 px-1.5 font-black text-[8px] uppercase">QRA: {req.employeeQra}</Badge>
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col gap-1">
-                                  <span className="text-[11px] font-black uppercase text-blue-700">{req.type}</span>
-                                  <div className="flex flex-wrap gap-1 max-w-[250px]">
-                                    {req.date.split('|').map((d: string, i: number) => (
-                                      <span key={i} className="text-[8px] font-bold text-slate-500 uppercase">{d.trim()}</span>
-                                    ))}
-                                  </div>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex flex-col">
-                                  <div className="flex items-center gap-1 text-[10px] font-bold text-slate-700 uppercase">
-                                    <Fingerprint className="h-3 w-3 text-slate-400" /> {req.matricula || "---"}
-                                  </div>
-                                  <span className="text-[9px] font-medium text-muted-foreground uppercase">{req.escala} / {req.turno}</span>
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <div className="space-y-1.5">
-                                  <Badge className={cn(
-                                    "text-[8px] font-black uppercase border-none px-2 h-5",
-                                    req.status === 'Aprovado' ? "bg-green-600 text-white" : "bg-red-600 text-white"
-                                  )}>
-                                    {req.status}
-                                  </Badge>
-                                  {req.adminResponse && (
-                                    <p className="text-[9px] text-slate-500 uppercase italic max-w-[200px] truncate group-hover:whitespace-normal group-hover:overflow-visible" title={req.adminResponse}>
-                                      {req.adminResponse.split('|').pop()?.trim()}
-                                    </p>
-                                  )}
-                                </div>
-                              </TableCell>
-                              <TableCell className="text-right px-6">
-                                <span className="text-[10px] font-mono font-bold text-slate-600">
-                                  {req.updatedAt ? new Date(req.updatedAt.seconds * 1000).toLocaleString('pt-BR') : "---"}
-                                </span>
+                        </TableHeader>
+                        <TableBody>
+                          {paginatedArchiveRequests.length === 0 ? (
+                            <TableRow>
+                              <TableCell colSpan={5} className="h-32 text-center uppercase text-[10px] font-bold text-muted-foreground italic tracking-widest">
+                                NENHUM REGISTRO ENCONTRADO NO ARQUIVO.
                               </TableCell>
                             </TableRow>
-                          ))
-                        )}
-                      </TableBody>
-                    </Table>
-                  </div>
+                          ) : (
+                            paginatedArchiveRequests.map((req) => (
+                              <TableRow key={req.id} className="hover:bg-slate-50 transition-colors border-b last:border-0 group">
+                                <TableCell className="px-6 py-4">
+                                  <div className="flex flex-col gap-0.5">
+                                    <span className="font-black uppercase text-[12px] text-slate-900 leading-tight">{req.employeeName}</span>
+                                    <div className="flex items-center gap-1.5 mt-0.5">
+                                      <Badge className="bg-primary h-4 px-1.5 font-black text-[8px] uppercase">QRA: {req.employeeQra}</Badge>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col gap-1">
+                                    <span className="text-[11px] font-black uppercase text-blue-700">{req.type}</span>
+                                    <div className="flex flex-wrap gap-1 max-w-[250px]">
+                                      {req.date.split('|').map((d: string, i: number) => (
+                                        <span key={i} className="text-[8px] font-bold text-slate-500 uppercase">{d.trim()}</span>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col">
+                                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-700 uppercase">
+                                      <Fingerprint className="h-3 w-3 text-slate-400" /> {req.matricula || "---"}
+                                    </div>
+                                    <span className="text-[9px] font-medium text-muted-foreground uppercase">{req.escala} / {req.turno}</span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="space-y-1.5">
+                                    <Badge className={cn(
+                                      "text-[8px] font-black uppercase border-none px-2 h-5",
+                                      req.status === 'Aprovado' ? "bg-green-600 text-white" : "bg-red-600 text-white"
+                                    )}>
+                                      {req.status}
+                                    </Badge>
+                                    {req.adminResponse && (
+                                      <p className="text-[9px] text-slate-500 uppercase italic max-w-[200px] truncate group-hover:whitespace-normal group-hover:overflow-visible" title={req.adminResponse}>
+                                        {req.adminResponse.split('|').pop()?.trim()}
+                                      </p>
+                                    )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right px-6">
+                                  <span className="text-[10px] font-mono font-bold text-slate-600">
+                                    {req.updatedAt ? new Date(req.updatedAt.seconds * 1000).toLocaleString('pt-BR') : "---"}
+                                  </span>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {totalArchivePages > 1 && (
+                      <div className="p-4 border-t flex flex-col sm:flex-row items-center justify-between gap-4 bg-muted/5">
+                        <p className="text-[10px] font-bold uppercase text-muted-foreground">
+                          Exibindo {paginatedArchiveRequests.length} de {filteredArchiveRequests.length} registros
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={archiveCurrentPage === 1}
+                            onClick={() => setArchiveCurrentPage(prev => Math.max(prev - 1, 1))}
+                            className="h-8 px-3 text-[10px] font-black uppercase gap-1.5"
+                          >
+                            <ChevronLeft className="h-3.5 w-3.5" /> Anterior
+                          </Button>
+                          
+                          <div className="flex items-center gap-1">
+                            {Array.from({ length: Math.min(totalArchivePages, 5) }, (_, i) => {
+                              let pageNum = i + 1;
+                              if (totalArchivePages > 5 && archiveCurrentPage > 3) {
+                                pageNum = Math.min(archiveCurrentPage - 2 + i, totalArchivePages - 4 + i);
+                              }
+                              if (pageNum > totalArchivePages || pageNum <= 0) return null;
+
+                              return (
+                                <Button
+                                  key={pageNum}
+                                  variant={archiveCurrentPage === pageNum ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => setArchiveCurrentPage(pageNum)}
+                                  className={cn(
+                                    "h-8 w-8 p-0 text-[10px] font-bold",
+                                    archiveCurrentPage === pageNum ? "bg-primary text-white" : ""
+                                  )}
+                                >
+                                  {pageNum}
+                                </Button>
+                              );
+                            })}
+                          </div>
+
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={archiveCurrentPage === totalArchivePages}
+                            onClick={() => setArchiveCurrentPage(prev => Math.min(prev + 1, totalArchivePages))}
+                            className="h-8 px-3 text-[10px] font-black uppercase gap-1.5"
+                          >
+                            Próximo <ChevronRight className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </CardContent>
             </Card>
