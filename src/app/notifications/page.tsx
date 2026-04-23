@@ -594,11 +594,16 @@ export default function NotificationsPage() {
                             )} />
                             <div className="min-w-0 flex-1">
                               <p className="text-[11px] font-black uppercase text-slate-900 leading-tight truncate">{n.title}</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 shrink-0">{n.targetType}: {n.targetLabel}</Badge>
-                                <span className="text-[8px] font-mono text-muted-foreground uppercase truncate">
-                                  Postado: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
-                                </span>
+                              <div className="flex flex-col gap-1 mt-1">
+                                <div className="flex items-center gap-2">
+                                  <Badge variant="outline" className="text-[7px] font-black uppercase h-4 px-1.5 shrink-0">{n.targetType}: {n.targetLabel}</Badge>
+                                  <span className="text-[8px] font-mono text-muted-foreground uppercase truncate">
+                                    Postado: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
+                                  </span>
+                                </div>
+                                <p className="text-[7px] font-bold text-primary uppercase tracking-widest leading-none">
+                                  ENVIADO POR: {n.authorQra}
+                                </p>
                               </div>
                             </div>
                           </div>
