@@ -17,8 +17,6 @@ import {
   History,
   X,
   Info,
-  CalendarDays,
-  Clock,
   CheckCircle2,
   Eye
 } from "lucide-react"
@@ -48,7 +46,7 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
-import { collection, query, orderBy, where, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -314,11 +312,11 @@ export default function NotificationsPage() {
                           POSTADO: {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
                         </span>
                       </div>
-                      <CardContent className="p-3 space-y-1.5">
+                      <CardContent className="p-3 space-y-1">
                         <h3 className="text-sm font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
                         <p className="text-xs font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
                       </CardContent>
-                      <CardFooter className="bg-slate-50 p-1.5 border-t flex justify-between items-center">
+                      <CardFooter className="bg-slate-50 p-1 border-t flex justify-between items-center">
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-[7px] font-black uppercase border-slate-200 text-slate-500 bg-white h-5">
                             DE: {n.authorQra}
@@ -394,7 +392,7 @@ export default function NotificationsPage() {
                       <div className="space-y-1.5 animate-in slide-in-from-top-2 duration-300">
                         <Label className="text-[10px] font-black uppercase text-slate-700">Selecionar Grupo</Label>
                         <Select value={notifyTargetId} onValueChange={(v) => { setNotifyTargetId(v); setNotifyTargetLabel(roles?.find((r: any) => r.id === v)?.name || "GRUPO"); }}>
-                          <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue placeholder="SELECIONE O CARGO..." /></SelectTrigger>
+                          <SelectTrigger className="h-10 uppercase text-[10px] font-bold"><SelectValue placeholder="SELECIONE THE CARGO..." /></SelectTrigger>
                           <SelectContent>
                             {roles?.map((r: any) => <SelectItem key={r.id} value={r.id} className="uppercase text-[10px]">{r.name}</SelectItem>)}
                           </SelectContent>
