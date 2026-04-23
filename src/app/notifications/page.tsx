@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -45,7 +46,7 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
-import { collection, query, orderBy, where, addDoc, deleteDoc, doc, serverTimestamp } from 'firebase/firestore'
+import { collection, query, orderBy, where, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -67,6 +68,22 @@ export default function NotificationsPage() {
   const [notifyTargetLabel, setNotifyTargetLabel] = React.useState("");
   const [notifySearchTerm, setNotifySearchTerm] = React.useState("");
   const [showTargetSuggestions, setShowTargetSuggestions] = React.useState(false);
+
+  // Gatilho de Leitura: Marca como visualizado ao entrar na aba Mural
+  React.useEffect(() => {
+    if (activeTab === "mural" && employeeData?.id && firestore) {
+      const updateVisit = async () => {
+        try {
+          await updateDoc(doc(firestore, 'employees', employeeData.id), {
+            lastMuralVisit: serverTimestamp()
+          });
+        } catch (e) {
+          console.error("Erro ao registrar visualização do mural:", e);
+        }
+      };
+      updateVisit();
+    }
+  }, [activeTab, employeeData?.id, firestore]);
 
   // Lógica de Permissão de Gestão
   const canManageMural = React.useMemo(() => {
@@ -103,7 +120,6 @@ export default function NotificationsPage() {
     return myNotifications.filter(n => {
       if (n.targetType === "TODOS") return true;
       if (n.targetType === "CARGO") {
-        // Busca o nome do cargo pelo targetId
         const targetRole = roles?.find(r => r.id === n.targetId)?.name || "";
         return normalizeStr(targetRole) === userRole;
       }
@@ -220,43 +236,60 @@ export default function NotificationsPage() {
             </Card>
           ) : (
             <div className="grid gap-4">
-              {filteredMyNotifications.map(n => (
-                <Card key={n.id} className={cn(
-                  "card-shadow border-none rounded-xl overflow-hidden transition-all animate-in slide-in-from-bottom-2 duration-500",
-                  n.priority === "URGENTE" ? "ring-2 ring-red-500 bg-red-50/10" : 
-                  n.priority === "ALERTA" ? "ring-2 ring-amber-400 bg-amber-50/10" : "bg-white"
-                )}>
-                  <div className="flex flex-col">
-                    <div className={cn(
-                      "p-3 flex items-center justify-between border-b",
-                      n.priority === "URGENTE" ? "bg-red-600 text-white" : 
-                      n.priority === "ALERTA" ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
-                    )}>
-                      <div className="flex items-center gap-2">
-                        {n.priority === "URGENTE" ? <AlertCircle className="h-4 w-4 animate-pulse" /> : <Info className="h-4 w-4" />}
-                        <span className="text-[10px] font-black uppercase tracking-widest">{n.priority}</span>
+              {filteredMyNotifications.map(n => {
+                const createdAt = n.createdAt?.toDate?.() || new Date(0);
+                const lastVisit = employeeData?.lastMuralVisit?.toDate?.() || new Date(0);
+                const isNew = createdAt > lastVisit;
+                const viewTimeStr = lastVisit.toLocaleString('pt-BR');
+
+                return (
+                  <Card key={n.id} className={cn(
+                    "card-shadow border-none rounded-xl overflow-hidden transition-all animate-in slide-in-from-bottom-2 duration-500",
+                    n.priority === "URGENTE" ? "ring-2 ring-red-500 bg-red-50/10" : 
+                    n.priority === "ALERTA" ? "ring-2 ring-amber-400 bg-amber-50/10" : "bg-white",
+                    isNew && "shadow-lg shadow-blue-100/50 ring-1 ring-blue-400"
+                  )}>
+                    <div className="flex flex-col">
+                      <div className={cn(
+                        "p-2 flex items-center justify-between border-b",
+                        n.priority === "URGENTE" ? "bg-red-600 text-white" : 
+                        n.priority === "ALERTA" ? "bg-amber-500 text-white" : "bg-blue-600 text-white"
+                      )}>
+                        <div className="flex items-center gap-2">
+                          {n.priority === "URGENTE" ? <AlertCircle className="h-3.5 w-3.5 animate-pulse" /> : <Info className="h-3.5 w-3.5" />}
+                          <span className="text-[9px] font-black uppercase tracking-widest">{n.priority}</span>
+                        </div>
+                        <span className="text-[8px] font-mono font-bold opacity-80">
+                          {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
+                        </span>
                       </div>
-                      <span className="text-[8px] font-mono font-bold opacity-80">
-                        {n.createdAt?.toDate ? n.createdAt.toDate().toLocaleString('pt-BR') : '---'}
-                      </span>
+                      <CardContent className="p-3 space-y-2">
+                        <h3 className="text-sm font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
+                        <p className="text-xs font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
+                      </CardContent>
+                      <CardFooter className="bg-slate-50 p-2 border-t flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-[7px] font-black uppercase border-slate-200 text-slate-500 bg-white">
+                            De: {n.authorName} ({n.authorQra})
+                          </Badge>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {isNew ? (
+                            <Badge className="bg-blue-600 text-white text-[7px] font-black uppercase animate-pulse">NOVO</Badge>
+                          ) : (
+                            <div className="flex items-center gap-1 opacity-60">
+                              <CheckCircle2 className="h-3 w-3 text-green-600" />
+                              <span className="text-[7px] font-bold text-muted-foreground uppercase">
+                                Visualizado em: {viewTimeStr}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </CardFooter>
                     </div>
-                    <CardContent className="p-4 space-y-3">
-                      <h3 className="text-sm font-black uppercase text-slate-900 leading-tight">{n.title}</h3>
-                      <p className="text-xs font-medium uppercase text-slate-700 leading-relaxed whitespace-pre-wrap">{n.message}</p>
-                    </CardContent>
-                    <CardFooter className="bg-slate-50 p-3 border-t flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-[7px] font-black uppercase border-slate-200 text-slate-500 bg-white">
-                          De: {n.authorName} ({n.authorQra})
-                        </Badge>
-                      </div>
-                      {n.targetType === "INDIVIDUAL" && (
-                        <Badge className="bg-primary text-white text-[7px] font-black uppercase">Direcionado a Você</Badge>
-                      )}
-                    </CardFooter>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                );
+              })}
             </div>
           )}
         </TabsContent>

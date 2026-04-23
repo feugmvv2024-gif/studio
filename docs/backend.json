@@ -49,7 +49,8 @@
         "cnhNumber": { "type": "string" },
         "cnhCategory": { "type": "string" },
         "cnhExpiration": { "type": "string", "format": "date" },
-        "accessLevel": { "type": "number", "description": "Nível de acesso calculado pelo cargo." }
+        "accessLevel": { "type": "number", "description": "Nível de acesso calculado pelo cargo." },
+        "lastMuralVisit": { "type": "string", "format": "date-time", "description": "Data/hora da última visualização do mural." }
       },
       "required": ["name", "qra", "role", "status", "matricula", "escala", "turno", "unit"]
     },

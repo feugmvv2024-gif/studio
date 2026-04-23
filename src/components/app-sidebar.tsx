@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -36,7 +37,7 @@ import {
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { useAuth, useCollection } from "@/firebase"
-import { collection, query, where } from "firebase/firestore"
+import { collection, query, where, orderBy } from "firebase/firestore"
 
 const navigation = [
   { name: "Painel", href: "/dashboard", icon: LayoutDashboard },
@@ -111,6 +112,38 @@ export function AppSidebar() {
     }).length;
   }, [managementRequests, user, employeeData]);
 
+  // Lógica de Monitoramento do Mural (Novos Avisos)
+  const muralNotificationsQuery = React.useMemo(() => {
+    if (!firestore || !user || !employeeData) return null;
+    return query(collection(firestore, 'notifications'), orderBy('createdAt', 'desc'));
+  }, [firestore, user, employeeData]);
+
+  const rolesQuery = React.useMemo(() => firestore ? collection(firestore, 'roles') : null, [firestore]);
+
+  const { data: muralNotifications } = useCollection(muralNotificationsQuery);
+  const { data: roles } = useCollection(rolesQuery);
+
+  const unreadMuralCount = React.useMemo(() => {
+    if (!muralNotifications || !employeeData || !user) return 0;
+    
+    const lastVisit = employeeData.lastMuralVisit?.toDate?.() || new Date(0);
+    const userRole = normalizeStr(employeeData.role || "");
+
+    return muralNotifications.filter(n => {
+      const createdAt = n.createdAt?.toDate?.() || new Date(0);
+      if (createdAt <= lastVisit) return false;
+
+      // Filtra conforme a segmentação igual à página do Mural
+      if (n.targetType === "TODOS") return true;
+      if (n.targetType === "CARGO") {
+        const targetRole = roles?.find(r => r.id === n.targetId)?.name || "";
+        return normalizeStr(targetRole) === userRole;
+      }
+      if (n.targetType === "INDIVIDUAL") return n.targetId === user.uid;
+      return false;
+    }).length;
+  }, [muralNotifications, employeeData, roles, user]);
+
   React.useEffect(() => {
     if (!loading) setConnectionStatus('connected')
   }, [loading])
@@ -175,6 +208,11 @@ export function AppSidebar() {
                     {item.href === "/requests" && pendingActionCount > 0 && (
                       <SidebarMenuBadge className="bg-primary text-primary-foreground font-black text-[10px] rounded-full h-5 min-w-5 flex items-center justify-center border-2 border-background shadow-sm">
                         {pendingActionCount}
+                      </SidebarMenuBadge>
+                    )}
+                    {item.href === "/notifications" && unreadMuralCount > 0 && (
+                      <SidebarMenuBadge className="bg-blue-600 text-white font-black text-[10px] rounded-full h-5 min-w-5 flex items-center justify-center border-2 border-background shadow-sm animate-in zoom-in duration-300">
+                        {unreadMuralCount}
                       </SidebarMenuBadge>
                     )}
                   </SidebarMenuItem>
