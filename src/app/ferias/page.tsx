@@ -339,7 +339,7 @@ export default function FeriasPage() {
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
-    return [currentYear, currentYear + 1, currentYear + 2];
+    return [currentYear + 1, currentYear + 2];
   }, []);
 
   const handleSave = async () => {
