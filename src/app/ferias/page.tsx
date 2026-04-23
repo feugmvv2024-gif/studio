@@ -25,7 +25,9 @@ import {
   GraduationCap,
   Clock,
   AlertCircle,
-  FilterX
+  FilterX,
+  Edit2,
+  Trash2
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -119,12 +121,23 @@ export default function FeriasPage() {
   const [denialReason, setDenialReason] = React.useState("");
   const [isProcessingDeny, setIsProcessingDeny] = React.useState(false);
 
+  const [isEditApprovedModalOpen, setIsEditApprovedModalOpen] = React.useState(false);
+  const [planToEdit, setPlanToEdit] = React.useState<any>(null);
+  const [editOptions, setEditOptions] = React.useState<any[]>([]);
+  const [isProcessingEdit, setIsProcessingEdit] = React.useState(false);
+
   const [selectionMap, setSelectionMap] = React.useState<Record<string, any[]>>({});
 
   const isManager = React.useMemo(() => {
     if (!employeeData) return false;
     const role = normalizeStr(employeeData.role || "");
     return ["COMANDANTE", "INSPETOR GERAL", "GESTOR DE RH"].some(r => role.includes(r));
+  }, [employeeData]);
+
+  const isHighCommand = React.useMemo(() => {
+    if (!employeeData) return false;
+    const role = normalizeStr(employeeData.role || "");
+    return ["COMANDANTE", "INSPETOR GERAL"].some(r => role.includes(r));
   }, [employeeData]);
 
   const myPlansQuery = React.useMemo(() => {
@@ -295,7 +308,7 @@ export default function FeriasPage() {
 
   const nextYears = React.useMemo(() => {
     const currentYear = new Date().getFullYear();
-    return [currentYear + 1, currentYear + 2];
+    return [currentYear, currentYear + 1, currentYear + 2];
   }, []);
 
   const handleSave = async () => {
@@ -389,6 +402,33 @@ export default function FeriasPage() {
     setIsDenyModalOpen(false);
     setPlanToDenyId(null);
     setDenialReason("");
+  };
+
+  const handleOpenEditModal = (plan: any) => {
+    setPlanToEdit(plan);
+    setEditOptions(JSON.parse(JSON.stringify(plan.selectedOptions || [])));
+    setIsEditApprovedModalOpen(true);
+  };
+
+  const handleUpdateApprovedPlan = async () => {
+    if (!firestore || !planToEdit || !employeeData) return;
+    setIsProcessingEdit(true);
+
+    try {
+      const docRef = doc(firestore, 'vacationPlans', planToEdit.id);
+      await updateDoc(docRef, {
+        selectedOptions: editOptions,
+        processedByQra: (employeeData.qra || "SISTEMA").toUpperCase(),
+        updatedAt: serverTimestamp()
+      });
+      toast({ title: "PLANEJAMENTO ATUALIZADO", description: "As datas foram corrigidas com sucesso." });
+      setIsEditApprovedModalOpen(false);
+      setPlanToEdit(null);
+    } catch (error) {
+      toast({ variant: "destructive", title: "ERRO NA ATUALIZAÇÃO" });
+    } finally {
+      setIsProcessingEdit(false);
+    }
   };
 
   const handleToggleSystem = async (isOpen: boolean) => {
@@ -622,6 +662,63 @@ export default function FeriasPage() {
               >
                 {isProcessingDeny ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                 Confirmar Indeferimento
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* MODAL DE EDIÇÃO DO COMANDO */}
+        <Dialog open={isEditApprovedModalOpen} onOpenChange={setIsEditApprovedModalOpen}>
+          <DialogContent className="rounded-2xl border-none shadow-2xl p-6 sm:p-8 max-w-xl">
+            <DialogHeader>
+              <div className="bg-amber-50 w-12 h-12 rounded-2xl flex items-center justify-center mb-4">
+                <Edit2 className="h-6 w-6 text-amber-600" />
+              </div>
+              <DialogTitle className="uppercase text-xl font-black">Ajustar Planejamento</DialogTitle>
+              <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1 tracking-widest">Apenas o Comando e Inspetoria Geral podem ajustar períodos homologados.</p>
+            </DialogHeader>
+            <div className="py-6 space-y-6">
+              <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <p className="text-sm font-black uppercase text-slate-900 leading-none">{planToEdit?.employeeName}</p>
+                <p className="text-[10px] font-bold text-primary uppercase mt-1">QRA: {planToEdit?.employeeQra}</p>
+              </div>
+
+              {editOptions.map((opt, idx) => (
+                <div key={idx} className="p-4 rounded-xl border border-slate-200 bg-white space-y-4">
+                  <div className="flex items-center justify-between border-b pb-2">
+                    <span className="text-[10px] font-black uppercase text-slate-600 tracking-widest">{idx + 1}º Período (15 Dias)</span>
+                    <Badge className="bg-amber-600 text-white text-[8px] font-black uppercase">Edição do Comando</Badge>
+                  </div>
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-[8px] font-black uppercase text-muted-foreground">Ano</Label>
+                      <Select value={opt.year} onValueChange={(v) => { const next = [...editOptions]; next[idx].year = v; setEditOptions(next); }}>
+                        <SelectTrigger className="h-9 uppercase font-bold text-[10px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>{nextYears.map(y => <SelectItem key={y} value={y.toString()} className="uppercase font-bold text-[10px]">{y}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[8px] font-black uppercase text-muted-foreground">Mês</Label>
+                      <Select value={opt.month} onValueChange={(v) => { const next = [...editOptions]; next[idx].month = v; setEditOptions(next); }}>
+                        <SelectTrigger className="h-9 uppercase font-bold text-[10px]"><SelectValue /></SelectTrigger>
+                        <SelectContent>{MONTHS.map(m => <SelectItem key={m} value={m} className="uppercase font-bold text-[10px]">{m}</SelectItem>)}</SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[8px] font-black uppercase text-muted-foreground">Dia Início</Label>
+                      <Input value={opt.startDay} onChange={(e) => { const next = [...editOptions]; next[idx].startDay = e.target.value.replace(/\D/g, '').slice(0, 2); setEditOptions(next); }} className="h-9 font-black text-center text-xs" />
+                    </div>
+                  </div>
+                  <div className="pt-2 bg-slate-50/50 p-2 rounded-lg border border-dashed text-center">
+                    <span className="text-[9px] font-black text-blue-700 uppercase">{calculatePeriod(opt.startDay, opt.month, opt.year, planToEdit?.splitVacation)}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <DialogFooter className="grid grid-cols-2 gap-3">
+              <Button variant="ghost" onClick={() => setIsEditApprovedModalOpen(false)} className="h-12 uppercase font-black text-xs">Cancelar</Button>
+              <Button onClick={handleUpdateApprovedPlan} disabled={isProcessingEdit} className="h-12 bg-blue-600 hover:bg-blue-700 text-white font-black uppercase text-xs shadow-xl shadow-blue-100">
+                {isProcessingEdit ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />} Salvar Ajuste
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -1285,7 +1382,7 @@ export default function FeriasPage() {
                             <TableHead className="font-bold uppercase text-[10px] h-12">Período(s) Aprovado(s)</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] h-12">Prioridades</TableHead>
                             <TableHead className="font-bold uppercase text-[10px] h-12">Auditor RH</TableHead>
-                            <TableHead className="font-bold uppercase text-[10px] h-12 text-center">Opções</TableHead>
+                            <TableHead className="font-bold uppercase text-[10px] h-12 text-center">Ações</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -1348,9 +1445,21 @@ export default function FeriasPage() {
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-center">
-                                  <div className="flex items-center justify-center gap-3">
-                                    <Coins className={cn("h-3.5 w-3.5", plan.advance13th ? "text-amber-500" : "text-slate-300")} />
-                                    <Scissors className={cn("h-3.5 w-3.5", plan.splitVacation ? "text-blue-500" : "text-slate-300")} />
+                                  <div className="flex items-center justify-center gap-2">
+                                    <div className="flex items-center gap-2 mr-2 border-r pr-2 border-slate-200">
+                                      <Coins className={cn("h-3.5 w-3.5", plan.advance13th ? "text-amber-500" : "text-slate-300")} title="13º Antecipado" />
+                                      <Scissors className={cn("h-3.5 w-3.5", plan.splitVacation ? "text-blue-500" : "text-slate-300")} title="Dividido em 15 dias" />
+                                    </div>
+                                    {isHighCommand && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="icon" 
+                                        onClick={() => handleOpenEditModal(plan)}
+                                        className="h-8 w-8 text-blue-600 hover:bg-blue-50 rounded-lg"
+                                      >
+                                        <Edit2 className="h-3.5 w-3.5" />
+                                      </Button>
+                                    )}
                                   </div>
                                 </TableCell>
                               </TableRow>
