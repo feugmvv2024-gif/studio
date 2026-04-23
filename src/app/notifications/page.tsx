@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -19,7 +18,8 @@ import {
   X,
   Info,
   CalendarDays,
-  Clock
+  Clock,
+  CheckCircle2
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -199,7 +199,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center gap-3">
           <div className="bg-blue-50 p-2 rounded-xl">
             <BellRing className="h-6 w-6 text-blue-600" />
