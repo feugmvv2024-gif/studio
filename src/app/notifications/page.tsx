@@ -18,7 +18,8 @@ import {
   X,
   Info,
   CheckCircle2,
-  Eye
+  Eye,
+  FilterX
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -46,9 +47,14 @@ import {
 } from "@/components/ui/dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
-import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, where } from 'firebase/firestore'
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+
+const MONTHS = [
+  "JANEIRO", "FEVEREIRO", "MARÇO", "ABRIL", "MAIO", "JUNHO",
+  "JULHO", "AGOSTO", "SETEMBRO", "OUTUBRO", "NOVEMBRO", "DEZEMBRO"
+];
 
 const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
@@ -70,6 +76,11 @@ export default function NotificationsPage() {
   const [notifyTitle, setNotifyTitle] = React.useState("");
   const [notifyMessage, setNotifyMessage] = React.useState("");
   const [showTargetSuggestions, setShowTargetSuggestions] = React.useState(false);
+
+  // Estados de Filtro da Gestão
+  const [mgmtSearchTerm, setMgmtSearchTerm] = React.useState("");
+  const [mgmtFilterMonth, setMgmtFilterMonth] = React.useState("ALL");
+  const [mgmtFilterYear, setMgmtFilterYear] = React.useState("ALL");
 
   // Consulta: Notificações do Servidor (Mural)
   const myNotificationsRef = React.useMemo(() => {
@@ -152,6 +163,30 @@ export default function NotificationsPage() {
   const employeesRef = React.useMemo(() => firestore ? query(collection(firestore, 'employees'), orderBy('name', 'asc')) : null, [firestore]);
   const { data: employees } = useCollection(employeesRef);
 
+  // Lógica de Filtragem da Gestão
+  const filteredMgmtNotifications = React.useMemo(() => {
+    if (!allNotifications) return [];
+    const term = mgmtSearchTerm.toLowerCase();
+    
+    return allNotifications.filter(n => {
+      const matchesText = !mgmtSearchTerm || (
+        n.title?.toLowerCase().includes(term) ||
+        n.message?.toLowerCase().includes(term) ||
+        n.authorQra?.toLowerCase().includes(term)
+      );
+
+      if (!matchesText) return false;
+
+      if (mgmtFilterMonth === "ALL" && mgmtFilterYear === "ALL") return true;
+
+      const createdAt = n.createdAt?.toDate?.() || new Date(0);
+      const matchesMonth = mgmtFilterMonth === "ALL" || createdAt.getMonth() === parseInt(mgmtFilterMonth);
+      const matchesYear = mgmtFilterYear === "ALL" || createdAt.getFullYear() === parseInt(mgmtFilterYear);
+
+      return matchesMonth && matchesYear;
+    });
+  }, [allNotifications, mgmtSearchTerm, mgmtFilterMonth, mgmtFilterYear]);
+
   // Cálculo de estatísticas de leitura para o gestor
   const notificationStats = React.useMemo(() => {
     if (!employees || !allNotifications) return {};
@@ -191,6 +226,12 @@ export default function NotificationsPage() {
     }
   };
 
+  const clearMgmtFilters = () => {
+    setMgmtSearchTerm("");
+    setMgmtFilterMonth("ALL");
+    setMgmtFilterYear("ALL");
+  };
+
   async function handleSendNotification(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!firestore || !employeeData) return;
@@ -223,7 +264,6 @@ export default function NotificationsPage() {
       await addDoc(collection(firestore, 'notifications'), payload);
       toast({ title: "COMUNICADO PUBLICADO!", description: "O aviso já está disponível para os destinatários." });
       
-      // Se for individual, mantém o formulário aberto para permitir reuso da mensagem para outro servidor
       if (notifyTargetType === "INDIVIDUAL") {
         resetNotifyForm(false);
       } else {
@@ -259,6 +299,8 @@ export default function NotificationsPage() {
   if (loadingMy) {
     return <div className="flex h-full items-center justify-center min-h-[400px]"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
+
+  const hasActiveMgmtFilters = mgmtSearchTerm !== "" || mgmtFilterMonth !== "ALL" || mgmtFilterYear !== "ALL";
 
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500 pb-20">
@@ -358,7 +400,50 @@ export default function NotificationsPage() {
         </TabsContent>
 
         <TabsContent value="gestao" className="mt-6 space-y-6">
-          <div className="flex justify-end">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4">
+            <Card className="flex-1 border-none shadow-sm rounded-xl overflow-hidden bg-slate-50">
+              <CardContent className="p-3 flex flex-col lg:flex-row items-stretch lg:items-center gap-3">
+                <div className="relative flex-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="BUSCAR AVISO OU AUTOR..." 
+                    value={mgmtSearchTerm}
+                    onChange={(e) => setMgmtSearchTerm(e.target.value.toUpperCase())}
+                    className="pl-8 h-9 text-[10px] uppercase font-bold bg-white"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Select value={mgmtFilterMonth} onValueChange={setMgmtFilterMonth}>
+                    <SelectTrigger className="h-9 w-[120px] uppercase text-[10px] font-bold bg-white">
+                      <SelectValue placeholder="MÊS" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL" className="uppercase text-[10px] font-bold">TODOS MESES</SelectItem>
+                      {MONTHS.map((m, idx) => (
+                        <SelectItem key={idx} value={idx.toString()} className="uppercase text-[10px] font-bold">{m}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Select value={mgmtFilterYear} onValueChange={setMgmtFilterYear}>
+                    <SelectTrigger className="h-9 w-[90px] uppercase text-[10px] font-bold bg-white">
+                      <SelectValue placeholder="ANO" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="ALL" className="uppercase text-[10px] font-bold">TODOS</SelectItem>
+                      {[2024, 2025, 2026, 2027, 2028, 2029, 2030].map(y => (
+                        <SelectItem key={y} value={y.toString()} className="uppercase text-[10px] font-bold">{y}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {hasActiveMgmtFilters && (
+                    <Button variant="ghost" size="icon" onClick={clearMgmtFilters} className="h-9 w-9 text-red-600 hover:bg-red-50">
+                      <FilterX className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
             <Dialog open={isNotifyModalOpen} onOpenChange={(open) => { setIsNotifyModalOpen(open); if (!open) resetNotifyForm(true); }}>
               <DialogTrigger asChild>
                 <Button size="lg" className="h-12 px-8 uppercase font-black text-xs tracking-widest shadow-xl bg-primary hover:bg-primary/90">
@@ -478,15 +563,15 @@ export default function NotificationsPage() {
           <div className="space-y-4">
             <div className="flex items-center gap-2 border-b pb-2">
               <History className="h-4 w-4 text-slate-500" />
-              <h4 className="text-xs font-black uppercase text-slate-700 tracking-widest">Histórico de Publicações</h4>
+              <h4 className="text-xs font-black uppercase text-slate-700 tracking-widest">Histórico de Publicações ({filteredMgmtNotifications.length})</h4>
             </div>
             
             {loadingAll ? <div className="flex justify-center py-10"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
               <div className="grid gap-3">
-                {allNotifications?.length === 0 ? (
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold italic text-center py-10">Nenhum histórico disponível.</p>
+                {filteredMgmtNotifications.length === 0 ? (
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold italic text-center py-10">Nenhum histórico encontrado para os filtros aplicados.</p>
                 ) : (
-                  allNotifications?.map(n => {
+                  filteredMgmtNotifications.map(n => {
                     const stats = notificationStats[n.id] || { read: 0, total: 0 };
                     const isComplete = stats.read >= stats.total && stats.total > 0;
 
