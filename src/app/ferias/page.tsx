@@ -431,19 +431,6 @@ export default function FeriasPage() {
     }
   };
 
-  const handleToggleSystem = async (isOpen: boolean) => {
-    if (!firestore) return;
-    try {
-      await setDoc(doc(firestore, 'settings', 'vacation'), { isOpen }, { merge: true });
-      toast({ 
-        title: isOpen ? "SISTEMA ABERTO" : "SISTEMA BLOQUEADO", 
-        description: isOpen ? "Servidores já podem enviar novas intenções." : "Novas solicitações estão desabilitadas." 
-      });
-    } catch (error) {
-      toast({ variant: "destructive", title: "ERRO AO ATUALIZAR" });
-    }
-  };
-
   const isBlocked = (year: string, month: string) => {
     return deniedDates.includes(`${year}-${month}`);
   };
@@ -1100,7 +1087,7 @@ export default function FeriasPage() {
                                   
                                   {plan.adminResponse && (
                                     <div className="pt-1.5 border-t border-red-200/50">
-                                      <p className="text-[8px] font-black uppercase text-red-500 mb-0.5">Parecer do RH:</p>
+                                      <p className="text-[8px] font-black uppercase text-red-500 mb-0.5">Parecer do RH: {plan.processedByQra || ""}</p>
                                       <p className="text-[10px] font-black text-red-900 uppercase leading-relaxed italic">
                                         "{plan.adminResponse}"
                                       </p>
