@@ -48,6 +48,16 @@ import {
   DialogFooter,
   DialogClose
 } from "@/components/ui/dialog"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useFirestore, useCollection, useAuth } from '@/firebase'
 import { collection, query, orderBy, addDoc, deleteDoc, doc, serverTimestamp, updateDoc, where } from 'firebase/firestore'
@@ -72,6 +82,10 @@ export default function NotificationsPage() {
   const [isNotifyModalOpen, setIsNotifyModalOpen] = React.useState(false);
   const [isSendingNotify, setIsSendingNotify] = React.useState(false);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
+
+  // Estados para Exclusão
+  const [isDeleteAlertOpen, setIsDeleteAlertOpen] = React.useState(false);
+  const [idToDelete, setIdToDelete] = React.useState<string | null>(null);
 
   // Estados do Formulário de Envio
   const [notifyPriority, setNotifyPriority] = React.useState("NORMAL");
@@ -663,7 +677,11 @@ export default function NotificationsPage() {
                                 <Button 
                                   variant="ghost" 
                                   size="sm" 
-                                  onClick={(e) => { e.stopPropagation(); handleDeleteNotification(n.id); }}
+                                  onClick={(e) => { 
+                                    e.stopPropagation(); 
+                                    setIdToDelete(n.id);
+                                    setIsDeleteAlertOpen(true);
+                                  }}
                                   className="h-8 px-4 text-red-600 hover:bg-red-50 uppercase text-[10px] font-black gap-2"
                                 >
                                   <Trash2 className="h-3.5 w-3.5" /> Excluir Comunicado
@@ -735,6 +753,34 @@ export default function NotificationsPage() {
           </div>
         </TabsContent>
       </Tabs>
+
+      <AlertDialog open={isDeleteAlertOpen} onOpenChange={setIsDeleteAlertOpen}>
+        <AlertDialogContent className="max-w-[90vw] sm:max-w-lg rounded-2xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <div className="bg-red-50 w-12 h-12 rounded-full flex items-center justify-center mb-4">
+              <Trash2 className="h-6 w-6 text-red-600" />
+            </div>
+            <AlertDialogTitle className="uppercase text-lg font-bold">Confirmar Exclusão</AlertDialogTitle>
+            <AlertDialogDescription className="uppercase text-[10px] font-medium text-muted-foreground tracking-wide">
+              ESTA AÇÃO É IRREVERSÍVEL. O COMUNICADO SERÁ REMOVIDO PERMANENTEMENTE DO MURAL.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-2">
+            <AlertDialogCancel className="uppercase text-xs font-bold rounded-xl h-11 border-none bg-slate-100 text-slate-600 hover:bg-slate-200">CANCELAR</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                if (idToDelete) {
+                  handleDeleteNotification(idToDelete);
+                  setIdToDelete(null);
+                }
+              }} 
+              className="bg-destructive hover:bg-destructive/90 uppercase text-xs font-bold rounded-xl h-11 shadow-lg shadow-red-100"
+            >
+              EXCLUIR AGORA
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
