@@ -417,7 +417,7 @@ export default function LoginPage() {
         </Tabs>
 
         <p className="text-center text-[9px] text-slate-400 font-bold uppercase tracking-widest">
-          © 2024 GUARDA MUNICIPAL DE VILA VELHA • NÚCLEO DE RH
+          © 2026 GUARDA MUNICIPAL DE VILA VELHA • NÚCLEO DE RH
         </p>
       </div>
     </div>
