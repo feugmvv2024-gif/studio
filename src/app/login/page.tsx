@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation';
 import { 
   signInWithEmailAndPassword, 
   createUserWithEmailAndPassword, 
-  updateProfile 
+  updateProfile,
+  sendPasswordResetEmail
 } from 'firebase/auth';
 import { 
   collection, 
@@ -21,13 +22,26 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogClose
+} from "@/components/ui/dialog";
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Lock, ShieldCheck, UserCheck, Eye } from 'lucide-react';
+import { Loader2, Lock, ShieldCheck, UserCheck, Eye, Mail } from 'lucide-react';
 
 export default function LoginPage() {
   const [loading, setLoading] = React.useState(false);
+  const [resetLoading, setResetLoading] = React.useState(false);
   const [showLoginPass, setShowLoginPass] = React.useState(false);
   const [showRegisterPass, setShowRegisterPass] = React.useState(false);
+  const [resetEmail, setResetEmail] = React.useState("");
+  const [isResetOpen, setIsResetOpen] = React.useState(false);
   
   const router = useRouter();
   const { toast } = useToast();
@@ -200,6 +214,39 @@ export default function LoginPage() {
     }
   }
 
+  async function handleResetPassword() {
+    if (!resetEmail) {
+      toast({ variant: 'destructive', title: 'ATENÇÃO', description: 'INFORME SEU E-MAIL CADASTRADO.' });
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await sendPasswordResetEmail(auth, resetEmail.toUpperCase());
+      toast({
+        title: 'E-MAIL ENVIADO!',
+        description: 'VERIFIQUE SUA CAIXA DE ENTRADA PARA REDEFINIR A SENHA.',
+      });
+      setIsResetOpen(false);
+      setResetEmail("");
+    } catch (error: any) {
+      console.error(error);
+      let message = 'ERRO AO ENVIAR E-MAIL DE RECUPERAÇÃO.';
+      if (error.code === 'auth/user-not-found') {
+        message = 'USUÁRIO NÃO ENCONTRADO COM ESTE E-MAIL.';
+      } else if (error.code === 'auth/invalid-email') {
+        message = 'FORMATO DE E-MAIL INVÁLIDO.';
+      }
+      toast({
+        variant: 'destructive',
+        title: 'FALHA NA RECUPERAÇÃO',
+        description: message,
+      });
+    } finally {
+      setResetLoading(false);
+    }
+  }
+
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 p-4 sm:p-6 lg:p-8 animate-in fade-in duration-700">
       <div className="w-full max-w-[450px] space-y-8">
@@ -259,6 +306,47 @@ export default function LoginPage() {
                         <Eye className={cn("h-4 w-4", showLoginPass && "text-primary")} />
                       </button>
                     </div>
+                  </div>
+                  <div className="flex justify-end">
+                    <Dialog open={isResetOpen} onOpenChange={setIsResetOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="link" type="button" className="text-[10px] font-bold uppercase text-primary h-auto p-0 opacity-70 hover:opacity-100">
+                          Esqueci minha senha
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="sm:max-w-[400px] rounded-2xl border-none shadow-2xl">
+                        <DialogHeader>
+                          <div className="bg-primary/10 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                            <Mail className="h-6 w-6 text-primary" />
+                          </div>
+                          <DialogTitle className="uppercase text-lg font-black tracking-tight">Recuperar Senha</DialogTitle>
+                          <DialogDescription className="text-xs uppercase font-bold text-muted-foreground mt-1">
+                            Informe seu e-mail cadastrado no sistema para receber o link de redefinição.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="py-4">
+                          <Label className="text-[10px] font-black uppercase text-slate-500 mb-1.5 block">E-mail de Cadastro</Label>
+                          <Input 
+                            placeholder="EX@GMAIL.COM" 
+                            className="h-12 uppercase font-bold text-xs" 
+                            value={resetEmail}
+                            onChange={(e) => setResetEmail(e.target.value)}
+                          />
+                        </div>
+                        <DialogFooter className="flex flex-col gap-2 sm:flex-row">
+                          <DialogClose asChild>
+                            <Button variant="ghost" className="uppercase font-black text-[10px] h-11 flex-1">Cancelar</Button>
+                          </DialogClose>
+                          <Button 
+                            onClick={handleResetPassword} 
+                            disabled={resetLoading}
+                            className="uppercase font-black text-[10px] h-11 flex-1 bg-primary shadow-lg shadow-blue-200"
+                          >
+                            {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Enviar Link"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
                   </div>
                 </CardContent>
                 <CardFooter className="pt-2 pb-6">
