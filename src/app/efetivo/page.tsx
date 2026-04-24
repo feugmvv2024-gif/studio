@@ -82,7 +82,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { useFirestore, useCollection } from '@/firebase';
+import { useFirestore, useCollection, useAuth } from '@/firebase';
 import { collection, addDoc, doc, deleteDoc, query, orderBy, updateDoc, limit } from 'firebase/firestore';
 import { useToast } from "@/hooks/use-toast";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area"
@@ -90,6 +90,8 @@ import * as XLSX from 'xlsx';
 import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 import { cn } from "@/lib/utils"
+
+const normalizeStr = (str: string) => str?.toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "") || "";
 
 function generateValidationCode() {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -127,6 +129,7 @@ export default function EfetivoPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const firestore = useFirestore();
   const { toast } = useToast();
+  const { employeeData } = useAuth();
 
   // Query para a tabela (com limite dinâmico)
   const employeesRef = React.useMemo(() => {
@@ -148,9 +151,34 @@ export default function EfetivoPage() {
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
   const { data: allEmployees } = useCollection(allEmployeesRef);
   const { data: schedules } = useCollection(schedulesRef);
-  const { data: shifts } = useCollection(shiftsRef);
+  const { data: shifts } = useCollection(shiftsQuery);
   const { data: roles } = useCollection(rolesRef);
   const { data: units } = useCollection(unitsRef);
+
+  // Lógica de Filtragem de Cargos baseada na hierarquia
+  const filteredRolesForForm = React.useMemo(() => {
+    if (!roles) return [];
+    if (!employeeData) return roles;
+
+    const currentUserRole = normalizeStr(employeeData.role || "");
+    const isHighCommand = ["COMANDANTE", "INSPETOR GERAL"].some(r => currentUserRole.includes(r));
+
+    // Comandante e Inspetor Geral veem tudo
+    if (isHighCommand) return roles;
+
+    // Outros perfis (como Gestor de RH) não podem atribuir cargos de alto comando
+    return roles.filter((role: any) => {
+      const roleName = normalizeStr(role.name);
+      const isRestricted = ["COMANDANTE", "INSPETOR GERAL"].some(r => roleName.includes(r));
+      
+      // Mantém visível apenas se for o cargo atual do servidor que está sendo editado
+      if (selectedEmployee && normalizeStr(selectedEmployee.role) === roleName) {
+        return true;
+      }
+
+      return !isRestricted;
+    });
+  }, [roles, employeeData, selectedEmployee]);
 
   // Estatísticas baseadas no total geral (allEmployees)
   const stats = React.useMemo(() => {
@@ -484,7 +512,7 @@ export default function EfetivoPage() {
                 <SelectValue placeholder="SELECIONE..." />
               </SelectTrigger>
               <SelectContent>
-                {roles?.map((r: any) => <SelectItem key={r.id} value={r.name} className="uppercase text-[11px]">{r.name}</SelectItem>)}
+                {filteredRolesForForm?.map((r: any) => <SelectItem key={r.id} value={r.name} className="uppercase text-[11px]">{r.name}</SelectItem>)}
               </SelectContent>
             </Select>
           </div>
