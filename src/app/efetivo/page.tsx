@@ -1,4 +1,3 @@
-
 "use client"
 
 import * as React from "react"
@@ -151,7 +150,7 @@ export default function EfetivoPage() {
   const { data: employees, loading: loadingCollection } = useCollection(employeesRef);
   const { data: allEmployees } = useCollection(allEmployeesRef);
   const { data: schedules } = useCollection(schedulesRef);
-  const { data: shifts } = useCollection(shiftsQuery);
+  const { data: shifts } = useCollection(shiftsRef);
   const { data: roles } = useCollection(rolesRef);
   const { data: units } = useCollection(unitsRef);
 
@@ -841,7 +840,7 @@ export default function EfetivoPage() {
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-muted/20">
-                    <TableRow className="hover:bg-transparent">
+                    <TableRow className="hover:bg-transparent border-b">
                       <TableHead className="w-[40px] px-4"><Checkbox checked={filteredEmployees.length > 0 && selectedIds.length === filteredEmployees.length} onCheckedChange={toggleSelectAll} /></TableHead>
                       <TableHead className="w-[50px] font-bold uppercase text-[9px] px-2">Nº</TableHead>
                       <TableHead className="font-bold uppercase text-[9px] min-w-[80px]">QRAs</TableHead>
